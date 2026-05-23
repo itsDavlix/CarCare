@@ -9,16 +9,20 @@ import java.util.*
 class DriverViewModel : ViewModel() {
     private val _drivers = mutableStateListOf<Driver>(
         Driver(
-            fullName = "Juan Pérez",
-            identification = "12345678",
+            firstName = "Juan",
+            lastName = "Pérez",
+            idCardNumber = "12345678",
+            age = 35,
             phone = "555-0101",
             licenseNumber = "LIC-99901",
             licenseExpiryDate = Calendar.getInstance().apply { add(Calendar.YEAR, 2) }.time,
             status = DriverStatus.ACTIVE
         ),
         Driver(
-            fullName = "María García",
-            identification = "87654321",
+            firstName = "María",
+            lastName = "García",
+            idCardNumber = "87654321",
+            age = 28,
             phone = "555-0202",
             licenseNumber = "LIC-99902",
             licenseExpiryDate = Calendar.getInstance().apply { add(Calendar.MONTH, 1) }.time,

@@ -41,13 +41,19 @@ enum class DriverStatus(val label: String) {
 
 data class Driver(
     val id: String = java.util.UUID.randomUUID().toString(),
-    val fullName: String,
-    val identification: String,
+    val firstName: String,
+    val lastName: String,
+    val idCardNumber: String, // Cédula
+    val age: Int,
     val phone: String,
     val licenseNumber: String,
     val licenseExpiryDate: Date,
+    val profilePhotoUri: String? = null,
+    val licensePhotoUri: String? = null,
     val status: DriverStatus = DriverStatus.ACTIVE
-)
+) {
+    val fullName: String get() = "$firstName $lastName"
+}
 
 enum class MaintenanceStatus(val label: String) {
     PENDING("Pendiente"),

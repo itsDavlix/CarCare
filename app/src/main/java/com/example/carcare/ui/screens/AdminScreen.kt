@@ -1,18 +1,22 @@
 package com.example.carcare.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -518,7 +522,7 @@ fun VehicleDetailsDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = onDismiss) { Text("Cerrar") }
+            TextButton(onClick = { onDismiss() }) { Text("Cerrar") }
         }
     )
 }
@@ -741,9 +745,16 @@ fun DriverItem(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
+            Box(
+                modifier = Modifier.size(48.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primaryContainer),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(Icons.Default.Person, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimaryContainer)
+            }
+            Spacer(modifier = Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(text = driver.fullName, style = MaterialTheme.typography.titleMedium)
-                Text(text = "Licencia: ${driver.licenseNumber}", style = MaterialTheme.typography.bodySmall)
+                Text(text = "ID: ${driver.idCardNumber}", style = MaterialTheme.typography.bodySmall)
                 DriverStatusBadge(status = driver.status)
             }
             Row {
@@ -785,8 +796,10 @@ fun DriverFormDialog(
     onDismiss: () -> Unit,
     onSave: (Driver) -> Unit
 ) {
-    var fullName by remember { mutableStateOf(driver?.fullName ?: "") }
-    var identification by remember { mutableStateOf(driver?.identification ?: "") }
+    var firstName by remember { mutableStateOf(driver?.firstName ?: "") }
+    var lastName by remember { mutableStateOf(driver?.lastName ?: "") }
+    var idCardNumber by remember { mutableStateOf(driver?.idCardNumber ?: "") }
+    var age by remember { mutableStateOf(driver?.age?.toString() ?: "") }
     var phone by remember { mutableStateOf(driver?.phone ?: "") }
     var licenseNumber by remember { mutableStateOf(driver?.licenseNumber ?: "") }
     var licenseExpiryStr by remember { mutableStateOf(driver?.licenseExpiryDate?.let { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(it) } ?: "") }
@@ -796,11 +809,22 @@ fun DriverFormDialog(
         onDismissRequest = onDismiss,
         title = { Text(if (driver == null) "Agregar Conductor" else "Editar Conductor") },
         text = {
-            LazyColumn {
+            LazyColumn(modifier = Modifier.fillMaxWidth()) {
                 item {
-                    OutlinedTextField(value = fullName, onValueChange = { fullName = it }, label = { Text("Nombre Completo") }, modifier = Modifier.fillMaxWidth())
-                    OutlinedTextField(value = identification, onValueChange = { identification = it }, label = { Text("Identificación") }, modifier = Modifier.fillMaxWidth())
-                    OutlinedTextField(value = phone, onValueChange = { phone = it }, label = { Text("Teléfono") }, modifier = Modifier.fillMaxWidth())
+                    Text("Fotos (Simulado)", style = MaterialTheme.typography.labelMedium)
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                        PhotoPlaceholder(label = "Foto Perfil", icon = Icons.Default.AddAPhoto)
+                        PhotoPlaceholder(label = "Foto Licencia", icon = Icons.Default.CameraAlt)
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
+                    OutlinedTextField(value = firstName, onValueChange = { firstName = it }, label = { Text("Nombres") }, modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(value = lastName, onValueChange = { lastName = it }, label = { Text("Apellidos") }, modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(value = idCardNumber, onValueChange = { idCardNumber = it }, label = { Text("Cédula / Identificación") }, modifier = Modifier.fillMaxWidth())
+                    Row(modifier = Modifier.fillMaxWidth()) {
+                        OutlinedTextField(value = age, onValueChange = { age = it }, label = { Text("Edad") }, modifier = Modifier.weight(1f))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        OutlinedTextField(value = phone, onValueChange = { phone = it }, label = { Text("Teléfono") }, modifier = Modifier.weight(2f))
+                    }
                     OutlinedTextField(value = licenseNumber, onValueChange = { licenseNumber = it }, label = { Text("Número de Licencia") }, modifier = Modifier.fillMaxWidth())
                     OutlinedTextField(value = licenseExpiryStr, onValueChange = { licenseExpiryStr = it }, label = { Text("Vencimiento Licencia (dd/mm/yyyy)") }, modifier = Modifier.fillMaxWidth())
                 }
@@ -812,8 +836,10 @@ fun DriverFormDialog(
                 onSave(
                     Driver(
                         id = driver?.id ?: UUID.randomUUID().toString(),
-                        fullName = fullName,
-                        identification = identification,
+                        firstName = firstName,
+                        lastName = lastName,
+                        idCardNumber = idCardNumber,
+                        age = age.toIntOrNull() ?: 0,
                         phone = phone,
                         licenseNumber = licenseNumber,
                         licenseExpiryDate = try { sdf.parse(licenseExpiryStr) ?: Date() } catch (e: Exception) { Date() },
@@ -829,6 +855,19 @@ fun DriverFormDialog(
 }
 
 @Composable
+fun PhotoPlaceholder(label: String, icon: ImageVector) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Box(
+            modifier = Modifier.size(80.dp).clip(RoundedCornerShape(8.dp)).background(MaterialTheme.colorScheme.surfaceVariant).clickable { /* Abrir camara/galeria */ },
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        Text(label, style = MaterialTheme.typography.labelSmall)
+    }
+}
+
+@Composable
 fun DriverDetailsDialog(
     driver: Driver,
     onDismiss: () -> Unit,
@@ -840,8 +879,16 @@ fun DriverDetailsDialog(
         title = { Text("Detalles del Conductor") },
         text = {
             Column {
-                Text("Nombre: ${driver.fullName}", style = MaterialTheme.typography.titleMedium)
-                Text("ID: ${driver.identification}")
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(modifier = Modifier.size(64.dp).clip(CircleShape).background(Color.LightGray))
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Column {
+                        Text(text = driver.fullName, style = MaterialTheme.typography.titleLarge)
+                        Text(text = "Cédula: ${driver.idCardNumber}")
+                    }
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+                Text("Edad: ${driver.age} años")
                 Text("Teléfono: ${driver.phone}")
                 Text("Licencia: ${driver.licenseNumber}")
                 Text("Vencimiento: ${sdf.format(driver.licenseExpiryDate)}")
