@@ -15,14 +15,14 @@ enum class VehicleStatus(val label: String) {
 
 data class Vehicle(
     val id: String = java.util.UUID.randomUUID().toString(),
-    val unitCode: String,
     val brand: String,
     val model: String,
     val year: Int,
     val plate: String,
     val fuelType: String,
     val mileage: Long,
-    val vehicleType: String,
+    val vehiclePhotoUri: String? = null,
+    val registrationPhotoUri: String? = null,
     val status: VehicleStatus = VehicleStatus.AVAILABLE,
     val description: String = ""
 )

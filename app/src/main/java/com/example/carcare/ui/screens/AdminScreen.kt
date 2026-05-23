@@ -393,7 +393,7 @@ fun VehicleItem(
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(text = "${vehicle.brand} ${vehicle.model}", style = MaterialTheme.typography.titleMedium)
-                Text(text = "Placa: ${vehicle.plate} | Código: ${vehicle.unitCode}")
+                Text(text = "Placa: ${vehicle.plate}")
                 StatusBadge(status = vehicle.status)
             }
             Row {
@@ -415,14 +415,12 @@ fun VehicleFormDialog(
     onDismiss: () -> Unit,
     onSave: (Vehicle) -> Unit
 ) {
-    var unitCode by remember { mutableStateOf(vehicle?.unitCode ?: "") }
     var brand by remember { mutableStateOf(vehicle?.brand ?: "") }
     var model by remember { mutableStateOf(vehicle?.model ?: "") }
     var year by remember { mutableStateOf(vehicle?.year?.toString() ?: "") }
     var plate by remember { mutableStateOf(vehicle?.plate ?: "") }
     var fuelType by remember { mutableStateOf(vehicle?.fuelType ?: "") }
     var mileage by remember { mutableStateOf(vehicle?.mileage?.toString() ?: "") }
-    var vehicleType by remember { mutableStateOf(vehicle?.vehicleType ?: "") }
     var description by remember { mutableStateOf(vehicle?.description ?: "") }
     var status by remember { mutableStateOf(vehicle?.status ?: VehicleStatus.AVAILABLE) }
 
@@ -432,14 +430,18 @@ fun VehicleFormDialog(
         text = {
             LazyColumn(modifier = Modifier.fillMaxWidth()) {
                 item {
-                    OutlinedTextField(value = unitCode, onValueChange = { unitCode = it }, label = { Text("Código de Unidad") })
+                    Text("Fotos del Vehículo (Simulado)", style = MaterialTheme.typography.labelMedium)
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                        PhotoPlaceholder(label = "Foto Vehículo", icon = Icons.Default.DirectionsCar)
+                        PhotoPlaceholder(label = "Foto Circulación", icon = Icons.Default.Description)
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
                     OutlinedTextField(value = brand, onValueChange = { brand = it }, label = { Text("Marca") })
                     OutlinedTextField(value = model, onValueChange = { model = it }, label = { Text("Modelo") })
                     OutlinedTextField(value = year, onValueChange = { year = it }, label = { Text("Año") })
                     OutlinedTextField(value = plate, onValueChange = { plate = it }, label = { Text("Placa") })
                     OutlinedTextField(value = fuelType, onValueChange = { fuelType = it }, label = { Text("Tipo de Combustible") })
                     OutlinedTextField(value = mileage, onValueChange = { mileage = it }, label = { Text("Kilometraje") })
-                    OutlinedTextField(value = vehicleType, onValueChange = { vehicleType = it }, label = { Text("Tipo de Vehículo") })
                     OutlinedTextField(value = description, onValueChange = { description = it }, label = { Text("Descripción") })
                 }
             }
@@ -449,14 +451,12 @@ fun VehicleFormDialog(
                 onSave(
                     Vehicle(
                         id = vehicle?.id ?: UUID.randomUUID().toString(),
-                        unitCode = unitCode,
                         brand = brand,
                         model = model,
                         year = year.toIntOrNull() ?: 0,
                         plate = plate,
                         fuelType = fuelType,
                         mileage = mileage.toLongOrNull() ?: 0L,
-                        vehicleType = vehicleType,
                         status = status,
                         description = description
                     )
@@ -484,14 +484,18 @@ fun VehicleDetailsDialog(
         text = {
             LazyColumn {
                 item {
-                    Text("Código: ${vehicle.unitCode}", style = MaterialTheme.typography.bodyLarge)
                     Text("Marca/Modelo: ${vehicle.brand} ${vehicle.model}")
                     Text("Placa: ${vehicle.plate}")
                     Text("Año: ${vehicle.year}")
                     Text("Combustible: ${vehicle.fuelType}")
                     Text("Kilometraje: ${vehicle.mileage} km")
-                    Text("Tipo: ${vehicle.vehicleType}")
                     Text("Descripción: ${vehicle.description}")
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text("Documentos (Simulado)", style = MaterialTheme.typography.titleSmall)
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                        PhotoPlaceholder(label = "Vehículo", icon = Icons.Default.DirectionsCar)
+                        PhotoPlaceholder(label = "Circulación", icon = Icons.Default.Description)
+                    }
                     Spacer(modifier = Modifier.height(16.dp))
                     Text("Cambiar Estado:", style = MaterialTheme.typography.titleSmall)
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {

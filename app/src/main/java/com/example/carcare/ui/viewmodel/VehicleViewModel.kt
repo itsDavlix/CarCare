@@ -9,27 +9,23 @@ class VehicleViewModel : ViewModel() {
     private val _vehicles = mutableStateListOf<Vehicle>(
         Vehicle(
             id = "1",
-            unitCode = "V-001",
             brand = "Toyota",
             model = "Hilux",
             year = 2022,
             plate = "ABC-123",
             fuelType = "Diesel",
             mileage = 15000,
-            vehicleType = "Pickup",
             status = VehicleStatus.AVAILABLE,
             description = "Vehículo en buen estado"
         ),
         Vehicle(
             id = "2",
-            unitCode = "V-002",
             brand = "Ford",
             model = "Ranger",
             year = 2021,
             plate = "XYZ-789",
             fuelType = "Gasolina",
             mileage = 32000,
-            vehicleType = "Pickup",
             status = VehicleStatus.MAINTENANCE,
             description = "Cambio de aceite pendiente"
         )

@@ -17,14 +17,12 @@ import com.example.carcare.ui.components.StatusBadge
 @Composable
 fun DriverScreen(onBack: () -> Unit) {
     val assignedVehicle = Vehicle(
-        unitCode = "V-001",
         brand = "Toyota",
         model = "Hilux",
         year = 2022,
         plate = "ABC-123",
         fuelType = "Diesel",
         mileage = 15000,
-        vehicleType = "Pickup",
         status = VehicleStatus.IN_USE,
         description = "Vehículo asignado para ruta norte"
     )
@@ -51,7 +49,6 @@ fun DriverScreen(onBack: () -> Unit) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(text = "${assignedVehicle.brand} ${assignedVehicle.model}", style = MaterialTheme.typography.titleLarge)
                     Text(text = "Placa: ${assignedVehicle.plate}")
-                    Text(text = "Código: ${assignedVehicle.unitCode}")
                     Spacer(modifier = Modifier.height(8.dp))
                     StatusBadge(status = assignedVehicle.status)
                 }
