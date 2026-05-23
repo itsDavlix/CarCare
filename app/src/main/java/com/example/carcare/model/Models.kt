@@ -33,12 +33,35 @@ data class User(
     val role: Role
 )
 
+enum class MaintenanceStatus(val label: String) {
+    PENDING("Pendiente"),
+    IN_PROGRESS("En proceso"),
+    COMPLETED("Completado")
+}
+
+enum class MaintenanceType(val label: String) {
+    PREVENTIVE("Preventivo"),
+    CORRECTIVE("Correctivo"),
+    OIL_CHANGE("Cambio de aceite"),
+    BRAKES("Revisión de frenos"),
+    ENGINE("Revisión de motor"),
+    TIRES("Cambio de llantas"),
+    BATTERY("Cambio de batería"),
+    ALIGNMENT("Alineación y balanceo"),
+    GENERAL_REPAIR("Reparación general")
+}
+
 data class Maintenance(
-    val id: String,
+    val id: String = java.util.UUID.randomUUID().toString(),
     val vehicleId: String,
+    val type: MaintenanceType,
     val date: Date,
+    val currentMileage: Long,
     val description: String,
-    val cost: Double
+    val responsible: String, // Taller, mecánico o responsable
+    val nextDate: Date?,
+    val nextMileage: Long?,
+    val status: MaintenanceStatus = MaintenanceStatus.PENDING
 )
 
 data class Assignment(
