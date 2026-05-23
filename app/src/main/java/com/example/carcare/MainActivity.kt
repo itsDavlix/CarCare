@@ -9,6 +9,7 @@ import com.example.carcare.model.Role
 import com.example.carcare.ui.screens.AdminScreen
 import com.example.carcare.ui.screens.DriverScreen
 import com.example.carcare.ui.screens.LoginScreen
+import com.example.carcare.ui.screens.SplashScreen
 import com.example.carcare.ui.theme.CarCareTheme
 
 class MainActivity : ComponentActivity() {
@@ -21,16 +22,18 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
-
 }
 
 @Composable
 fun MainApp() {
+    // Controla si el splash ya terminó
+    var splashFinished by remember { mutableStateOf(false) }
     var currentRole by remember { mutableStateOf<Role?>(null) }
 
-    when (currentRole) {
-        null -> LoginScreen(onRoleSelected = { currentRole = it })
-        Role.ADMIN -> AdminScreen(onBack = { currentRole = null })
-        Role.DRIVER -> DriverScreen(onBack = { currentRole = null })
+    when {
+        !splashFinished -> SplashScreen(onSplashFinished = { splashFinished = true })
+        currentRole == null -> LoginScreen(onRoleSelected = { currentRole = it })
+        currentRole == Role.ADMIN -> AdminScreen(onBack = { currentRole = null })
+        currentRole == Role.DRIVER -> DriverScreen(onBack = { currentRole = null })
     }
 }
