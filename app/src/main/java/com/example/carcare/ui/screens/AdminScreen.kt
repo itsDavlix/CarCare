@@ -14,6 +14,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.carcare.model.*
 import com.example.carcare.ui.components.StatusBadge
+import com.example.carcare.ui.viewmodel.AssignmentViewModel
+import com.example.carcare.ui.viewmodel.DriverViewModel
 import com.example.carcare.ui.viewmodel.MaintenanceViewModel
 import com.example.carcare.ui.viewmodel.VehicleViewModel
 import java.text.SimpleDateFormat
@@ -24,10 +26,12 @@ import java.util.*
 fun AdminScreen(
     onBack: () -> Unit,
     vehicleViewModel: VehicleViewModel = viewModel(),
-    maintenanceViewModel: MaintenanceViewModel = viewModel()
+    maintenanceViewModel: MaintenanceViewModel = viewModel(),
+    driverViewModel: DriverViewModel = viewModel(),
+    assignmentViewModel: AssignmentViewModel = viewModel()
 ) {
     var selectedTab by remember { mutableIntStateOf(0) }
-    val tabs = listOf("Vehículos", "Mantenimiento", "Asignaciones")
+    val tabs = listOf("Vehículos", "Mantenimiento", "Conductores", "Asignaciones")
     
     var showVehicleForm by remember { mutableStateOf(false) }
     var vehicleToEdit by remember { mutableStateOf<Vehicle?>(null) }
@@ -35,6 +39,13 @@ fun AdminScreen(
 
     var showMaintenanceForm by remember { mutableStateOf(false) }
     var maintenanceToEdit by remember { mutableStateOf<Maintenance?>(null) }
+
+    var showDriverForm by remember { mutableStateOf(false) }
+    var driverToEdit by remember { mutableStateOf<Driver?>(null) }
+    var driverToShowDetails by remember { mutableStateOf<Driver?>(null) }
+
+    var showAssignmentForm by remember { mutableStateOf(false) }
+    var assignmentToComplete by remember { mutableStateOf<Assignment?>(null) }
 
     Scaffold(
         topBar = {
@@ -58,7 +69,8 @@ fun AdminScreen(
                             when (index) {
                                 0 -> Icon(Icons.Default.DirectionsCar, contentDescription = null)
                                 1 -> Icon(Icons.Default.Build, contentDescription = null)
-                                else -> Icon(Icons.Default.Person, contentDescription = null)
+                                2 -> Icon(Icons.Default.Person, contentDescription = null)
+                                else -> Icon(Icons.Default.Assignment, contentDescription = null)
                             }
                         }
                     )
@@ -78,6 +90,17 @@ fun AdminScreen(
                     showMaintenanceForm = true 
                 }) {
                     Icon(Icons.Default.PostAdd, contentDescription = "Registrar Mantenimiento")
+                }
+                2 -> FloatingActionButton(onClick = { 
+                    driverToEdit = null
+                    showDriverForm = true 
+                }) {
+                    Icon(Icons.Default.PersonAdd, contentDescription = "Agregar Conductor")
+                }
+                3 -> FloatingActionButton(onClick = { 
+                    showAssignmentForm = true 
+                }) {
+                    Icon(Icons.Default.AddHomeWork, contentDescription = "Nueva Asignación")
                 }
             }
         }
@@ -108,7 +131,22 @@ fun AdminScreen(
                         maintenanceViewModel.updateStatus(maintenance.id, status)
                     }
                 )
-                2 -> Text("Gestión de asignaciones de vehículos a conductores...")
+                2 -> DriverListSection(
+                    drivers = driverViewModel.drivers,
+                    onDriverClick = { driverToShowDetails = it },
+                    onEdit = { 
+                        driverToEdit = it
+                        showDriverForm = true
+                    },
+                    onDelete = { driverViewModel.deleteDriver(it.id) }
+                )
+                3 -> AssignmentListSection(
+                    assignments = assignmentViewModel.assignments,
+                    vehicles = vehicleViewModel.vehicles,
+                    drivers = driverViewModel.drivers,
+                    onReturn = { assignmentToComplete = it },
+                    onDelete = { assignmentViewModel.deleteAssignment(it.id) }
+                )
             }
         }
     }
@@ -144,6 +182,47 @@ fun AdminScreen(
         )
     }
 
+    if (showDriverForm) {
+        DriverFormDialog(
+            driver = driverToEdit,
+            onDismiss = { showDriverForm = false },
+            onSave = { driver ->
+                if (driverToEdit == null) {
+                    driverViewModel.addDriver(driver)
+                } else {
+                    driverViewModel.updateDriver(driver)
+                }
+                showDriverForm = false
+            }
+        )
+    }
+
+    if (showAssignmentForm) {
+        AssignmentFormDialog(
+            vehicles = vehicleViewModel.vehicles.filter { it.status == VehicleStatus.AVAILABLE },
+            drivers = driverViewModel.drivers.filter { it.status == DriverStatus.ACTIVE },
+            onDismiss = { showAssignmentForm = false },
+            onSave = { assignment ->
+                assignmentViewModel.addAssignment(assignment)
+                vehicleViewModel.changeStatus(assignment.vehicleId, VehicleStatus.IN_USE)
+                showAssignmentForm = false
+            }
+        )
+    }
+
+    if (assignmentToComplete != null) {
+        ReturnVehicleDialog(
+            assignment = assignmentToComplete!!,
+            onDismiss = { assignmentToComplete = null },
+            onSave = { returnDate, finalMileage, observations, nextStatus ->
+                assignmentViewModel.completeAssignment(assignmentToComplete!!.id, returnDate, finalMileage, observations)
+                vehicleViewModel.updateMileage(assignmentToComplete!!.vehicleId, finalMileage)
+                vehicleViewModel.changeStatus(assignmentToComplete!!.vehicleId, nextStatus)
+                assignmentToComplete = null
+            }
+        )
+    }
+
     if (vehicleToShowDetails != null) {
         VehicleDetailsDialog(
             vehicle = vehicleToShowDetails!!,
@@ -152,6 +231,17 @@ fun AdminScreen(
             onStatusChange = { newStatus ->
                 vehicleViewModel.changeStatus(vehicleToShowDetails!!.id, newStatus)
                 vehicleToShowDetails = vehicleToShowDetails!!.copy(status = newStatus)
+            }
+        )
+    }
+
+    if (driverToShowDetails != null) {
+        DriverDetailsDialog(
+            driver = driverToShowDetails!!,
+            onDismiss = { driverToShowDetails = null },
+            onStatusChange = { newStatus ->
+                driverViewModel.updateStatus(driverToShowDetails!!.id, newStatus)
+                driverToShowDetails = driverToShowDetails!!.copy(status = newStatus)
             }
         )
     }
@@ -249,7 +339,7 @@ fun VehicleFormDialog(
             TextButton(onClick = {
                 onSave(
                     Vehicle(
-                        id = vehicle?.id ?: java.util.UUID.randomUUID().toString(),
+                        id = vehicle?.id ?: UUID.randomUUID().toString(),
                         unitCode = unitCode,
                         brand = brand,
                         model = model,
@@ -419,9 +509,8 @@ fun MaintenanceFormDialog(
     var currentMileage by remember { mutableStateOf(maintenance?.currentMileage?.toString() ?: "") }
     var nextMileage by remember { mutableStateOf(maintenance?.nextMileage?.toString() ?: "") }
     
-    // Simplificación de fechas para este ejemplo
-    var dateStr by remember { mutableStateOf(SimpleDateFormat("dd/MM/yyyy").format(maintenance?.date ?: Date())) }
-    var nextDateStr by remember { mutableStateOf(maintenance?.nextDate?.let { SimpleDateFormat("dd/MM/yyyy").format(it) } ?: "") }
+    var dateStr by remember { mutableStateOf(SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(maintenance?.date ?: Date())) }
+    var nextDateStr by remember { mutableStateOf(maintenance?.nextDate?.let { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(it) } ?: "") }
 
     var expandedVehicle by remember { mutableStateOf(false) }
     var expandedType by remember { mutableStateOf(false) }
@@ -432,7 +521,6 @@ fun MaintenanceFormDialog(
         text = {
             LazyColumn {
                 item {
-                    // Selector de Vehículo
                     ExposedDropdownMenuBox(expanded = expandedVehicle, onExpandedChange = { expandedVehicle = !expandedVehicle }) {
                         OutlinedTextField(
                             value = vehicles.find { it.id == selectedVehicleId }?.let { "${it.brand} ${it.model} (${it.plate})" } ?: "Seleccionar Vehículo",
@@ -440,7 +528,7 @@ fun MaintenanceFormDialog(
                             readOnly = true,
                             label = { Text("Vehículo") },
                             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedVehicle) },
-                            modifier = Modifier.menuAnchor().fillMaxWidth()
+                            modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable).fillMaxWidth()
                         )
                         ExposedDropdownMenu(expanded = expandedVehicle, onDismissRequest = { expandedVehicle = false }) {
                             vehicles.forEach { vehicle ->
@@ -452,7 +540,6 @@ fun MaintenanceFormDialog(
                         }
                     }
                     
-                    // Selector de Tipo
                     ExposedDropdownMenuBox(expanded = expandedType, onExpandedChange = { expandedType = !expandedType }) {
                         OutlinedTextField(
                             value = type.label,
@@ -460,7 +547,7 @@ fun MaintenanceFormDialog(
                             readOnly = true,
                             label = { Text("Tipo de Mantenimiento") },
                             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedType) },
-                            modifier = Modifier.menuAnchor().fillMaxWidth()
+                            modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable).fillMaxWidth()
                         )
                         ExposedDropdownMenu(expanded = expandedType, onDismissRequest = { expandedType = false }) {
                             MaintenanceType.entries.forEach { mType ->
@@ -483,13 +570,13 @@ fun MaintenanceFormDialog(
         },
         confirmButton = {
             TextButton(onClick = {
-                val sdf = SimpleDateFormat("dd/MM/yyyy")
+                val sdf = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
                 onSave(
                     Maintenance(
-                        id = maintenance?.id ?: java.util.UUID.randomUUID().toString(),
+                        id = maintenance?.id ?: UUID.randomUUID().toString(),
                         vehicleId = selectedVehicleId,
                         type = type,
-                        date = try { sdf.parse(dateStr) } catch (e: Exception) { Date() },
+                        date = try { sdf.parse(dateStr) ?: Date() } catch (e: Exception) { Date() },
                         currentMileage = currentMileage.toLongOrNull() ?: 0L,
                         description = description,
                         responsible = responsible,
@@ -499,6 +586,355 @@ fun MaintenanceFormDialog(
                     )
                 )
             }) { Text("Guardar") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancelar") }
+        }
+    )
+}
+
+@Composable
+fun DriverListSection(
+    drivers: List<Driver>,
+    onDriverClick: (Driver) -> Unit,
+    onEdit: (Driver) -> Unit,
+    onDelete: (Driver) -> Unit
+) {
+    if (drivers.isEmpty()) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Text("No hay conductores registrados.")
+        }
+    } else {
+        LazyColumn {
+            items(drivers) { driver ->
+                DriverItem(
+                    driver = driver,
+                    onClick = { onDriverClick(driver) },
+                    onEdit = { onEdit(driver) },
+                    onDelete = { onDelete(driver) }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun DriverItem(
+    driver: Driver,
+    onClick: () -> Unit,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+        onClick = onClick,
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(text = driver.fullName, style = MaterialTheme.typography.titleMedium)
+                Text(text = "Licencia: ${driver.licenseNumber}", style = MaterialTheme.typography.bodySmall)
+                DriverStatusBadge(status = driver.status)
+            }
+            Row {
+                IconButton(onClick = onEdit) {
+                    Icon(Icons.Default.Edit, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                }
+                IconButton(onClick = onDelete) {
+                    Icon(Icons.Default.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun DriverStatusBadge(status: DriverStatus) {
+    val color = when (status) {
+        DriverStatus.ACTIVE -> Color(0xFF4CAF50)
+        DriverStatus.INACTIVE -> Color(0xFF9E9E9E)
+        DriverStatus.SUSPENDED -> Color(0xFFF44336)
+    }
+    Surface(
+        color = color.copy(alpha = 0.2f),
+        contentColor = color,
+        shape = MaterialTheme.shapes.small
+    ) {
+        Text(
+            text = status.label,
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+            style = MaterialTheme.typography.labelSmall
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun DriverFormDialog(
+    driver: Driver?,
+    onDismiss: () -> Unit,
+    onSave: (Driver) -> Unit
+) {
+    var fullName by remember { mutableStateOf(driver?.fullName ?: "") }
+    var identification by remember { mutableStateOf(driver?.identification ?: "") }
+    var phone by remember { mutableStateOf(driver?.phone ?: "") }
+    var licenseNumber by remember { mutableStateOf(driver?.licenseNumber ?: "") }
+    var licenseExpiryStr by remember { mutableStateOf(driver?.licenseExpiryDate?.let { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(it) } ?: "") }
+    var status by remember { mutableStateOf(driver?.status ?: DriverStatus.ACTIVE) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(if (driver == null) "Agregar Conductor" else "Editar Conductor") },
+        text = {
+            LazyColumn {
+                item {
+                    OutlinedTextField(value = fullName, onValueChange = { fullName = it }, label = { Text("Nombre Completo") }, modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(value = identification, onValueChange = { identification = it }, label = { Text("Identificación") }, modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(value = phone, onValueChange = { phone = it }, label = { Text("Teléfono") }, modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(value = licenseNumber, onValueChange = { licenseNumber = it }, label = { Text("Número de Licencia") }, modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(value = licenseExpiryStr, onValueChange = { licenseExpiryStr = it }, label = { Text("Vencimiento Licencia (dd/mm/yyyy)") }, modifier = Modifier.fillMaxWidth())
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = {
+                val sdf = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+                onSave(
+                    Driver(
+                        id = driver?.id ?: UUID.randomUUID().toString(),
+                        fullName = fullName,
+                        identification = identification,
+                        phone = phone,
+                        licenseNumber = licenseNumber,
+                        licenseExpiryDate = try { sdf.parse(licenseExpiryStr) ?: Date() } catch (e: Exception) { Date() },
+                        status = status
+                    )
+                )
+            }) { Text("Guardar") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancelar") }
+        }
+    )
+}
+
+@Composable
+fun DriverDetailsDialog(
+    driver: Driver,
+    onDismiss: () -> Unit,
+    onStatusChange: (DriverStatus) -> Unit
+) {
+    val sdf = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Detalles del Conductor") },
+        text = {
+            Column {
+                Text("Nombre: ${driver.fullName}", style = MaterialTheme.typography.titleMedium)
+                Text("ID: ${driver.identification}")
+                Text("Teléfono: ${driver.phone}")
+                Text("Licencia: ${driver.licenseNumber}")
+                Text("Vencimiento: ${sdf.format(driver.licenseExpiryDate)}")
+                Spacer(modifier = Modifier.height(16.dp))
+                Text("Cambiar Estado:", style = MaterialTheme.typography.titleSmall)
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                    DriverStatus.entries.forEach { status ->
+                        FilterChip(
+                            selected = driver.status == status,
+                            onClick = { onStatusChange(status) },
+                            label = { Text(status.label, style = MaterialTheme.typography.labelSmall) }
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text("Cerrar") }
+        }
+    )
+}
+
+@Composable
+fun AssignmentListSection(
+    assignments: List<Assignment>,
+    vehicles: List<Vehicle>,
+    drivers: List<Driver>,
+    onReturn: (Assignment) -> Unit,
+    onDelete: (Assignment) -> Unit
+) {
+    if (assignments.isEmpty()) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Text("No hay asignaciones activas.")
+        }
+    } else {
+        LazyColumn {
+            items(assignments) { assignment ->
+                val vehicle = vehicles.find { it.id == assignment.vehicleId }
+                val driver = drivers.find { it.id == assignment.driverId }
+                AssignmentItem(
+                    assignment = assignment,
+                    vehicle = vehicle,
+                    driver = driver,
+                    onReturn = { onReturn(assignment) },
+                    onDelete = { onDelete(assignment) }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun AssignmentItem(
+    assignment: Assignment,
+    vehicle: Vehicle?,
+    driver: Driver?,
+    onReturn: () -> Unit,
+    onDelete: () -> Unit
+) {
+    val sdf = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault())
+    Card(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(text = "Vehículo: ${vehicle?.brand} ${vehicle?.model} (${vehicle?.plate})", style = MaterialTheme.typography.titleMedium)
+                    Text(text = "Conductor: ${driver?.fullName}")
+                    Text(text = "Salida: ${sdf.format(assignment.departureDate)}")
+                    Text(text = "Km Inicial: ${assignment.initialMileage}")
+                }
+                if (assignment.status == AssignmentStatus.ACTIVE) {
+                    Button(onClick = onReturn) { Text("Devolver") }
+                }
+            }
+            if (assignment.status == AssignmentStatus.COMPLETED) {
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                Text(text = "Entregado: ${assignment.returnDate?.let { sdf.format(it) }}", style = MaterialTheme.typography.bodySmall)
+                Text(text = "Km Final: ${assignment.finalMileage}", style = MaterialTheme.typography.bodySmall)
+                Text(text = "Obs: ${assignment.returnObservations}", style = MaterialTheme.typography.bodySmall)
+            }
+            IconButton(onClick = onDelete, modifier = Modifier.align(Alignment.End)) {
+                Icon(Icons.Default.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error)
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AssignmentFormDialog(
+    vehicles: List<Vehicle>,
+    drivers: List<Driver>,
+    onDismiss: () -> Unit,
+    onSave: (Assignment) -> Unit
+) {
+    var selectedVehicleId by remember { mutableStateOf(vehicles.firstOrNull()?.id ?: "") }
+    var selectedDriverId by remember { mutableStateOf(drivers.firstOrNull()?.id ?: "") }
+    var initialMileage by remember { mutableStateOf(vehicles.find { it.id == selectedVehicleId }?.mileage?.toString() ?: "") }
+    var observations by remember { mutableStateOf("") }
+    
+    var expandedVehicle by remember { mutableStateOf(false) }
+    var expandedDriver by remember { mutableStateOf(false) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Nueva Asignación") },
+        text = {
+            Column {
+                ExposedDropdownMenuBox(expanded = expandedVehicle, onExpandedChange = { expandedVehicle = !expandedVehicle }) {
+                    OutlinedTextField(
+                        value = vehicles.find { it.id == selectedVehicleId }?.let { "${it.plate} - ${it.model}" } ?: "Seleccionar Vehículo",
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Vehículo Disponible") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedVehicle) },
+                        modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable).fillMaxWidth()
+                    )
+                    ExposedDropdownMenu(expanded = expandedVehicle, onDismissRequest = { expandedVehicle = false }) {
+                        vehicles.forEach { vehicle ->
+                            DropdownMenuItem(
+                                text = { Text("${vehicle.plate} - ${vehicle.model}") },
+                                onClick = { 
+                                    selectedVehicleId = vehicle.id
+                                    initialMileage = vehicle.mileage.toString()
+                                    expandedVehicle = false 
+                                }
+                            )
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                ExposedDropdownMenuBox(expanded = expandedDriver, onExpandedChange = { expandedDriver = !expandedDriver }) {
+                    OutlinedTextField(
+                        value = drivers.find { it.id == selectedDriverId }?.fullName ?: "Seleccionar Conductor",
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Conductor Activo") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedDriver) },
+                        modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable).fillMaxWidth()
+                    )
+                    ExposedDropdownMenu(expanded = expandedDriver, onDismissRequest = { expandedDriver = false }) {
+                        drivers.forEach { driver ->
+                            DropdownMenuItem(
+                                text = { Text(driver.fullName) },
+                                onClick = { selectedDriverId = driver.id; expandedDriver = false }
+                            )
+                        }
+                    }
+                }
+                OutlinedTextField(value = initialMileage, onValueChange = { initialMileage = it }, label = { Text("Kilometraje Inicial") }, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(value = observations, onValueChange = { observations = it }, label = { Text("Observaciones de Salida") }, modifier = Modifier.fillMaxWidth())
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = {
+                onSave(Assignment(
+                    vehicleId = selectedVehicleId,
+                    driverId = selectedDriverId,
+                    initialMileage = initialMileage.toLongOrNull() ?: 0L,
+                    departureObservations = observations
+                ))
+            }) { Text("Asignar") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancelar") }
+        }
+    )
+}
+
+@Composable
+fun ReturnVehicleDialog(
+    assignment: Assignment,
+    onDismiss: () -> Unit,
+    onSave: (Date, Long, String, VehicleStatus) -> Unit
+) {
+    var finalMileage by remember { mutableStateOf("") }
+    var observations by remember { mutableStateOf("") }
+    var nextStatus by remember { mutableStateOf(VehicleStatus.AVAILABLE) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Devolución de Vehículo") },
+        text = {
+            Column {
+                Text("Km Inicial: ${assignment.initialMileage}")
+                OutlinedTextField(value = finalMileage, onValueChange = { finalMileage = it }, label = { Text("Kilometraje Final") }, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(value = observations, onValueChange = { observations = it }, label = { Text("Observaciones de Entrega") }, modifier = Modifier.fillMaxWidth())
+                Spacer(modifier = Modifier.height(8.dp))
+                Text("Estado posterior:", style = MaterialTheme.typography.labelMedium)
+                Row {
+                    FilterChip(selected = nextStatus == VehicleStatus.AVAILABLE, onClick = { nextStatus = VehicleStatus.AVAILABLE }, label = { Text("Disponible") })
+                    Spacer(modifier = Modifier.width(8.dp))
+                    FilterChip(selected = nextStatus == VehicleStatus.MAINTENANCE, onClick = { nextStatus = VehicleStatus.MAINTENANCE }, label = { Text("Mantenimiento") })
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = {
+                onSave(Date(), finalMileage.toLongOrNull() ?: 0L, observations, nextStatus)
+            }) { Text("Confirmar Devolución") }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) { Text("Cancelar") }

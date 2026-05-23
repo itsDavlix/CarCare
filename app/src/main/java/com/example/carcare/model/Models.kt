@@ -33,6 +33,22 @@ data class User(
     val role: Role
 )
 
+enum class DriverStatus(val label: String) {
+    ACTIVE("Activo"),
+    INACTIVE("Inactivo"),
+    SUSPENDED("Suspendido")
+}
+
+data class Driver(
+    val id: String = java.util.UUID.randomUUID().toString(),
+    val fullName: String,
+    val identification: String,
+    val phone: String,
+    val licenseNumber: String,
+    val licenseExpiryDate: Date,
+    val status: DriverStatus = DriverStatus.ACTIVE
+)
+
 enum class MaintenanceStatus(val label: String) {
     PENDING("Pendiente"),
     IN_PROGRESS("En proceso"),
@@ -58,15 +74,25 @@ data class Maintenance(
     val date: Date,
     val currentMileage: Long,
     val description: String,
-    val responsible: String, // Taller, mecánico o responsable
+    val responsible: String,
     val nextDate: Date?,
     val nextMileage: Long?,
     val status: MaintenanceStatus = MaintenanceStatus.PENDING
 )
 
+enum class AssignmentStatus {
+    ACTIVE, COMPLETED
+}
+
 data class Assignment(
-    val id: String,
+    val id: String = java.util.UUID.randomUUID().toString(),
     val vehicleId: String,
     val driverId: String,
-    val date: Date
+    val departureDate: Date = Date(),
+    val initialMileage: Long,
+    val returnDate: Date? = null,
+    val finalMileage: Long? = null,
+    val departureObservations: String = "",
+    val returnObservations: String = "",
+    val status: AssignmentStatus = AssignmentStatus.ACTIVE
 )

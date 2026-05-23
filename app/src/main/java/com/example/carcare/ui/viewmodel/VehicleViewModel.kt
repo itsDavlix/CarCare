@@ -8,6 +8,7 @@ import com.example.carcare.model.VehicleStatus
 class VehicleViewModel : ViewModel() {
     private val _vehicles = mutableStateListOf<Vehicle>(
         Vehicle(
+            id = "1",
             unitCode = "V-001",
             brand = "Toyota",
             model = "Hilux",
@@ -20,6 +21,7 @@ class VehicleViewModel : ViewModel() {
             description = "Vehículo en buen estado"
         ),
         Vehicle(
+            id = "2",
             unitCode = "V-002",
             brand = "Ford",
             model = "Ranger",
@@ -53,6 +55,13 @@ class VehicleViewModel : ViewModel() {
         val index = _vehicles.indexOfFirst { it.id == vehicleId }
         if (index != -1) {
             _vehicles[index] = _vehicles[index].copy(status = newStatus)
+        }
+    }
+
+    fun updateMileage(vehicleId: String, newMileage: Long) {
+        val index = _vehicles.indexOfFirst { it.id == vehicleId }
+        if (index != -1) {
+            _vehicles[index] = _vehicles[index].copy(mileage = newMileage)
         }
     }
 }
