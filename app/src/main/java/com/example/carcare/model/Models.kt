@@ -6,18 +6,31 @@ enum class Role {
     ADMIN, DRIVER
 }
 
+enum class VehicleStatus(val label: String) {
+    AVAILABLE("Disponible"),
+    IN_USE("En uso"),
+    MAINTENANCE("En mantenimiento"),
+    OUT_OF_SERVICE("Fuera de servicio")
+}
+
+data class Vehicle(
+    val id: String = java.util.UUID.randomUUID().toString(),
+    val unitCode: String,
+    val brand: String,
+    val model: String,
+    val year: Int,
+    val plate: String,
+    val fuelType: String,
+    val mileage: Long,
+    val vehicleType: String,
+    val status: VehicleStatus = VehicleStatus.AVAILABLE,
+    val description: String = ""
+)
+
 data class User(
     val id: String,
     val name: String,
     val role: Role
-)
-
-data class Vehicle(
-    val id: String,
-    val plate: String,
-    val model: String,
-    val year: Int,
-    val status: String // Available, Maintenance, In Use
 )
 
 data class Maintenance(

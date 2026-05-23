@@ -10,11 +10,24 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.example.carcare.model.Vehicle
+import com.example.carcare.model.VehicleStatus
+import com.example.carcare.ui.components.StatusBadge
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DriverScreen(onBack: () -> Unit) {
-    val assignedVehicle = Vehicle("1", "ABC-123", "Toyota Hilux", 2022, "Asignado")
+    val assignedVehicle = Vehicle(
+        unitCode = "V-001",
+        brand = "Toyota",
+        model = "Hilux",
+        year = 2022,
+        plate = "ABC-123",
+        fuelType = "Diesel",
+        mileage = 15000,
+        vehicleType = "Pickup",
+        status = VehicleStatus.IN_USE,
+        description = "Vehículo asignado para ruta norte"
+    )
 
     Scaffold(
         topBar = {
@@ -36,9 +49,11 @@ fun DriverScreen(onBack: () -> Unit) {
             Spacer(modifier = Modifier.height(16.dp))
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(16.dp)) {
-                    Text(text = assignedVehicle.model, style = MaterialTheme.typography.titleLarge)
+                    Text(text = "${assignedVehicle.brand} ${assignedVehicle.model}", style = MaterialTheme.typography.titleLarge)
                     Text(text = "Placa: ${assignedVehicle.plate}")
-                    Text(text = "Estado: ${assignedVehicle.status}")
+                    Text(text = "Código: ${assignedVehicle.unitCode}")
+                    Spacer(modifier = Modifier.height(8.dp))
+                    StatusBadge(status = assignedVehicle.status)
                 }
             }
             Spacer(modifier = Modifier.height(24.dp))
