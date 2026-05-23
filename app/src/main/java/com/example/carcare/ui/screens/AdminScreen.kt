@@ -1,7 +1,11 @@
 package com.example.carcare.ui.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -10,6 +14,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.carcare.model.*
@@ -31,7 +37,7 @@ fun AdminScreen(
     assignmentViewModel: AssignmentViewModel = viewModel()
 ) {
     var selectedTab by remember { mutableIntStateOf(0) }
-    val tabs = listOf("Vehículos", "Mantenimiento", "Conductores", "Asignaciones")
+    val tabs = listOf("Dashboard", "Vehículos", "Mantenimiento", "Conductores", "Asignaciones")
     
     var showVehicleForm by remember { mutableStateOf(false) }
     var vehicleToEdit by remember { mutableStateOf<Vehicle?>(null) }
@@ -64,12 +70,13 @@ fun AdminScreen(
                     NavigationBarItem(
                         selected = selectedTab == index,
                         onClick = { selectedTab = index },
-                        label = { Text(title) },
+                        label = { Text(title, style = MaterialTheme.typography.labelSmall) },
                         icon = {
                             when (index) {
-                                0 -> Icon(Icons.Default.DirectionsCar, contentDescription = null)
-                                1 -> Icon(Icons.Default.Build, contentDescription = null)
-                                2 -> Icon(Icons.Default.Person, contentDescription = null)
+                                0 -> Icon(Icons.Default.Dashboard, contentDescription = null)
+                                1 -> Icon(Icons.Default.DirectionsCar, contentDescription = null)
+                                2 -> Icon(Icons.Default.Build, contentDescription = null)
+                                3 -> Icon(Icons.Default.Person, contentDescription = null)
                                 else -> Icon(Icons.Default.Assignment, contentDescription = null)
                             }
                         }
@@ -79,25 +86,25 @@ fun AdminScreen(
         },
         floatingActionButton = {
             when (selectedTab) {
-                0 -> FloatingActionButton(onClick = { 
+                1 -> FloatingActionButton(onClick = { 
                     vehicleToEdit = null
                     showVehicleForm = true 
                 }) {
                     Icon(Icons.Default.Add, contentDescription = "Agregar Vehículo")
                 }
-                1 -> FloatingActionButton(onClick = { 
+                2 -> FloatingActionButton(onClick = { 
                     maintenanceToEdit = null
                     showMaintenanceForm = true 
                 }) {
                     Icon(Icons.Default.PostAdd, contentDescription = "Registrar Mantenimiento")
                 }
-                2 -> FloatingActionButton(onClick = { 
+                3 -> FloatingActionButton(onClick = { 
                     driverToEdit = null
                     showDriverForm = true 
                 }) {
                     Icon(Icons.Default.PersonAdd, contentDescription = "Agregar Conductor")
                 }
-                3 -> FloatingActionButton(onClick = { 
+                4 -> FloatingActionButton(onClick = { 
                     showAssignmentForm = true 
                 }) {
                     Icon(Icons.Default.AddHomeWork, contentDescription = "Nueva Asignación")
@@ -110,7 +117,12 @@ fun AdminScreen(
             Spacer(modifier = Modifier.height(8.dp))
             
             when (selectedTab) {
-                0 -> VehicleListSection(
+                0 -> DashboardSection(
+                    vehicles = vehicleViewModel.vehicles,
+                    drivers = driverViewModel.drivers,
+                    maintenances = maintenanceViewModel.maintenances
+                )
+                1 -> VehicleListSection(
                     vehicles = vehicleViewModel.vehicles,
                     onVehicleClick = { vehicleToShowDetails = it },
                     onEdit = { 
@@ -119,7 +131,7 @@ fun AdminScreen(
                     },
                     onDelete = { vehicleViewModel.deleteVehicle(it.id) }
                 )
-                1 -> MaintenanceListSection(
+                2 -> MaintenanceListSection(
                     maintenances = maintenanceViewModel.maintenances,
                     vehicles = vehicleViewModel.vehicles,
                     onEdit = {
@@ -131,7 +143,7 @@ fun AdminScreen(
                         maintenanceViewModel.updateStatus(maintenance.id, status)
                     }
                 )
-                2 -> DriverListSection(
+                3 -> DriverListSection(
                     drivers = driverViewModel.drivers,
                     onDriverClick = { driverToShowDetails = it },
                     onEdit = { 
@@ -140,7 +152,7 @@ fun AdminScreen(
                     },
                     onDelete = { driverViewModel.deleteDriver(it.id) }
                 )
-                3 -> AssignmentListSection(
+                4 -> AssignmentListSection(
                     assignments = assignmentViewModel.assignments,
                     vehicles = vehicleViewModel.vehicles,
                     drivers = driverViewModel.drivers,
@@ -244,6 +256,99 @@ fun AdminScreen(
                 driverToShowDetails = driverToShowDetails!!.copy(status = newStatus)
             }
         )
+    }
+}
+
+@Composable
+fun DashboardSection(
+    vehicles: List<Vehicle>,
+    drivers: List<Driver>,
+    maintenances: List<Maintenance>
+) {
+    val now = Date()
+    val soonCalendar = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, 7) }
+    val soon = soonCalendar.time
+
+    val stats = listOf(
+        StatData("Total Vehículos", vehicles.size.toString(), Icons.Default.DirectionsCar, Color.Gray),
+        StatData("Disponibles", vehicles.count { it.status == VehicleStatus.AVAILABLE }.toString(), Icons.Default.CheckCircle, Color(0xFF4CAF50)),
+        StatData("En Uso", vehicles.count { it.status == VehicleStatus.IN_USE }.toString(), Icons.Default.LocalShipping, Color(0xFF2196F3)),
+        StatData("En Mantenimiento", vehicles.count { it.status == VehicleStatus.MAINTENANCE }.toString(), Icons.Default.Build, Color(0xFFFF9800)),
+        StatData("Fuera de Servicio", vehicles.count { it.status == VehicleStatus.OUT_OF_SERVICE }.toString(), Icons.Default.Warning, Color(0xFFF44336)),
+        StatData("Conductores Activos", drivers.count { it.status == DriverStatus.ACTIVE }.toString(), Icons.Default.Person, Color(0xFF4CAF50)),
+        StatData("Mantenimientos Pend.", maintenances.count { it.status == MaintenanceStatus.PENDING }.toString(), Icons.Default.Schedule, Color(0xFFFF9800))
+    )
+
+    val alerts = mutableListOf<String>()
+    
+    // Alertas de mantenimiento vencido o próximo
+    maintenances.filter { it.status == MaintenanceStatus.PENDING }.forEach { m ->
+        val vehicle = vehicles.find { it.id == m.vehicleId }
+        val vehicleLabel = vehicle?.let { "${it.brand} (${it.plate})" } ?: "Vehículo"
+        
+        if (m.nextDate != null) {
+            if (m.nextDate.before(now)) alerts.add("VENCIDO: Mantenimiento $vehicleLabel")
+            else if (m.nextDate.before(soon)) alerts.add("PRÓXIMO: Mantenimiento $vehicleLabel")
+        }
+        
+        if (m.nextMileage != null && vehicle != null && vehicle.mileage >= m.nextMileage) {
+            alerts.add("VENCIDO (KM): Mantenimiento $vehicleLabel")
+        }
+    }
+
+    // Alertas de licencia
+    drivers.filter { it.status == DriverStatus.ACTIVE }.forEach { d ->
+        if (d.licenseExpiryDate.before(now)) alerts.add("VENCIDO: Licencia de ${d.fullName}")
+        else if (d.licenseExpiryDate.before(soon)) alerts.add("PRÓXIMO: Venc. Licencia ${d.fullName}")
+    }
+
+    LazyColumn(modifier = Modifier.fillMaxSize()) {
+        item {
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(2),
+                modifier = Modifier.height(400.dp),
+                contentPadding = PaddingValues(4.dp)
+            ) {
+                items(stats) { stat ->
+                    StatCard(stat)
+                }
+            }
+        }
+        if (alerts.isNotEmpty()) {
+            item {
+                Spacer(modifier = Modifier.height(16.dp))
+                Text("Alertas Críticas", style = MaterialTheme.typography.titleMedium, color = Color.Red)
+            }
+            items(alerts) { alert ->
+                Card(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF3F3))
+                ) {
+                    Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.Error, contentDescription = null, tint = Color.Red)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(alert, style = MaterialTheme.typography.bodyMedium)
+                    }
+                }
+            }
+        }
+    }
+}
+
+data class StatData(val label: String, val value: String, val icon: ImageVector, val color: Color)
+
+@Composable
+fun StatCard(stat: StatData) {
+    Card(
+        modifier = Modifier.padding(4.dp).fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Icon(stat.icon, contentDescription = null, tint = stat.color)
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(stat.value, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+            Text(stat.label, style = MaterialTheme.typography.labelSmall)
+        }
     }
 }
 
@@ -486,8 +591,9 @@ fun MaintenanceItem(
                 val nextKmStr = maintenance.nextMileage?.let { "$it km" } ?: "N/A"
                 Text(
                     text = "Próximo: $nextDateStr o $nextKmStr",
-                    color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.labelSmall
+                    color = Color(0xFFD32F2F),
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold
                 )
             }
         }
