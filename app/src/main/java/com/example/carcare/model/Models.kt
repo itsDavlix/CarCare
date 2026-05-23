@@ -77,11 +77,12 @@ data class Maintenance(
     val id: String = java.util.UUID.randomUUID().toString(),
     val vehicleId: String,
     val type: MaintenanceType,
-    val date: Date,
+    val date: Date,                  // Fecha de inicio del mantenimiento
+    val completionDate: Date? = null, // Fecha de finalización (solo cuando status = COMPLETED)
     val currentMileage: Long,
     val description: String,
     val responsible: String,
-    val nextDate: Date?,
+    val nextDate: Date?,             // Próxima fecha programada (recordatorio)
     val nextMileage: Long?,
     val status: MaintenanceStatus = MaintenanceStatus.PENDING
 )
@@ -94,9 +95,10 @@ data class Assignment(
     val id: String = java.util.UUID.randomUUID().toString(),
     val vehicleId: String,
     val driverId: String,
-    val departureDate: Date = Date(),
+    val departureDate: Date = Date(),       // Fecha de salida (real)
+    val plannedReturnDate: Date,            // Fecha planeada de retorno
     val initialMileage: Long,
-    val returnDate: Date? = null,
+    val returnDate: Date? = null,           // Fecha real de retorno
     val finalMileage: Long? = null,
     val departureObservations: String = "",
     val returnObservations: String = "",
