@@ -1,8 +1,9 @@
 package com.example.carcare.ui.components
 
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -12,7 +13,12 @@ import java.util.Locale
 import java.util.TimeZone
 
 /**
- * Campo de texto de solo lectura que abre un DatePicker Material 3 al hacer clic en el ícono.
+ * Campo de fecha que abre el DatePicker Material 3 al tocar cualquier parte del campo.
+ *
+ * Implementación: usamos `enabled = false` en el OutlinedTextField para que no
+ * intercepte el touch (sino el cursor de texto se activaría). Después sobrescribimos
+ * los colores `disabled*` con los colores normales para que visualmente se vea habilitado.
+ * El Box exterior recibe el click y abre el diálogo.
  *
  * @param label etiqueta del campo
  * @param selectedDate fecha actualmente seleccionada (null = sin fecha)
@@ -27,7 +33,6 @@ import java.util.TimeZone
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DatePickerField(
-    modifier: Modifier = Modifier,
     label: String,
     selectedDate: Date?,
     onDateSelected: (Date) -> Unit,
@@ -36,31 +41,47 @@ fun DatePickerField(
     minDate: Date? = null,
     maxDate: Date? = null,
     enabled: Boolean = true,
-
+    modifier: Modifier = Modifier
 ) {
     var showDialog by remember { mutableStateOf(false) }
     val formatter = remember { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()) }
 
     val displayText = selectedDate?.let { formatter.format(it) } ?: ""
 
-    OutlinedTextField(
-        value = displayText,
-        onValueChange = { /* readOnly */ },
-        label = { Text(label) },
-        readOnly = true,
-        enabled = enabled,
-        isError = isError,
-        supportingText = supportingText?.let { { Text(it) } },
-        trailingIcon = {
-            IconButton(
-                onClick = { showDialog = true },
-                enabled = enabled
-            ) {
-                Icon(Icons.Default.CalendarMonth, contentDescription = "Seleccionar fecha")
-            }
-        },
-        modifier = modifier.fillMaxWidth()
+    // Colores que mantienen el aspecto de campo HABILITADO aunque el TextField esté disabled.
+    // Esto es necesario porque al estar disabled, el Box exterior puede recibir el click
+    // sin que el TextField intente abrir el teclado virtual.
+    val colors = OutlinedTextFieldDefaults.colors(
+        disabledTextColor = MaterialTheme.colorScheme.onSurface,
+        disabledBorderColor = if (isError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.outline,
+        disabledLabelColor = if (isError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+        disabledSupportingTextColor = if (isError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+        disabledPlaceholderColor = MaterialTheme.colorScheme.onSurfaceVariant
     )
+
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable(
+                enabled = enabled,
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = { showDialog = true }
+            )
+    ) {
+        OutlinedTextField(
+            value = displayText,
+            onValueChange = { /* no-op */ },
+            label = { Text(label) },
+            placeholder = { Text("dd/mm/aaaa") },
+            // enabled=false hace que el TextField no capture el touch, así el Box puede
+            enabled = false,
+            isError = isError,
+            supportingText = supportingText?.let { { Text(it) } },
+            colors = colors,
+            modifier = Modifier.fillMaxWidth()
+        )
+    }
 
     if (showDialog) {
         DatePickerDialogContent(
@@ -103,7 +124,6 @@ private fun DatePickerDialogContent(
             TextButton(
                 onClick = {
                     datePickerState.selectedDateMillis?.let { millis ->
-                        // El DatePicker M3 devuelve UTC; ajustamos al timezone local
                         val tz = TimeZone.getDefault()
                         val offset = tz.getOffset(millis)
                         onConfirm(Date(millis - offset))
