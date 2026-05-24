@@ -6,12 +6,24 @@ import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.window.Dialog
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
 
+/**
+ * Campo de texto de solo lectura que abre un DatePicker Material 3 al hacer clic en el ícono.
+ *
+ * @param label etiqueta del campo
+ * @param selectedDate fecha actualmente seleccionada (null = sin fecha)
+ * @param onDateSelected callback cuando el usuario confirma una fecha
+ * @param isError marca el campo como inválido visualmente
+ * @param supportingText texto de ayuda o error debajo del campo
+ * @param minDate fecha mínima seleccionable (opcional)
+ * @param maxDate fecha máxima seleccionable (opcional)
+ * @param enabled si el campo está habilitado para interacción
+ * @param modifier modificador adicional
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DatePickerField(
@@ -22,6 +34,9 @@ fun DatePickerField(
     isError: Boolean = false,
     supportingText: String? = null,
     minDate: Date? = null,
+    maxDate: Date? = null,
+    enabled: Boolean = true,
+
 ) {
     var showDialog by remember { mutableStateOf(false) }
     val formatter = remember { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()) }
@@ -33,10 +48,14 @@ fun DatePickerField(
         onValueChange = { /* readOnly */ },
         label = { Text(label) },
         readOnly = true,
+        enabled = enabled,
         isError = isError,
         supportingText = supportingText?.let { { Text(it) } },
         trailingIcon = {
-            IconButton(onClick = { showDialog = true }) {
+            IconButton(
+                onClick = { showDialog = true },
+                enabled = enabled
+            ) {
                 Icon(Icons.Default.CalendarMonth, contentDescription = "Seleccionar fecha")
             }
         },
@@ -47,6 +66,7 @@ fun DatePickerField(
         DatePickerDialogContent(
             initialDate = selectedDate,
             minDate = minDate,
+            maxDate = maxDate,
             onDismiss = { showDialog = false },
             onConfirm = { date ->
                 onDateSelected(date)
@@ -61,6 +81,7 @@ fun DatePickerField(
 private fun DatePickerDialogContent(
     initialDate: Date?,
     minDate: Date?,
+    maxDate: Date?,
     onDismiss: () -> Unit,
     onConfirm: (Date) -> Unit
 ) {
@@ -69,7 +90,9 @@ private fun DatePickerDialogContent(
         initialSelectedDateMillis = initialMillis,
         selectableDates = object : SelectableDates {
             override fun isSelectableDate(utcTimeMillis: Long): Boolean {
-                return minDate?.let { utcTimeMillis >= it.time } ?: true
+                val afterMin = minDate?.let { utcTimeMillis >= it.time } ?: true
+                val beforeMax = maxDate?.let { utcTimeMillis <= it.time } ?: true
+                return afterMin && beforeMax
             }
         }
     )
@@ -80,7 +103,7 @@ private fun DatePickerDialogContent(
             TextButton(
                 onClick = {
                     datePickerState.selectedDateMillis?.let { millis ->
-                        // El DatePicker devuelve UTC; ajustamos al timezone local
+                        // El DatePicker M3 devuelve UTC; ajustamos al timezone local
                         val tz = TimeZone.getDefault()
                         val offset = tz.getOffset(millis)
                         onConfirm(Date(millis - offset))
