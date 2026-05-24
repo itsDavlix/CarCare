@@ -41,18 +41,21 @@ CarCare es una aplicación móvil que permite a administradores de flotas y cond
 
 ```
 app/src/main/java/com/example/carcare/
-├── MainActivity.kt              # Punto de entrada de la app
+├── MainActivity.kt                  # Punto de entrada de la app
 ├── model/
-│   └── Models.kt                # Entidades: Vehicle, Driver, Maintenance, Assignment
+│   └── Models.kt                    # Entidades: Vehicle, Driver, Maintenance, Assignment, FuelType
 ├── ui/
 │   ├── components/
-│   │   └── CommonComponents.kt  # Componentes reutilizables (badges, etc.)
+│   │   ├── CommonComponents.kt      # Componentes reutilizables (badges, etc.)
+│   │   └── DatePickerField.kt       # DatePicker Material 3 con validación
 │   ├── screens/
-│   │   ├── SplashScreen.kt      # Pantalla inicial con animaciones
-│   │   ├── LoginScreen.kt       # Selector de rol
-│   │   ├── AdminScreen.kt       # Panel de administrador
-│   │   └── DriverScreen.kt      # Panel de conductor
-│   ├── theme/                   # Tema y tipografía Material 3
+│   │   ├── SplashScreen.kt          # Pantalla inicial con animaciones
+│   │   ├── LoginScreen.kt           # Selector de rol
+│   │   ├── AdminScreen.kt           # Panel de administrador
+│   │   └── DriverScreen.kt          # Panel de conductor
+│   ├── theme/                       # Tema y tipografía Material 3
+│   ├── utils/
+│   │   └── Validators.kt            # Validaciones de formularios (placas NIC, fechas, etc.)
 │   └── viewmodel/
 │       ├── VehicleViewModel.kt
 │       ├── DriverViewModel.kt
@@ -71,10 +74,10 @@ app/src/main/java/com/example/carcare/
 
 ### Pasos
 1. Clonar el repositorio:
-   ```bash
-   git clone https://github.com/TU_USUARIO/CarCare.git
+```bash
+   git clone https://github.com/itsDavlix/CarCare.git
    cd CarCare
-   ```
+```
 2. Abrir el proyecto en Android Studio.
 3. Esperar a que Gradle sincronice automáticamente.
 4. Seleccionar un dispositivo/emulador.
@@ -102,14 +105,14 @@ app/src/main/java/com/example/carcare/
 ## 🌿 Flujo de trabajo Git
 
 ```
-main         (entregas estables al profesor)
-  └── develop  (integración de features)
-        ├── feature/<nombre>
-        ├── fix/<nombre>
-        ├── refactor/<nombre>
-        ├── ui/<nombre>
-        ├── docs/<nombre>
-        └── chore/<nombre>
+main         (entregas estables)
+└── develop  (integración de features)
+├── feature/<nombre>
+├── fix/<nombre>
+├── refactor/<nombre>
+├── ui/<nombre>
+├── docs/<nombre>
+└── chore/<nombre>
 ```
 
 ### Convención de commits
@@ -128,5 +131,5 @@ chore(scope): configuración, build, dependencias
 
 ## 📝 Licencia
 
-Proyecto académico desarrollado en el marco de la asignatura POO2 - Univerisdad Americana (UAM).  
+Proyecto académico desarrollado en el marco de la asignatura POO2 - Universidad Americana (UAM).  
 Uso educativo únicamente.
