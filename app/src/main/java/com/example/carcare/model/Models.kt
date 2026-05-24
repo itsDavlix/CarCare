@@ -13,6 +13,25 @@ enum class VehicleStatus(val label: String) {
     OUT_OF_SERVICE("Fuera de servicio")
 }
 
+/**
+ * Tipos de combustible disponibles.
+ * Se serializa a String al guardar en Vehicle.fuelType para mantener
+ * compatibilidad con datos existentes y futura persistencia.
+ */
+enum class FuelType(val label: String) {
+    GASOLINE("Gasolina"),
+    DIESEL("Diésel"),
+    ELECTRIC("Eléctrico"),
+    HYBRID("Híbrido"),
+    LPG("GLP");
+
+    companion object {
+        /** Busca un FuelType por su label. Retorna null si no se encuentra. */
+        fun fromLabel(label: String): FuelType? =
+            entries.firstOrNull { it.label.equals(label, ignoreCase = true) }
+    }
+}
+
 data class Vehicle(
     val id: String = java.util.UUID.randomUUID().toString(),
     val brand: String,
@@ -43,7 +62,7 @@ data class Driver(
     val id: String = java.util.UUID.randomUUID().toString(),
     val firstName: String,
     val lastName: String,
-    val idCardNumber: String, // Cédula
+    val idCardNumber: String,
     val age: Int,
     val phone: String,
     val licenseNumber: String,
@@ -77,12 +96,12 @@ data class Maintenance(
     val id: String = java.util.UUID.randomUUID().toString(),
     val vehicleId: String,
     val type: MaintenanceType,
-    val date: Date,                  // Fecha de inicio del mantenimiento
-    val completionDate: Date? = null, // Fecha de finalización (solo cuando status = COMPLETED)
+    val date: Date,
+    val completionDate: Date? = null,
     val currentMileage: Long,
     val description: String,
     val responsible: String,
-    val nextDate: Date?,             // Próxima fecha programada (recordatorio)
+    val nextDate: Date?,
     val nextMileage: Long?,
     val status: MaintenanceStatus = MaintenanceStatus.PENDING
 )
@@ -95,10 +114,10 @@ data class Assignment(
     val id: String = java.util.UUID.randomUUID().toString(),
     val vehicleId: String,
     val driverId: String,
-    val departureDate: Date = Date(),       // Fecha de salida (real)
-    val plannedReturnDate: Date,            // Fecha planeada de retorno
+    val departureDate: Date = Date(),
+    val plannedReturnDate: Date,
     val initialMileage: Long,
-    val returnDate: Date? = null,           // Fecha real de retorno
+    val returnDate: Date? = null,
     val finalMileage: Long? = null,
     val departureObservations: String = "",
     val returnObservations: String = "",

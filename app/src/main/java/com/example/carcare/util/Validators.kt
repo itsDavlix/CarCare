@@ -3,6 +3,11 @@ package com.example.carcare.util
 import java.util.Calendar
 import java.util.Date
 
+/**
+ * Resultado de una validación.
+ * - Si [isValid] es true, el dato es válido y [errorMessage] es null.
+ * - Si [isValid] es false, [errorMessage] contiene el mensaje a mostrar.
+ */
 data class ValidationResult(
     val isValid: Boolean,
     val errorMessage: String? = null
@@ -15,67 +20,34 @@ data class ValidationResult(
 
 object Validators {
 
-    // ---------- Placas de Nicaragua (particulares) ----------
+    // ===================================================================
+    //  Placas de Nicaragua (particulares)
+    // ===================================================================
 
-    /**
-     * Códigos válidos para placas en Nicaragua según
-     * la Dirección de Seguridad de Tránsito Nacional (DSTN).
-     */
     private val NICARAGUA_PLATE_CODES = listOf(
-        "M",     // Managua
-        "BO",    // Boaco
-        "CA",    // Carazo
-        "CI",    // Chinandega
-        "CO",    // Chontales
-        "ES",    // Estelí
-        "GR",    // Granada
-        "JI",    // Jinotega
-        "LE",    // León
-        "MD",    // Madriz
-        "MS",    // Masaya
-        "MT",    // Matagalpa
-        "NS",    // Nueva Segovia
-        "RI",    // Rivas
-        "SJ",    // Río San Juan
-        "RACCN", // Costa Caribe Norte
-        "RACCS"  // Costa Caribe Sur
+        "M", "BO", "CA", "CI", "CO", "ES", "GR", "JI", "LE",
+        "MD", "MS", "MT", "NS", "RI", "SJ", "RACCN", "RACCS"
     )
 
-    // Los códigos más largos van primero para que la regex no haga match parcial.
     private val plateCodeAlternation = NICARAGUA_PLATE_CODES
         .sortedByDescending { it.length }
         .joinToString("|")
 
-    /**
-     * Acepta: "M 123 456", "M-123-456", "M123456", "MT 12345", "RACCN 12345".
-     * Total de dígitos: 5 o 6, con separadores opcionales (espacio o guion) entre grupos.
-     */
     private val nicaraguaPlateRegex = Regex(
         "^($plateCodeAlternation)[\\s-]?\\d{3}[\\s-]?\\d{2,3}$",
         RegexOption.IGNORE_CASE
     )
 
-    // Regex para separar el código de letras del bloque de dígitos al formatear.
     private val plateSplitRegex = Regex("^([A-Z]+)(\\d+)$")
 
-    /**
-     * Normaliza una placa quitando espacios y guiones, en mayúsculas.
-     * Ej: "m 123-456" → "M123456". Esta es la forma en que se ALMACENA.
-     */
     fun normalizePlate(plate: String): String {
         return plate.uppercase().replace(Regex("[\\s-]"), "")
     }
 
-    /**
-     * Formatea una placa NORMALIZADA para mostrar al usuario.
-     * Ej: "M123456" → "M 123 456", "MT12345" → "MT 123 45", "RACCN12345" → "RACCN 123 45".
-     * Si la placa no matchea el patrón esperado, se devuelve tal cual.
-     */
     fun formatPlate(normalizedPlate: String): String {
         val match = plateSplitRegex.matchEntire(normalizedPlate.uppercase()) ?: return normalizedPlate
         val letters = match.groupValues[1]
         val digits = match.groupValues[2]
-        // Partimos los dígitos en grupos: primeros 3 + resto (2 o 3)
         return if (digits.length >= 5) {
             "$letters ${digits.substring(0, 3)} ${digits.substring(3)}"
         } else {
@@ -83,39 +55,51 @@ object Validators {
         }
     }
 
-    /**
-     * Valida que una placa cumpla con el formato nicaragüense.
-     * @param plate texto ingresado por el usuario (sin normalizar)
-     * @param existingPlates lista de pares (id, placaNormalizada) ya registradas
-     * @param currentId id del vehículo en edición (para excluir su propia placa)
-     */
     fun validatePlate(
         plate: String,
         existingPlates: List<Pair<String, String>> = emptyList(),
         currentId: String? = null
     ): ValidationResult {
         val trimmed = plate.trim()
-        if (trimmed.isBlank()) {
-            return ValidationResult.invalid("La placa es obligatoria")
-        }
+        if (trimmed.isBlank()) return ValidationResult.invalid("La placa es obligatoria")
         if (!nicaraguaPlateRegex.matches(trimmed)) {
             return ValidationResult.invalid("Formato inválido. Ej: M 123 456 o MT 12345")
         }
         val normalized = normalizePlate(trimmed)
         val duplicate = existingPlates.any { (id, p) -> p == normalized && id != currentId }
-        if (duplicate) {
-            return ValidationResult.invalid("Esta placa ya está registrada")
-        }
+        if (duplicate) return ValidationResult.invalid("Esta placa ya está registrada")
         return ValidationResult.Valid
     }
 
-    // ---------- Vehículo ----------
+    // ===================================================================
+    //  Genéricos
+    // ===================================================================
 
     fun validateRequired(value: String, fieldName: String): ValidationResult {
         return if (value.trim().isBlank()) {
             ValidationResult.invalid("$fieldName es obligatorio")
         } else ValidationResult.Valid
     }
+
+    /**
+     * Nombres y apellidos: solo letras (incluye acentos y ñ), espacios, guiones y apóstrofes.
+     * Mínimo 2 caracteres útiles. Rechaza números y símbolos raros.
+     */
+    private val nameRegex = Regex("^[A-Za-zÁÉÍÓÚáéíóúÑñÜü '-]+$")
+
+    fun validateName(value: String, fieldName: String): ValidationResult {
+        val trimmed = value.trim()
+        if (trimmed.isBlank()) return ValidationResult.invalid("$fieldName es obligatorio")
+        if (trimmed.length < 2) return ValidationResult.invalid("$fieldName debe tener al menos 2 caracteres")
+        if (!nameRegex.matches(trimmed)) {
+            return ValidationResult.invalid("$fieldName solo acepta letras")
+        }
+        return ValidationResult.Valid
+    }
+
+    // ===================================================================
+    //  Vehículo
+    // ===================================================================
 
     fun validateYear(yearStr: String): ValidationResult {
         if (yearStr.isBlank()) return ValidationResult.invalid("El año es obligatorio")
@@ -135,10 +119,6 @@ object Validators {
         return ValidationResult.Valid
     }
 
-    /**
-     * Valida kilometraje opcional (acepta vacío).
-     * Útil para campos como "próximo kilometraje" del mantenimiento.
-     */
     fun validateOptionalMileage(mileageStr: String): ValidationResult {
         if (mileageStr.isBlank()) return ValidationResult.Valid
         val km = mileageStr.toLongOrNull() ?: return ValidationResult.invalid("Kilometraje inválido")
@@ -146,7 +126,19 @@ object Validators {
         return ValidationResult.Valid
     }
 
-    // ---------- Conductor ----------
+    /**
+     * Valida que el tipo de combustible no esté vacío. Como ahora viene de un dropdown
+     * con enum (FuelType), basta con verificar que se haya seleccionado uno.
+     */
+    fun validateFuelType(fuelType: String): ValidationResult {
+        return if (fuelType.isBlank()) {
+            ValidationResult.invalid("Debe seleccionar un tipo de combustible")
+        } else ValidationResult.Valid
+    }
+
+    // ===================================================================
+    //  Conductor
+    // ===================================================================
 
     fun validateAge(ageStr: String): ValidationResult {
         if (ageStr.isBlank()) return ValidationResult.invalid("La edad es obligatoria")
@@ -156,10 +148,10 @@ object Validators {
         return ValidationResult.Valid
     }
 
-    /**
-     * Cédula nicaragüense: 13 caracteres alfanuméricos (formato XXX-DDMMYY-XXXXL).
-     * Normaliza internamente, así que [existingIds] puede pasar valores crudos o normalizados.
-     */
+    fun normalizeIdCard(idCard: String): String {
+        return idCard.trim().replace("-", "").uppercase()
+    }
+
     fun validateIdCard(
         idCard: String,
         existingIds: List<Pair<String, String>> = emptyList(),
@@ -174,43 +166,76 @@ object Validators {
         if (!normalized.all { it.isLetterOrDigit() }) {
             return ValidationResult.invalid("Cédula solo acepta letras y números")
         }
-        // Normalizamos también los existentes para comparar parejo
         val duplicate = existingIds.any { (id, c) ->
             normalizeIdCard(c) == normalized && id != currentId
         }
-        if (duplicate) {
-            return ValidationResult.invalid("Esta cédula ya está registrada")
-        }
+        if (duplicate) return ValidationResult.invalid("Esta cédula ya está registrada")
         return ValidationResult.Valid
     }
 
-    fun normalizeIdCard(idCard: String): String {
-        return idCard.trim().replace("-", "").uppercase()
+    fun normalizePhone(phone: String): String {
+        return phone.filter { it.isDigit() }
     }
 
-    fun validatePhone(phone: String): ValidationResult {
+    fun validatePhone(
+        phone: String,
+        existingPhones: List<Pair<String, String>> = emptyList(),
+        currentId: String? = null
+    ): ValidationResult {
         val trimmed = phone.trim()
         if (trimmed.isBlank()) return ValidationResult.invalid("El teléfono es obligatorio")
-        val digits = trimmed.filter { it.isDigit() }
+        val digits = normalizePhone(trimmed)
         if (digits.length !in 8..15) {
             return ValidationResult.invalid("Teléfono debe tener entre 8 y 15 dígitos")
         }
+        val duplicate = existingPhones.any { (id, p) ->
+            normalizePhone(p) == digits && id != currentId
+        }
+        if (duplicate) return ValidationResult.invalid("Este teléfono ya está registrado")
         return ValidationResult.Valid
     }
 
+    fun validateLicenseNumber(
+        licenseNumber: String,
+        existingLicenses: List<Pair<String, String>> = emptyList(),
+        currentId: String? = null
+    ): ValidationResult {
+        val trimmed = licenseNumber.trim()
+        if (trimmed.isBlank()) return ValidationResult.invalid("El número de licencia es obligatorio")
+        if (trimmed.length < 5) {
+            return ValidationResult.invalid("Número de licencia muy corto")
+        }
+        val normalized = trimmed.uppercase()
+        val duplicate = existingLicenses.any { (id, l) ->
+            l.trim().uppercase() == normalized && id != currentId
+        }
+        if (duplicate) return ValidationResult.invalid("Esta licencia ya está registrada a otro conductor")
+        return ValidationResult.Valid
+    }
+
+    /**
+     * Vencimiento de licencia: no puede estar vencida al registrar,
+     * tampoco puede ser absurdamente lejana (máx 10 años a futuro).
+     */
     fun validateLicenseExpiry(date: Date?): ValidationResult {
         if (date == null) return ValidationResult.invalid("La fecha de vencimiento es obligatoria")
         val today = Calendar.getInstance().apply {
             set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0)
             set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
         }.time
+        val maxAllowed = Calendar.getInstance().apply { add(Calendar.YEAR, 10) }.time
         if (date.before(today)) {
             return ValidationResult.invalid("La licencia no puede estar vencida al registrarse")
+        }
+        if (date.after(maxAllowed)) {
+            return ValidationResult.invalid("Fecha demasiado lejana (máx. 10 años)")
         }
         return ValidationResult.Valid
     }
 
-    // ---------- Mantenimiento ----------
+    // ===================================================================
+    //  Mantenimiento
+    // ===================================================================
 
     fun validateMaintenanceDates(startDate: Date?, completionDate: Date?): ValidationResult {
         if (startDate == null) return ValidationResult.invalid("Fecha de inicio obligatoria")
@@ -220,10 +245,6 @@ object Validators {
         return ValidationResult.Valid
     }
 
-    /**
-     * Valida que el kilometraje del mantenimiento sea coherente con el del vehículo.
-     * No puede ser menor (el vehículo no retrocede km).
-     */
     fun validateMaintenanceMileage(
         mileageStr: String,
         vehicleCurrentMileage: Long
@@ -239,13 +260,101 @@ object Validators {
         return ValidationResult.Valid
     }
 
-    // ---------- Asignación ----------
+    /**
+     * Descripción del mantenimiento: required + longitud mínima útil.
+     */
+    fun validateMaintenanceDescription(description: String): ValidationResult {
+        val trimmed = description.trim()
+        if (trimmed.isBlank()) return ValidationResult.invalid("La descripción es obligatoria")
+        if (trimmed.length < 5) {
+            return ValidationResult.invalid("Descripción muy corta (mín. 5 caracteres)")
+        }
+        return ValidationResult.Valid
+    }
+
+    /**
+     * Próximo kilometraje del mantenimiento: opcional, pero si se ingresa
+     * debe ser estrictamente mayor al actual del vehículo.
+     */
+    fun validateNextMileage(
+        nextStr: String,
+        currentVehicleMileage: Long
+    ): ValidationResult {
+        if (nextStr.isBlank()) return ValidationResult.Valid
+        val km = nextStr.toLongOrNull() ?: return ValidationResult.invalid("Kilometraje inválido")
+        if (km < 0) return ValidationResult.invalid("No puede ser negativo")
+        if (km <= currentVehicleMileage) {
+            return ValidationResult.invalid(
+                "Debe ser > kilometraje actual ($currentVehicleMileage km)"
+            )
+        }
+        return ValidationResult.Valid
+    }
+
+    /**
+     * Valida que una fecha (si se ingresó) sea hoy o futura.
+     * Pensada para campos opcionales como "Próxima fecha programada".
+     */
+    fun validateFutureDate(date: Date?, fieldName: String): ValidationResult {
+        if (date == null) return ValidationResult.Valid
+        val today = Calendar.getInstance().apply {
+            set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
+        }.time
+        if (date.before(today)) {
+            return ValidationResult.invalid("$fieldName debe ser hoy o posterior")
+        }
+        return ValidationResult.Valid
+    }
+
+    // ===================================================================
+    //  Asignación
+    // ===================================================================
+
+    /**
+     * Fecha de salida de asignación: puede ser hoy o pre-asignar hasta 30 días.
+     * No se permite registrar salidas pasadas (eso es un dato histórico, no una asignación).
+     */
+    fun validateDepartureDate(date: Date?): ValidationResult {
+        if (date == null) return ValidationResult.invalid("Fecha de salida obligatoria")
+        val today = Calendar.getInstance().apply {
+            set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
+        }.time
+        val maxFuture = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, 30) }.time
+        if (date.before(today)) {
+            return ValidationResult.invalid("No se pueden registrar salidas en el pasado")
+        }
+        if (date.after(maxFuture)) {
+            return ValidationResult.invalid("Solo se puede pre-asignar hasta 30 días a futuro")
+        }
+        return ValidationResult.Valid
+    }
 
     fun validateAssignmentDates(departureDate: Date?, plannedReturnDate: Date?): ValidationResult {
         if (departureDate == null) return ValidationResult.invalid("Fecha de salida obligatoria")
         if (plannedReturnDate == null) return ValidationResult.invalid("Fecha de retorno obligatoria")
         if (plannedReturnDate.before(departureDate)) {
             return ValidationResult.invalid("Retorno no puede ser anterior a la salida")
+        }
+        return ValidationResult.Valid
+    }
+
+    /**
+     * Kilometraje inicial de asignación: ≥ km registrado en el vehículo.
+     * El conductor no puede "salir" con menos kilómetros de los que tiene el auto.
+     */
+    fun validateAssignmentInitialMileage(
+        mileageStr: String,
+        vehicleMileage: Long
+    ): ValidationResult {
+        val basic = validateMileage(mileageStr)
+        if (!basic.isValid) return basic
+        val km = mileageStr.toLongOrNull() ?: return basic
+        if (km < vehicleMileage) {
+            return ValidationResult.invalid(
+                "Debe ser ≥ kilometraje del vehículo ($vehicleMileage km)"
+            )
         }
         return ValidationResult.Valid
     }

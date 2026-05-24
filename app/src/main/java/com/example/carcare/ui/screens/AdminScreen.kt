@@ -29,10 +29,10 @@ import com.example.carcare.ui.viewmodel.AssignmentViewModel
 import com.example.carcare.ui.viewmodel.DriverViewModel
 import com.example.carcare.ui.viewmodel.MaintenanceViewModel
 import com.example.carcare.ui.viewmodel.VehicleViewModel
+import com.example.carcare.util.ValidationResult
 import com.example.carcare.util.Validators
 import java.text.SimpleDateFormat
 import java.util.*
-import com.example.carcare.util.ValidationResult
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -191,7 +191,6 @@ fun AdminScreen(
     }
 
     if (showAssignmentForm) {
-        // IDs de conductores con asignación activa (no se pueden reasignar)
         val busyDriverIds = assignmentViewModel.assignments
             .filter { it.status == AssignmentStatus.ACTIVE }
             .map { it.driverId }
@@ -397,22 +396,26 @@ fun VehicleFormDialog(
     var model by remember { mutableStateOf(vehicle?.model ?: "") }
     var year by remember { mutableStateOf(vehicle?.year?.toString() ?: "") }
     var plate by remember { mutableStateOf(vehicle?.plate?.let { Validators.formatPlate(it) } ?: "") }
-    var fuelType by remember { mutableStateOf(vehicle?.fuelType ?: "") }
+
+    // Dropdown de combustible (enum -> String al guardar)
+    var fuelType by remember {
+        mutableStateOf(vehicle?.fuelType?.let { FuelType.fromLabel(it) })
+    }
+    var expandedFuel by remember { mutableStateOf(false) }
+
     var mileage by remember { mutableStateOf(vehicle?.mileage?.toString() ?: "") }
     var description by remember { mutableStateOf(vehicle?.description ?: "") }
     val status by remember { mutableStateOf(vehicle?.status ?: VehicleStatus.AVAILABLE) }
 
-    // attempted controla solo la VISUALIZACIÓN de errores, no la lógica de validez
     var attempted by remember { mutableStateOf(false) }
 
     val plateRegistry = existingVehicles.map { it.id to it.plate }
 
-    // Validaciones SIEMPRE evaluadas (no dependen de attempted)
     val brandV = Validators.validateRequired(brand, "La marca")
     val modelV = Validators.validateRequired(model, "El modelo")
     val yearV = Validators.validateYear(year)
     val plateV = Validators.validatePlate(plate, plateRegistry, vehicle?.id)
-    val fuelV = Validators.validateRequired(fuelType, "El combustible")
+    val fuelV = Validators.validateFuelType(fuelType?.label ?: "")
     val mileageV = Validators.validateMileage(mileage)
 
     val isValid = listOf(brandV, modelV, yearV, plateV, fuelV, mileageV).all { it.isValid }
@@ -469,15 +472,34 @@ fun VehicleFormDialog(
                         },
                         modifier = Modifier.fillMaxWidth()
                     )
-                    OutlinedTextField(
-                        value = fuelType, onValueChange = { fuelType = it },
-                        label = { Text("Tipo de Combustible") },
-                        isError = attempted && !fuelV.isValid,
-                        supportingText = if (attempted && !fuelV.isValid) {
-                            { Text(fuelV.errorMessage ?: "") }
-                        } else null,
-                        modifier = Modifier.fillMaxWidth()
-                    )
+
+                    // Dropdown de combustible
+                    ExposedDropdownMenuBox(
+                        expanded = expandedFuel,
+                        onExpandedChange = { expandedFuel = !expandedFuel }
+                    ) {
+                        OutlinedTextField(
+                            value = fuelType?.label ?: "Seleccionar combustible",
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text("Tipo de Combustible") },
+                            isError = attempted && !fuelV.isValid,
+                            supportingText = if (attempted && !fuelV.isValid) {
+                                { Text(fuelV.errorMessage ?: "") }
+                            } else null,
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedFuel) },
+                            modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable).fillMaxWidth()
+                        )
+                        ExposedDropdownMenu(expanded = expandedFuel, onDismissRequest = { expandedFuel = false }) {
+                            FuelType.entries.forEach { ft ->
+                                DropdownMenuItem(
+                                    text = { Text(ft.label) },
+                                    onClick = { fuelType = ft; expandedFuel = false }
+                                )
+                            }
+                        }
+                    }
+
                     OutlinedTextField(
                         value = mileage, onValueChange = { mileage = it.filter { c -> c.isDigit() } },
                         label = { Text("Kilometraje") },
@@ -506,7 +528,7 @@ fun VehicleFormDialog(
                             model = model.trim(),
                             year = year.toIntOrNull() ?: 0,
                             plate = Validators.normalizePlate(plate),
-                            fuelType = fuelType.trim(),
+                            fuelType = fuelType?.label ?: "",
                             mileage = mileage.toLongOrNull() ?: 0L,
                             status = status,
                             description = description.trim()
@@ -684,19 +706,22 @@ fun MaintenanceFormDialog(
     val noVehicles = vehicles.isEmpty()
     val selectedVehicle = vehicles.find { it.id == selectedVehicleId }
 
-    // Validaciones SIEMPRE evaluadas
     val vehicleV: ValidationResult = if (selectedVehicleId.isBlank())
         ValidationResult.invalid("Debe seleccionar un vehículo") else ValidationResult.Valid
-    val descV = Validators.validateRequired(description, "La descripción")
+    val descV = Validators.validateMaintenanceDescription(description)
     val responsibleV = Validators.validateRequired(responsible, "El responsable")
     val mileageV = if (selectedVehicle != null)
         Validators.validateMaintenanceMileage(currentMileage, selectedVehicle.mileage)
     else
         Validators.validateMileage(currentMileage)
-    val nextMileageV = Validators.validateOptionalMileage(nextMileage)
+    val nextMileageV = if (selectedVehicle != null)
+        Validators.validateNextMileage(nextMileage, selectedVehicle.mileage)
+    else
+        Validators.validateOptionalMileage(nextMileage)
     val datesV = Validators.validateMaintenanceDates(startDate, completionDate)
+    val nextDateV = Validators.validateFutureDate(nextDate, "La próxima fecha")
 
-    val isValid = !noVehicles && listOf(vehicleV, descV, responsibleV, mileageV, nextMileageV, datesV)
+    val isValid = !noVehicles && listOf(vehicleV, descV, responsibleV, mileageV, nextMileageV, datesV, nextDateV)
         .all { it.isValid }
 
     AlertDialog(
@@ -773,11 +798,8 @@ fun MaintenanceFormDialog(
                             isError = attempted && !mileageV.isValid,
                             supportingText = {
                                 Text(
-                                    if (attempted && !mileageV.isValid) {
-                                        mileageV.errorMessage ?: ""
-                                    } else {
-                                        selectedVehicle?.let { "Actual del vehículo: ${it.mileage} km" } ?: ""
-                                    }
+                                    if (attempted && !mileageV.isValid) mileageV.errorMessage ?: ""
+                                    else selectedVehicle?.let { "Actual del vehículo: ${it.mileage} km" } ?: ""
                                 )
                             },
                             modifier = Modifier.fillMaxWidth()
@@ -804,7 +826,10 @@ fun MaintenanceFormDialog(
                         DatePickerField(
                             label = "Próxima fecha programada (opcional)",
                             selectedDate = nextDate,
-                            onDateSelected = { nextDate = it }
+                            onDateSelected = { nextDate = it },
+                            minDate = Date(),
+                            isError = attempted && !nextDateV.isValid,
+                            supportingText = if (attempted && !nextDateV.isValid) nextDateV.errorMessage else null
                         )
 
                         OutlinedTextField(
@@ -956,14 +981,15 @@ fun DriverFormDialog(
     var attempted by remember { mutableStateOf(false) }
 
     val idRegistry = existingDrivers.map { it.id to it.idCardNumber }
+    val phoneRegistry = existingDrivers.map { it.id to it.phone }
+    val licenseRegistry = existingDrivers.map { it.id to it.licenseNumber }
 
-    // Validaciones SIEMPRE evaluadas
-    val firstNameV = Validators.validateRequired(firstName, "El nombre")
-    val lastNameV = Validators.validateRequired(lastName, "El apellido")
+    val firstNameV = Validators.validateName(firstName, "El nombre")
+    val lastNameV = Validators.validateName(lastName, "El apellido")
     val idV = Validators.validateIdCard(idCardNumber, idRegistry, driver?.id)
     val ageV = Validators.validateAge(age)
-    val phoneV = Validators.validatePhone(phone)
-    val licenseNumV = Validators.validateRequired(licenseNumber, "El número de licencia")
+    val phoneV = Validators.validatePhone(phone, phoneRegistry, driver?.id)
+    val licenseNumV = Validators.validateLicenseNumber(licenseNumber, licenseRegistry, driver?.id)
     val expiryV = Validators.validateLicenseExpiry(licenseExpiry)
 
     val isValid = listOf(firstNameV, lastNameV, idV, ageV, phoneV, licenseNumV, expiryV)
@@ -1225,10 +1251,15 @@ fun AssignmentFormDialog(
     var expandedDriver by remember { mutableStateOf(false) }
     var attempted by remember { mutableStateOf(false) }
 
-    val mileageV = if (attempted) Validators.validateMileage(initialMileage) else null
+    val selectedVehicle = vehicles.find { it.id == selectedVehicleId }
+    val mileageV = if (selectedVehicle != null)
+        Validators.validateAssignmentInitialMileage(initialMileage, selectedVehicle.mileage)
+    else
+        Validators.validateMileage(initialMileage)
+    val departureV = Validators.validateDepartureDate(departureDate)
     val datesV = Validators.validateAssignmentDates(departureDate, plannedReturnDate)
 
-    val isValid = !cannotProceed && (mileageV?.isValid ?: true) && datesV.isValid &&
+    val isValid = !cannotProceed && listOf(mileageV, departureV, datesV).all { it.isValid } &&
             selectedVehicleId.isNotBlank() && selectedDriverId.isNotBlank() &&
             initialMileage.isNotBlank() && departureDate != null && plannedReturnDate != null
 
@@ -1296,7 +1327,11 @@ fun AssignmentFormDialog(
                         DatePickerField(
                             label = "Fecha de salida",
                             selectedDate = departureDate,
-                            onDateSelected = { departureDate = it }
+                            onDateSelected = { departureDate = it },
+                            minDate = Date(),
+                            maxDate = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, 30) }.time,
+                            isError = attempted && !departureV.isValid,
+                            supportingText = if (attempted && !departureV.isValid) departureV.errorMessage else null
                         )
 
                         DatePickerField(
@@ -1305,16 +1340,21 @@ fun AssignmentFormDialog(
                             onDateSelected = { plannedReturnDate = it },
                             minDate = departureDate,
                             enabled = departureDate != null,
-                            isError = !datesV.isValid,
-                            supportingText = if (!datesV.isValid) datesV.errorMessage else null
+                            isError = attempted && !datesV.isValid,
+                            supportingText = if (attempted && !datesV.isValid) datesV.errorMessage else null
                         )
 
                         OutlinedTextField(
                             value = initialMileage,
                             onValueChange = { initialMileage = it.filter { c -> c.isDigit() } },
                             label = { Text("Kilometraje Inicial") },
-                            isError = mileageV?.isValid == false,
-                            supportingText = mileageV?.errorMessage?.let { { Text(it) } },
+                            isError = attempted && !mileageV.isValid,
+                            supportingText = {
+                                Text(
+                                    if (attempted && !mileageV.isValid) mileageV.errorMessage ?: ""
+                                    else selectedVehicle?.let { "Vehículo: ${it.mileage} km" } ?: ""
+                                )
+                            },
                             modifier = Modifier.fillMaxWidth()
                         )
                         OutlinedTextField(
@@ -1359,8 +1399,8 @@ fun ReturnVehicleDialog(
     var nextStatus by remember { mutableStateOf(VehicleStatus.AVAILABLE) }
     var attempted by remember { mutableStateOf(false) }
 
-    val mileageV = if (attempted) Validators.validateFinalMileage(finalMileage, assignment.initialMileage) else null
-    val isValid = (mileageV?.isValid ?: false) && finalMileage.isNotBlank()
+    val mileageV = Validators.validateFinalMileage(finalMileage, assignment.initialMileage)
+    val isValid = mileageV.isValid && finalMileage.isNotBlank()
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -1372,8 +1412,10 @@ fun ReturnVehicleDialog(
                     value = finalMileage,
                     onValueChange = { finalMileage = it.filter { c -> c.isDigit() } },
                     label = { Text("Kilometraje Final") },
-                    isError = mileageV?.isValid == false,
-                    supportingText = mileageV?.errorMessage?.let { { Text(it) } },
+                    isError = attempted && !mileageV.isValid,
+                    supportingText = if (attempted && !mileageV.isValid) {
+                        { Text(mileageV.errorMessage ?: "") }
+                    } else null,
                     modifier = Modifier.fillMaxWidth()
                 )
                 OutlinedTextField(
