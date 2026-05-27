@@ -1,5 +1,8 @@
 package com.example.carcare.ui.screens
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -19,9 +22,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import coil.compose.AsyncImage
 import com.example.carcare.model.*
 import com.example.carcare.ui.components.DatePickerField
 import com.example.carcare.ui.components.StatusBadge
@@ -236,7 +241,8 @@ fun AdminScreen(
     if (vehicleToShowDetails != null) {
         VehicleDetailsDialog(
             vehicle = vehicleToShowDetails!!,
-            history = maintenanceViewModel.getHistoryForVehicle(vehicleToShowDetails!!.id),
+            maintenanceHistory = maintenanceViewModel.getHistoryForVehicle(vehicleToShowDetails!!.id),
+            assignmentHistory = assignmentViewModel.assignments.filter { it.vehicleId == vehicleToShowDetails!!.id },
             onDismiss = { vehicleToShowDetails = null },
             onStatusChange = { newStatus ->
                 vehicleViewModel.changeStatus(vehicleToShowDetails!!.id, newStatus)
@@ -455,7 +461,26 @@ fun VehicleItem(
         onClick = onClick,
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
-        Row(modifier = Modifier.padding(16.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+        Row(modifier = Modifier.padding(16.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                modifier = Modifier
+                    .size(60.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant),
+                contentAlignment = Alignment.Center
+            ) {
+                if (vehicle.vehiclePhotoUri != null) {
+                    AsyncImage(
+                        model = vehicle.vehiclePhotoUri,
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                } else {
+                    Icon(Icons.Default.DirectionsCar, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+            Spacer(modifier = Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(text = "${vehicle.brand} ${vehicle.model}", style = MaterialTheme.typography.titleMedium)
                 Text(text = "Placa: ${Validators.formatPlate(vehicle.plate)}")
@@ -501,7 +526,19 @@ fun VehicleFormDialog(
 
     var mileage by remember { mutableStateOf(vehicle?.mileage?.toString() ?: "") }
     var description by remember { mutableStateOf(vehicle?.description ?: "") }
-    val status by remember { mutableStateOf(vehicle?.status ?: VehicleStatus.AVAILABLE) }
+    var status by remember { mutableStateOf(vehicle?.status ?: VehicleStatus.AVAILABLE) }
+    var expandedStatus by remember { mutableStateOf(false) }
+
+    var vehiclePhotoUri by remember { mutableStateOf(vehicle?.vehiclePhotoUri) }
+    var registrationPhotoUri by remember { mutableStateOf(vehicle?.registrationPhotoUri) }
+
+    val vehiclePhotoLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? -> vehiclePhotoUri = uri?.toString() }
+
+    val registrationPhotoLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? -> registrationPhotoUri = uri?.toString() }
 
     var attempted by remember { mutableStateOf(false) }
 
@@ -524,10 +561,44 @@ fun VehicleFormDialog(
                 item {
                     Text("Documentación y Fotos", style = MaterialTheme.typography.labelMedium)
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                        PhotoPlaceholder(label = "Foto Vehículo", icon = Icons.Default.DirectionsCar)
-                        PhotoPlaceholder(label = "Foto Circulación", icon = Icons.Default.Description)
+                        PhotoPlaceholder(
+                            label = "Foto Vehículo",
+                            icon = Icons.Default.DirectionsCar,
+                            uri = vehiclePhotoUri,
+                            onPick = { vehiclePhotoLauncher.launch("image/*") }
+                        )
+                        PhotoPlaceholder(
+                            label = "Foto Circulación",
+                            icon = Icons.Default.Description,
+                            uri = registrationPhotoUri,
+                            onPick = { registrationPhotoLauncher.launch("image/*") }
+                        )
                     }
                     Spacer(modifier = Modifier.height(16.dp))
+
+                    // Selector de Estado
+                    ExposedDropdownMenuBox(
+                        expanded = expandedStatus,
+                        onExpandedChange = { expandedStatus = !expandedStatus }
+                    ) {
+                        OutlinedTextField(
+                            value = status.label,
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text("Estado del Vehículo") },
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedStatus) },
+                            modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable).fillMaxWidth()
+                        )
+                        ExposedDropdownMenu(expanded = expandedStatus, onDismissRequest = { expandedStatus = false }) {
+                            VehicleStatus.entries.forEach { vs ->
+                                DropdownMenuItem(
+                                    text = { Text(vs.label) },
+                                    onClick = { status = vs; expandedStatus = false }
+                                )
+                            }
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
 
                     OutlinedTextField(
                         value = brand, onValueChange = { brand = it },
@@ -679,6 +750,8 @@ fun VehicleFormDialog(
                             insurancePolicy = insurancePolicy.trim(),
                             insuranceExpiryDate = insuranceExpiry,
                             circulationExpiryDate = circulationExpiry,
+                            vehiclePhotoUri = vehiclePhotoUri,
+                            registrationPhotoUri = registrationPhotoUri,
                             status = status,
                             description = description.trim()
                         )
@@ -694,7 +767,8 @@ fun VehicleFormDialog(
 @Composable
 fun VehicleDetailsDialog(
     vehicle: Vehicle,
-    history: List<Maintenance>,
+    maintenanceHistory: List<Maintenance>,
+    assignmentHistory: List<Assignment>,
     onDismiss: () -> Unit,
     onStatusChange: (VehicleStatus) -> Unit
 ) {
@@ -726,8 +800,16 @@ fun VehicleDetailsDialog(
                     Spacer(modifier = Modifier.height(16.dp))
                     Text("Fotos del Vehículo", style = MaterialTheme.typography.titleSmall)
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                        PhotoPlaceholder(label = "Vehículo", icon = Icons.Default.DirectionsCar)
-                        PhotoPlaceholder(label = "Circulación", icon = Icons.Default.Description)
+                        PhotoPlaceholder(
+                            label = "Vehículo",
+                            icon = Icons.Default.DirectionsCar,
+                            uri = vehicle.vehiclePhotoUri
+                        )
+                        PhotoPlaceholder(
+                            label = "Circulación",
+                            icon = Icons.Default.Description,
+                            uri = vehicle.registrationPhotoUri
+                        )
                     }
                     Spacer(modifier = Modifier.height(16.dp))
                     Text("Cambiar Estado:", style = MaterialTheme.typography.titleSmall)
@@ -743,14 +825,33 @@ fun VehicleDetailsDialog(
                     Spacer(modifier = Modifier.height(16.dp))
                     Text("Historial de Mantenimiento:", style = MaterialTheme.typography.titleSmall)
                 }
-                if (history.isEmpty()) {
-                    item { Text("No hay registros.", style = MaterialTheme.typography.bodySmall) }
+                if (maintenanceHistory.isEmpty()) {
+                    item { Text("No hay registros de mantenimiento.", style = MaterialTheme.typography.bodySmall) }
                 } else {
-                    items(history) { maintenance ->
+                    items(maintenanceHistory) { maintenance ->
                         Card(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
                             Column(modifier = Modifier.padding(8.dp)) {
                                 Text("${maintenance.type.label} - ${sdf.format(maintenance.date)}")
                                 Text("Estado: ${maintenance.status.label}", style = MaterialTheme.typography.bodySmall)
+                            }
+                        }
+                    }
+                }
+                item {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text("Historial de Asignaciones:", style = MaterialTheme.typography.titleSmall)
+                }
+                if (assignmentHistory.isEmpty()) {
+                    item { Text("No hay registros de asignación.", style = MaterialTheme.typography.bodySmall) }
+                } else {
+                    items(assignmentHistory) { assignment ->
+                        Card(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+                            Column(modifier = Modifier.padding(8.dp)) {
+                                Text("Salida: ${sdf.format(assignment.departureDate)}")
+                                assignment.returnDate?.let {
+                                    Text("Retorno: ${sdf.format(it)}", style = MaterialTheme.typography.bodySmall)
+                                }
+                                Text("Estado: ${if (assignment.status == AssignmentStatus.ACTIVE) "Activa" else "Completada"}", style = MaterialTheme.typography.bodySmall)
                             }
                         }
                     }
@@ -1267,13 +1368,26 @@ fun DriverFormDialog(
 }
 
 @Composable
-fun PhotoPlaceholder(label: String, icon: ImageVector) {
+fun PhotoPlaceholder(label: String, icon: ImageVector, uri: String? = null, onPick: () -> Unit = {}) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Box(
-            modifier = Modifier.size(80.dp).clip(RoundedCornerShape(8.dp)).background(MaterialTheme.colorScheme.surfaceVariant).clickable { /* Abrir camara/galeria */ },
+            modifier = Modifier
+                .size(80.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(MaterialTheme.colorScheme.surfaceVariant)
+                .clickable { onPick() },
             contentAlignment = Alignment.Center
         ) {
-            Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            if (uri != null) {
+                AsyncImage(
+                    model = uri,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
+                )
+            } else {
+                Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
         }
         Text(label, style = MaterialTheme.typography.labelSmall)
     }
