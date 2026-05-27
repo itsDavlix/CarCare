@@ -119,13 +119,23 @@ fun AdminScreen(
                 0 -> DashboardSection(
                     vehicles = vehicleViewModel.vehicles,
                     drivers = driverViewModel.drivers,
-                    maintenances = maintenanceViewModel.maintenances
+                    maintenances = maintenanceViewModel.maintenances,
+                    assignments = assignmentViewModel.assignments
                 )
                 1 -> VehicleListSection(
                     vehicles = vehicleViewModel.vehicles,
                     onVehicleClick = { vehicleToShowDetails = it },
                     onEdit = { vehicleToEdit = it; showVehicleForm = true },
-                    onDelete = { vehicleViewModel.deleteVehicle(it.id) }
+                    onDelete = { vehicle ->
+                        val hasHistory = maintenanceViewModel.getHistoryForVehicle(vehicle.id).isNotEmpty() ||
+                                assignmentViewModel.assignments.any { it.vehicleId == vehicle.id }
+                        if (hasHistory) {
+                            // En una app real usaríamos un Snackbar o un diálogo de alerta
+                            println("No se puede eliminar un vehículo con historial")
+                        } else {
+                            vehicleViewModel.deleteVehicle(vehicle.id)
+                        }
+                    }
                 )
                 2 -> MaintenanceListSection(
                     maintenances = maintenanceViewModel.maintenances,
@@ -251,7 +261,8 @@ fun AdminScreen(
 fun DashboardSection(
     vehicles: List<Vehicle>,
     drivers: List<Driver>,
-    maintenances: List<Maintenance>
+    maintenances: List<Maintenance>,
+    assignments: List<Assignment>
 ) {
     val now = Date()
     val soon = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, 7) }.time
@@ -259,11 +270,24 @@ fun DashboardSection(
     val stats = listOf(
         StatData("Total Vehículos", vehicles.size.toString(), Icons.Default.DirectionsCar, Color.Gray),
         StatData("Disponibles", vehicles.count { it.status == VehicleStatus.AVAILABLE }.toString(), Icons.Default.CheckCircle, Color(0xFF4CAF50)),
+        StatData("Asignados", vehicles.count { it.status == VehicleStatus.ASSIGNED }.toString(), Icons.Default.AssignmentInd, Color(0xFF9C27B0)),
         StatData("En Uso", vehicles.count { it.status == VehicleStatus.IN_USE }.toString(), Icons.Default.LocalShipping, Color(0xFF2196F3)),
         StatData("En Mantenimiento", vehicles.count { it.status == VehicleStatus.MAINTENANCE }.toString(), Icons.Default.Build, Color(0xFFFF9800)),
         StatData("Fuera de Servicio", vehicles.count { it.status == VehicleStatus.OUT_OF_SERVICE }.toString(), Icons.Default.Warning, Color(0xFFF44336)),
         StatData("Conductores Activos", drivers.count { it.status == DriverStatus.ACTIVE }.toString(), Icons.Default.Person, Color(0xFF4CAF50)),
-        StatData("Mantenimientos Pend.", maintenances.count { it.status == MaintenanceStatus.PENDING }.toString(), Icons.Default.Schedule, Color(0xFFFF9800))
+        StatData("Conductores Inactivos", drivers.count { it.status == DriverStatus.INACTIVE }.toString(), Icons.Default.PersonOff, Color(0xFF9E9E9E)),
+        StatData("Mant. Pendientes", maintenances.count { it.status == MaintenanceStatus.PENDING }.toString(), Icons.Default.Schedule, Color(0xFFFF9800)),
+        StatData("Asignaciones Activas", assignments.count { it.status == AssignmentStatus.ACTIVE }.toString(), Icons.Default.Assignment, Color(0xFF3F51B5))
+    )
+
+    val overdueMaintenances = maintenances.count { it.status == MaintenanceStatus.PENDING && 
+            ((it.nextDate != null && it.nextDate.before(now)) || 
+             (it.nextMileage != null && vehicles.find { v -> v.id == it.vehicleId }?.let { v -> v.mileage >= it.nextMileage } == true)) 
+    }
+
+    val extraStats = listOf(
+        StatData("Mant. Vencidos", overdueMaintenances.toString(), Icons.Default.RunningWithErrors, Color.Red),
+        StatData("Pend. Revisión", vehicles.count { it.status == VehicleStatus.PENDING_REVIEW }.toString(), Icons.Default.FactCheck, Color(0xFF795548))
     )
 
     val alerts = mutableListOf<String>()
@@ -287,16 +311,77 @@ fun DashboardSection(
         else if (d.licenseExpiryDate.before(soon)) alerts.add("PRÓXIMO: Venc. Licencia ${d.fullName}")
     }
 
+    val lastCheckOuts = assignments.sortedByDescending { it.departureDate }.take(3)
+    val lastCheckIns = assignments.filter { it.status == AssignmentStatus.COMPLETED }.sortedByDescending { it.returnDate }.take(3)
+
+    val totalKm = vehicles.sumOf { it.mileage }
+
     LazyColumn(modifier = Modifier.fillMaxSize()) {
         item {
+            Text("Estadísticas de Flota", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(vertical = 8.dp))
             LazyVerticalGrid(
                 columns = GridCells.Fixed(2),
-                modifier = Modifier.height(400.dp),
-                contentPadding = PaddingValues(4.dp)
+                modifier = Modifier.height(600.dp), // Increased height for more cards
+                contentPadding = PaddingValues(4.dp),
+                userScrollEnabled = false // Let LazyColumn handle scroll
             ) {
-                items(stats) { stat -> StatCard(stat) }
+                items(stats + extraStats) { stat -> StatCard(stat) }
             }
         }
+
+        item {
+            Card(modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp)) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text("Resumen de Uso", style = MaterialTheme.typography.titleMedium)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text("Kilometraje total de la flota: $totalKm km", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text("Distribución de Estados", style = MaterialTheme.typography.labelMedium)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    // Gráfico de barras simple
+                    VehicleStatusDistributionChart(vehicles)
+                }
+            }
+        }
+
+        if (lastCheckOuts.isNotEmpty()) {
+            item {
+                Spacer(modifier = Modifier.height(16.dp))
+                Text("Últimas Salidas", style = MaterialTheme.typography.titleMedium)
+            }
+            items(lastCheckOuts) { assignment ->
+                val vehicle = vehicles.find { it.id == assignment.vehicleId }
+                val driver = drivers.find { it.id == assignment.driverId }
+                val sdf = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault())
+                Card(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+                    ListItem(
+                        headlineContent = { Text("${vehicle?.brand} ${vehicle?.model} (${vehicle?.plate?.let { Validators.formatPlate(it) }})") },
+                        supportingContent = { Text("Conductor: ${driver?.fullName}\nSalida: ${sdf.format(assignment.departureDate)}") },
+                        leadingContent = { Icon(Icons.Default.Logout, contentDescription = null, tint = Color.Red) }
+                    )
+                }
+            }
+        }
+
+        if (lastCheckIns.isNotEmpty()) {
+            item {
+                Spacer(modifier = Modifier.height(16.dp))
+                Text("Últimas Entregas", style = MaterialTheme.typography.titleMedium)
+            }
+            items(lastCheckIns) { assignment ->
+                val vehicle = vehicles.find { it.id == assignment.vehicleId }
+                val driver = drivers.find { it.id == assignment.driverId }
+                val sdf = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault())
+                Card(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+                    ListItem(
+                        headlineContent = { Text("${vehicle?.brand} ${vehicle?.model} (${vehicle?.plate?.let { Validators.formatPlate(it) }})") },
+                        supportingContent = { Text("Conductor: ${driver?.fullName}\nEntregado: ${assignment.returnDate?.let { sdf.format(it) }}") },
+                        leadingContent = { Icon(Icons.Default.Login, contentDescription = null, tint = Color(0xFF4CAF50)) }
+                    )
+                }
+            }
+        }
+
         if (alerts.isNotEmpty()) {
             item {
                 Spacer(modifier = Modifier.height(16.dp))
@@ -314,6 +399,10 @@ fun DashboardSection(
                     }
                 }
             }
+        }
+
+        item {
+            Spacer(modifier = Modifier.height(32.dp))
         }
     }
 }
@@ -396,6 +485,13 @@ fun VehicleFormDialog(
     var model by remember { mutableStateOf(vehicle?.model ?: "") }
     var year by remember { mutableStateOf(vehicle?.year?.toString() ?: "") }
     var plate by remember { mutableStateOf(vehicle?.plate?.let { Validators.formatPlate(it) } ?: "") }
+    var color by remember { mutableStateOf(vehicle?.color ?: "") }
+    var vehicleType by remember { mutableStateOf(vehicle?.vehicleType ?: "") }
+    var chassisNumber by remember { mutableStateOf(vehicle?.chassisNumber ?: "") }
+    var engineNumber by remember { mutableStateOf(vehicle?.engineNumber ?: "") }
+    var insurancePolicy by remember { mutableStateOf(vehicle?.insurancePolicy ?: "") }
+    var insuranceExpiry by remember { mutableStateOf<Date?>(vehicle?.insuranceExpiryDate) }
+    var circulationExpiry by remember { mutableStateOf<Date?>(vehicle?.circulationExpiryDate) }
 
     // Dropdown de combustible (enum -> String al guardar)
     var fuelType by remember {
@@ -426,7 +522,7 @@ fun VehicleFormDialog(
         text = {
             LazyColumn(modifier = Modifier.fillMaxWidth()) {
                 item {
-                    Text("Fotos del Vehículo (Simulado)", style = MaterialTheme.typography.labelMedium)
+                    Text("Documentación y Fotos", style = MaterialTheme.typography.labelMedium)
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
                         PhotoPlaceholder(label = "Foto Vehículo", icon = Icons.Default.DirectionsCar)
                         PhotoPlaceholder(label = "Foto Circulación", icon = Icons.Default.Description)
@@ -451,13 +547,26 @@ fun VehicleFormDialog(
                         } else null,
                         modifier = Modifier.fillMaxWidth()
                     )
+                    Row(modifier = Modifier.fillMaxWidth()) {
+                        OutlinedTextField(
+                            value = year, onValueChange = { year = it.filter { c -> c.isDigit() } },
+                            label = { Text("Año") },
+                            isError = attempted && !yearV.isValid,
+                            supportingText = if (attempted && !yearV.isValid) {
+                                { Text(yearV.errorMessage ?: "") }
+                            } else null,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        OutlinedTextField(
+                            value = color, onValueChange = { color = it },
+                            label = { Text("Color") },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
                     OutlinedTextField(
-                        value = year, onValueChange = { year = it.filter { c -> c.isDigit() } },
-                        label = { Text("Año") },
-                        isError = attempted && !yearV.isValid,
-                        supportingText = if (attempted && !yearV.isValid) {
-                            { Text(yearV.errorMessage ?: "") }
-                        } else null,
+                        value = vehicleType, onValueChange = { vehicleType = it },
+                        label = { Text("Tipo de Vehículo (Ej: Camioneta)") },
                         modifier = Modifier.fillMaxWidth()
                     )
                     OutlinedTextField(
@@ -502,16 +611,49 @@ fun VehicleFormDialog(
 
                     OutlinedTextField(
                         value = mileage, onValueChange = { mileage = it.filter { c -> c.isDigit() } },
-                        label = { Text("Kilometraje") },
+                        label = { Text("Kilometraje Actual") },
                         isError = attempted && !mileageV.isValid,
                         supportingText = if (attempted && !mileageV.isValid) {
                             { Text(mileageV.errorMessage ?: "") }
                         } else null,
                         modifier = Modifier.fillMaxWidth()
                     )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text("Identificación del Motor/Chasis", style = MaterialTheme.typography.labelMedium)
+                    OutlinedTextField(
+                        value = chassisNumber, onValueChange = { chassisNumber = it.uppercase() },
+                        label = { Text("Número de Chasis") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    OutlinedTextField(
+                        value = engineNumber, onValueChange = { engineNumber = it.uppercase() },
+                        label = { Text("Número de Motor") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text("Seguro y Circulación", style = MaterialTheme.typography.labelMedium)
+                    OutlinedTextField(
+                        value = insurancePolicy, onValueChange = { insurancePolicy = it },
+                        label = { Text("Número de Póliza de Seguro") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    DatePickerField(
+                        label = "Vencimiento del Seguro",
+                        selectedDate = insuranceExpiry,
+                        onDateSelected = { insuranceExpiry = it }
+                    )
+                    DatePickerField(
+                        label = "Vencimiento de Circulación",
+                        selectedDate = circulationExpiry,
+                        onDateSelected = { circulationExpiry = it }
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
                     OutlinedTextField(
                         value = description, onValueChange = { description = it },
-                        label = { Text("Descripción (opcional)") },
+                        label = { Text("Observaciones Generales") },
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
@@ -530,6 +672,13 @@ fun VehicleFormDialog(
                             plate = Validators.normalizePlate(plate),
                             fuelType = fuelType?.label ?: "",
                             mileage = mileage.toLongOrNull() ?: 0L,
+                            color = color.trim(),
+                            vehicleType = vehicleType.trim(),
+                            chassisNumber = chassisNumber.trim(),
+                            engineNumber = engineNumber.trim(),
+                            insurancePolicy = insurancePolicy.trim(),
+                            insuranceExpiryDate = insuranceExpiry,
+                            circulationExpiryDate = circulationExpiry,
                             status = status,
                             description = description.trim()
                         )
@@ -541,6 +690,7 @@ fun VehicleFormDialog(
     )
 }
 
+
 @Composable
 fun VehicleDetailsDialog(
     vehicle: Vehicle,
@@ -548,27 +698,40 @@ fun VehicleDetailsDialog(
     onDismiss: () -> Unit,
     onStatusChange: (VehicleStatus) -> Unit
 ) {
+    val sdf = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Detalles del Vehículo") },
         text = {
             LazyColumn {
                 item {
-                    Text("Marca/Modelo: ${vehicle.brand} ${vehicle.model}")
+                    Text("Marca/Modelo: ${vehicle.brand} ${vehicle.model}", style = MaterialTheme.typography.titleMedium)
                     Text("Placa: ${Validators.formatPlate(vehicle.plate)}")
                     Text("Año: ${vehicle.year}")
+                    Text("Color: ${vehicle.color.ifBlank { "N/A" }}")
+                    Text("Tipo: ${vehicle.vehicleType.ifBlank { "N/A" }}")
                     Text("Combustible: ${vehicle.fuelType}")
                     Text("Kilometraje: ${vehicle.mileage} km")
-                    Text("Descripción: ${vehicle.description}")
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text("Identificación", style = MaterialTheme.typography.titleSmall)
+                    Text("Chasis: ${vehicle.chassisNumber.ifBlank { "N/A" }}")
+                    Text("Motor: ${vehicle.engineNumber.ifBlank { "N/A" }}")
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text("Documentación", style = MaterialTheme.typography.titleSmall)
+                    Text("Póliza Seguro: ${vehicle.insurancePolicy.ifBlank { "N/A" }}")
+                    Text("Venc. Seguro: ${vehicle.insuranceExpiryDate?.let { sdf.format(it) } ?: "N/A"}")
+                    Text("Venc. Circulación: ${vehicle.circulationExpiryDate?.let { sdf.format(it) } ?: "N/A"}")
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text("Descripción: ${vehicle.description.ifBlank { "Sin observaciones" }}")
                     Spacer(modifier = Modifier.height(16.dp))
-                    Text("Documentos (Simulado)", style = MaterialTheme.typography.titleSmall)
+                    Text("Fotos del Vehículo", style = MaterialTheme.typography.titleSmall)
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
                         PhotoPlaceholder(label = "Vehículo", icon = Icons.Default.DirectionsCar)
                         PhotoPlaceholder(label = "Circulación", icon = Icons.Default.Description)
                     }
                     Spacer(modifier = Modifier.height(16.dp))
                     Text("Cambiar Estado:", style = MaterialTheme.typography.titleSmall)
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                    FlowRow(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                         VehicleStatus.entries.forEach { status ->
                             FilterChip(
                                 selected = vehicle.status == status,
@@ -584,7 +747,6 @@ fun VehicleDetailsDialog(
                     item { Text("No hay registros.", style = MaterialTheme.typography.bodySmall) }
                 } else {
                     items(history) { maintenance ->
-                        val sdf = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
                         Card(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
                             Column(modifier = Modifier.padding(8.dp)) {
                                 Text("${maintenance.type.label} - ${sdf.format(maintenance.date)}")
@@ -598,6 +760,7 @@ fun VehicleDetailsDialog(
         confirmButton = { TextButton(onClick = onDismiss) { Text("Cerrar") } }
     )
 }
+
 
 @Composable
 fun MaintenanceListSection(
@@ -1442,4 +1605,40 @@ fun ReturnVehicleDialog(
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } }
     )
+}
+
+@Composable
+fun VehicleStatusDistributionChart(vehicles: List<Vehicle>) {
+    val total = vehicles.size.coerceAtLeast(1)
+    val distribution = VehicleStatus.entries.map { status ->
+        status to vehicles.count { it.status == status }
+    }.filter { it.second > 0 }
+
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        distribution.forEach { (status, count) ->
+            val fraction = count.toFloat() / total
+            val color = when (status) {
+                VehicleStatus.AVAILABLE -> Color(0xFF4CAF50)
+                VehicleStatus.IN_USE -> Color(0xFF2196F3)
+                VehicleStatus.MAINTENANCE -> Color(0xFFFF9800)
+                VehicleStatus.OUT_OF_SERVICE -> Color(0xFFF44336)
+                VehicleStatus.ASSIGNED -> Color(0xFF9C27B0)
+                VehicleStatus.PENDING_REVIEW -> Color(0xFF795548)
+                VehicleStatus.INACTIVE -> Color(0xFF9E9E9E)
+            }
+            Column {
+                Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+                    Text(status.label, style = MaterialTheme.typography.labelSmall)
+                    Text("$count (${(fraction * 100).toInt()}%)", style = MaterialTheme.typography.labelSmall)
+                }
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(fraction)
+                        .height(8.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(color)
+                )
+            }
+        }
+    }
 }

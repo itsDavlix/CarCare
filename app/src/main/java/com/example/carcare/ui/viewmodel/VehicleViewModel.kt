@@ -12,9 +12,11 @@ class VehicleViewModel : ViewModel() {
             brand = "Toyota",
             model = "Hilux",
             year = 2022,
-            plate = "ABC-123",
-            fuelType = "Diesel",
+            plate = "ABC123",
+            fuelType = "Diésel",
             mileage = 15000,
+            color = "Blanco",
+            vehicleType = "Camioneta",
             status = VehicleStatus.AVAILABLE,
             description = "Vehículo en buen estado"
         ),
@@ -23,9 +25,11 @@ class VehicleViewModel : ViewModel() {
             brand = "Ford",
             model = "Ranger",
             year = 2021,
-            plate = "XYZ-789",
+            plate = "XYZ789",
             fuelType = "Gasolina",
             mileage = 32000,
+            color = "Gris",
+            vehicleType = "Camioneta",
             status = VehicleStatus.MAINTENANCE,
             description = "Cambio de aceite pendiente"
         )

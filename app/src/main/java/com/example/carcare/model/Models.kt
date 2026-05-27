@@ -8,9 +8,12 @@ enum class Role {
 
 enum class VehicleStatus(val label: String) {
     AVAILABLE("Disponible"),
+    ASSIGNED("Asignado"),
     IN_USE("En uso"),
+    PENDING_REVIEW("Pendiente de revisión"),
     MAINTENANCE("En mantenimiento"),
-    OUT_OF_SERVICE("Fuera de servicio")
+    OUT_OF_SERVICE("Fuera de servicio"),
+    INACTIVE("Inactivo")
 }
 
 /**
@@ -40,6 +43,13 @@ data class Vehicle(
     val plate: String,
     val fuelType: String,
     val mileage: Long,
+    val color: String = "",
+    val vehicleType: String = "",
+    val chassisNumber: String = "",
+    val engineNumber: String = "",
+    val insurancePolicy: String = "",
+    val insuranceExpiryDate: Date? = null,
+    val circulationExpiryDate: Date? = null,
     val vehiclePhotoUri: String? = null,
     val registrationPhotoUri: String? = null,
     val status: VehicleStatus = VehicleStatus.AVAILABLE,
