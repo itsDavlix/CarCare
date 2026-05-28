@@ -1096,7 +1096,14 @@ fun MaintenanceFormDialog(
     var type by remember { mutableStateOf(maintenance?.type ?: MaintenanceType.PREVENTIVE) }
     var description by remember { mutableStateOf(maintenance?.description ?: "") }
     var responsible by remember { mutableStateOf(maintenance?.responsible ?: "") }
-    var currentMileage by remember { mutableStateOf(maintenance?.currentMileage?.toString() ?: "") }
+    
+    // Si es nuevo, sugerimos el kilometraje actual del vehículo seleccionado
+    var currentMileage by remember { 
+        mutableStateOf(
+            maintenance?.currentMileage?.toString() ?: 
+            vehicles.find { it.id == selectedVehicleId }?.mileage?.toString() ?: ""
+        ) 
+    }
     var nextMileage by remember { mutableStateOf(maintenance?.nextMileage?.toString() ?: "") }
 
     var startDate by remember { mutableStateOf<Date?>(maintenance?.date ?: Date()) }
@@ -1154,7 +1161,14 @@ fun MaintenanceFormDialog(
                                 vehicles.forEach { v ->
                                     DropdownMenuItem(
                                         text = { Text("${v.brand} ${v.model} (${Validators.formatPlate(v.plate)})") },
-                                        onClick = { selectedVehicleId = v.id; expandedVehicle = false }
+                                        onClick = { 
+                                            selectedVehicleId = v.id
+                                            // Si es un nuevo registro, actualizamos el kilometraje al seleccionar vehículo
+                                            if (maintenance == null) {
+                                                currentMileage = v.mileage.toString()
+                                            }
+                                            expandedVehicle = false 
+                                        }
                                     )
                                 }
                             }
@@ -1200,12 +1214,9 @@ fun MaintenanceFormDialog(
                             onValueChange = { currentMileage = it.filter { c -> c.isDigit() } },
                             label = { Text("Kilometraje Actual") },
                             isError = attempted && !mileageV.isValid,
-                            supportingText = {
-                                Text(
-                                    if (attempted && !mileageV.isValid) mileageV.errorMessage ?: ""
-                                    else selectedVehicle?.let { "Actual del vehículo: ${it.mileage} km" } ?: ""
-                                )
-                            },
+                            supportingText = if (attempted && !mileageV.isValid) {
+                                { Text(mileageV.errorMessage ?: "") }
+                            } else null,
                             modifier = Modifier.fillMaxWidth()
                         )
                         OutlinedTextField(
@@ -1378,7 +1389,6 @@ fun DriverFormDialog(
     var idCardNumber by remember { mutableStateOf(driver?.idCardNumber ?: "") }
     var age by remember { mutableStateOf(driver?.age?.toString() ?: "") }
     var phone by remember { mutableStateOf(driver?.phone ?: "") }
-    var licenseNumber by remember { mutableStateOf(driver?.licenseNumber ?: "") }
     var licenseExpiry by remember { mutableStateOf<Date?>(driver?.licenseExpiryDate) }
     val status by remember { mutableStateOf(driver?.status ?: DriverStatus.ACTIVE) }
 
@@ -1386,17 +1396,15 @@ fun DriverFormDialog(
 
     val idRegistry = existingDrivers.map { it.id to it.idCardNumber }
     val phoneRegistry = existingDrivers.map { it.id to it.phone }
-    val licenseRegistry = existingDrivers.map { it.id to it.licenseNumber }
 
     val firstNameV = Validators.validateName(firstName, "El nombre")
     val lastNameV = Validators.validateName(lastName, "El apellido")
     val idV = Validators.validateIdCard(idCardNumber, idRegistry, driver?.id)
     val ageV = Validators.validateAge(age)
     val phoneV = Validators.validatePhone(phone, phoneRegistry, driver?.id)
-    val licenseNumV = Validators.validateLicenseNumber(licenseNumber, licenseRegistry, driver?.id)
     val expiryV = Validators.validateLicenseExpiry(licenseExpiry)
 
-    val isValid = listOf(firstNameV, lastNameV, idV, ageV, phoneV, licenseNumV, expiryV)
+    val isValid = listOf(firstNameV, lastNameV, idV, ageV, phoneV, expiryV)
         .all { it.isValid }
 
     AlertDialog(
@@ -1462,15 +1470,6 @@ fun DriverFormDialog(
                             modifier = Modifier.weight(2f)
                         )
                     }
-                    OutlinedTextField(
-                        value = licenseNumber, onValueChange = { licenseNumber = it },
-                        label = { Text("Número de Licencia") },
-                        isError = attempted && !licenseNumV.isValid,
-                        supportingText = if (attempted && !licenseNumV.isValid) {
-                            { Text(licenseNumV.errorMessage ?: "") }
-                        } else null,
-                        modifier = Modifier.fillMaxWidth()
-                    )
 
                     DatePickerField(
                         label = "Vencimiento de licencia",
@@ -1495,7 +1494,7 @@ fun DriverFormDialog(
                             idCardNumber = Validators.normalizeIdCard(idCardNumber),
                             age = age.toIntOrNull() ?: 0,
                             phone = phone.trim(),
-                            licenseNumber = licenseNumber.trim(),
+                            licenseNumber = "",
                             licenseExpiryDate = licenseExpiry ?: Date(),
                             status = status
                         )
@@ -1556,7 +1555,6 @@ fun DriverDetailsDialog(
                 Spacer(modifier = Modifier.height(16.dp))
                 Text("Edad: ${driver.age} años")
                 Text("Teléfono: ${driver.phone}")
-                Text("Licencia: ${driver.licenseNumber}")
                 Text("Vencimiento: ${sdf.format(driver.licenseExpiryDate)}")
                 Spacer(modifier = Modifier.height(16.dp))
                 Text("Cambiar Estado:", style = MaterialTheme.typography.titleSmall)
