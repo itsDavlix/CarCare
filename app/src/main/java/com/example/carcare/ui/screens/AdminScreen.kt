@@ -7,13 +7,11 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -36,6 +34,7 @@ import com.example.carcare.ui.viewmodel.MaintenanceViewModel
 import com.example.carcare.ui.viewmodel.VehicleViewModel
 import com.example.carcare.util.ValidationResult
 import com.example.carcare.util.Validators
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -48,30 +47,45 @@ fun AdminScreen(
     driverViewModel: DriverViewModel = viewModel(),
     assignmentViewModel: AssignmentViewModel = viewModel()
 ) {
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+
     var selectedTab by remember { mutableIntStateOf(0) }
     val tabs = listOf("Dashboard", "Vehículos", "Mantenimiento", "Conductores", "Asignaciones")
 
+    // UI States para Diálogos
     var showVehicleForm by remember { mutableStateOf(false) }
     var vehicleToEdit by remember { mutableStateOf<Vehicle?>(null) }
     var vehicleToShowDetails by remember { mutableStateOf<Vehicle?>(null) }
+    var vehicleToDelete by remember { mutableStateOf<Vehicle?>(null) }
 
     var showMaintenanceForm by remember { mutableStateOf(false) }
     var maintenanceToEdit by remember { mutableStateOf<Maintenance?>(null) }
+    var maintenanceToDelete by remember { mutableStateOf<Maintenance?>(null) }
 
     var showDriverForm by remember { mutableStateOf(false) }
     var driverToEdit by remember { mutableStateOf<Driver?>(null) }
     var driverToShowDetails by remember { mutableStateOf<Driver?>(null) }
+    var driverToDelete by remember { mutableStateOf<Driver?>(null) }
 
     var showAssignmentForm by remember { mutableStateOf(false) }
     var assignmentToComplete by remember { mutableStateOf<Assignment?>(null) }
+    var assignmentToDelete by remember { mutableStateOf<Assignment?>(null) }
+
+    // Estados de búsqueda para cada sección
+    var vehicleSearchQuery by remember { mutableStateOf("") }
+    var driverSearchQuery by remember { mutableStateOf("") }
+    var maintenanceSearchQuery by remember { mutableStateOf("") }
+    var assignmentSearchQuery by remember { mutableStateOf("") }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { Text("Panel de Admin") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Volver")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
                     }
                 }
             )
@@ -89,7 +103,7 @@ fun AdminScreen(
                                 1 -> Icon(Icons.Default.DirectionsCar, contentDescription = null)
                                 2 -> Icon(Icons.Default.Build, contentDescription = null)
                                 3 -> Icon(Icons.Default.Person, contentDescription = null)
-                                else -> Icon(Icons.Default.Assignment, contentDescription = null)
+                                else -> Icon(Icons.AutoMirrored.Filled.Assignment, contentDescription = null)
                             }
                         }
                     )
@@ -127,41 +141,61 @@ fun AdminScreen(
                     maintenances = maintenanceViewModel.maintenances,
                     assignments = assignmentViewModel.assignments
                 )
-                1 -> VehicleListSection(
-                    vehicles = vehicleViewModel.vehicles,
-                    onVehicleClick = { vehicleToShowDetails = it },
-                    onEdit = { vehicleToEdit = it; showVehicleForm = true },
-                    onDelete = { vehicle ->
-                        val hasHistory = maintenanceViewModel.getHistoryForVehicle(vehicle.id).isNotEmpty() ||
-                                assignmentViewModel.assignments.any { it.vehicleId == vehicle.id }
-                        if (hasHistory) {
-                            // En una app real usaríamos un Snackbar o un diálogo de alerta
-                            println("No se puede eliminar un vehículo con historial")
-                        } else {
-                            vehicleViewModel.deleteVehicle(vehicle.id)
-                        }
-                    }
-                )
-                2 -> MaintenanceListSection(
-                    maintenances = maintenanceViewModel.maintenances,
-                    vehicles = vehicleViewModel.vehicles,
-                    onEdit = { maintenanceToEdit = it; showMaintenanceForm = true },
-                    onDelete = { maintenanceViewModel.deleteMaintenance(it.id) },
-                    onStatusChange = { m, s -> maintenanceViewModel.updateStatus(m.id, s) }
-                )
-                3 -> DriverListSection(
-                    drivers = driverViewModel.drivers,
-                    onDriverClick = { driverToShowDetails = it },
-                    onEdit = { driverToEdit = it; showDriverForm = true },
-                    onDelete = { driverViewModel.deleteDriver(it.id) }
-                )
-                4 -> AssignmentListSection(
-                    assignments = assignmentViewModel.assignments,
-                    vehicles = vehicleViewModel.vehicles,
-                    drivers = driverViewModel.drivers,
-                    onReturn = { assignmentToComplete = it },
-                    onDelete = { assignmentViewModel.deleteAssignment(it.id) }
-                )
+                1 -> {
+                    SearchBar(query = vehicleSearchQuery, onQueryChange = { vehicleSearchQuery = it }, label = "Buscar vehículo (marca, placa...)")
+                    VehicleListSection(
+                        vehicles = vehicleViewModel.vehicles.filter { 
+                            it.brand.contains(vehicleSearchQuery, ignoreCase = true) || 
+                            it.plate.contains(vehicleSearchQuery, ignoreCase = true) ||
+                            it.model.contains(vehicleSearchQuery, ignoreCase = true)
+                        },
+                        onVehicleClick = { vehicleToShowDetails = it },
+                        onEdit = { vehicleToEdit = it; showVehicleForm = true },
+                        onDelete = { vehicleToDelete = it }
+                    )
+                }
+                2 -> {
+                    SearchBar(query = maintenanceSearchQuery, onQueryChange = { maintenanceSearchQuery = it }, label = "Buscar mantenimiento...")
+                    MaintenanceListSection(
+                        maintenances = maintenanceViewModel.maintenances.filter { m ->
+                            val vehicle = vehicleViewModel.vehicles.find { it.id == m.vehicleId }
+                            vehicle?.brand?.contains(maintenanceSearchQuery, ignoreCase = true) == true ||
+                            vehicle?.plate?.contains(maintenanceSearchQuery, ignoreCase = true) == true ||
+                            m.description.contains(maintenanceSearchQuery, ignoreCase = true)
+                        },
+                        vehicles = vehicleViewModel.vehicles,
+                        onEdit = { maintenanceToEdit = it; showMaintenanceForm = true },
+                        onDelete = { maintenanceToDelete = it },
+                        onStatusChange = { m, s -> maintenanceViewModel.updateStatus(m.id, s) }
+                    )
+                }
+                3 -> {
+                    SearchBar(query = driverSearchQuery, onQueryChange = { driverSearchQuery = it }, label = "Buscar conductor...")
+                    DriverListSection(
+                        drivers = driverViewModel.drivers.filter { 
+                            it.fullName.contains(driverSearchQuery, ignoreCase = true) || 
+                            it.idCardNumber.contains(driverSearchQuery, ignoreCase = true)
+                        },
+                        onDriverClick = { driverToShowDetails = it },
+                        onEdit = { driverToEdit = it; showDriverForm = true },
+                        onDelete = { driverToDelete = it }
+                    )
+                }
+                4 -> {
+                    SearchBar(query = assignmentSearchQuery, onQueryChange = { assignmentSearchQuery = it }, label = "Buscar asignación...")
+                    AssignmentListSection(
+                        assignments = assignmentViewModel.assignments.filter { a ->
+                            val vehicle = vehicleViewModel.vehicles.find { it.id == a.vehicleId }
+                            val driver = driverViewModel.drivers.find { it.id == a.driverId }
+                            vehicle?.plate?.contains(assignmentSearchQuery, ignoreCase = true) == true ||
+                            driver?.fullName?.contains(assignmentSearchQuery, ignoreCase = true) == true
+                        },
+                        vehicles = vehicleViewModel.vehicles,
+                        drivers = driverViewModel.drivers,
+                        onReturn = { assignmentToComplete = it },
+                        onDelete = { assignmentToDelete = it }
+                    )
+                }
             }
         }
     }
@@ -261,6 +295,65 @@ fun AdminScreen(
             }
         )
     }
+
+    // Diálogos de Confirmación de Eliminación
+    if (vehicleToDelete != null) {
+        val hasHistory = maintenanceViewModel.getHistoryForVehicle(vehicleToDelete!!.id).isNotEmpty() ||
+                assignmentViewModel.assignments.any { it.vehicleId == vehicleToDelete!!.id }
+
+        com.example.carcare.ui.components.DeleteConfirmationDialog(
+            title = "Eliminar Vehículo",
+            message = if (hasHistory) "Este vehículo tiene historial de mantenimiento o asignaciones y no puede ser eliminado por integridad de datos."
+                      else "¿Estás seguro de que deseas eliminar el vehículo ${vehicleToDelete?.brand} ${vehicleToDelete?.plate}?",
+            onConfirm = {
+                if (!hasHistory) {
+                    vehicleViewModel.deleteVehicle(vehicleToDelete!!.id)
+                    scope.launch { snackbarHostState.showSnackbar("Vehículo eliminado") }
+                }
+            },
+            onDismiss = { vehicleToDelete = null }
+        )
+    }
+
+    if (maintenanceToDelete != null) {
+        com.example.carcare.ui.components.DeleteConfirmationDialog(
+            title = "Eliminar Mantenimiento",
+            message = "¿Estás seguro de que deseas eliminar este registro de mantenimiento?",
+            onConfirm = {
+                maintenanceViewModel.deleteMaintenance(maintenanceToDelete!!.id)
+                scope.launch { snackbarHostState.showSnackbar("Mantenimiento eliminado") }
+            },
+            onDismiss = { maintenanceToDelete = null }
+        )
+    }
+
+    if (driverToDelete != null) {
+        val hasAssignments = assignmentViewModel.assignments.any { it.driverId == driverToDelete!!.id }
+        com.example.carcare.ui.components.DeleteConfirmationDialog(
+            title = "Eliminar Conductor",
+            message = if (hasAssignments) "Este conductor tiene asignaciones registradas y no puede ser eliminado."
+                      else "¿Estás seguro de que deseas eliminar a ${driverToDelete?.fullName}?",
+            onConfirm = {
+                if (!hasAssignments) {
+                    driverViewModel.deleteDriver(driverToDelete!!.id)
+                    scope.launch { snackbarHostState.showSnackbar("Conductor eliminado") }
+                }
+            },
+            onDismiss = { driverToDelete = null }
+        )
+    }
+
+    if (assignmentToDelete != null) {
+        com.example.carcare.ui.components.DeleteConfirmationDialog(
+            title = "Eliminar Asignación",
+            message = "¿Estás seguro de que deseas eliminar esta asignación?",
+            onConfirm = {
+                assignmentViewModel.deleteAssignment(assignmentToDelete!!.id)
+                scope.launch { snackbarHostState.showSnackbar("Asignación eliminada") }
+            },
+            onDismiss = { assignmentToDelete = null }
+        )
+    }
 }
 
 @Composable
@@ -270,68 +363,86 @@ fun DashboardSection(
     maintenances: List<Maintenance>,
     assignments: List<Assignment>
 ) {
-    val now = Date()
-    val soon = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, 7) }.time
+    val now = remember { Date() }
+    val soon = remember { Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, 7) }.time }
 
-    val stats = listOf(
-        StatData("Total Vehículos", vehicles.size.toString(), Icons.Default.DirectionsCar, Color.Gray),
-        StatData("Disponibles", vehicles.count { it.status == VehicleStatus.AVAILABLE }.toString(), Icons.Default.CheckCircle, Color(0xFF4CAF50)),
-        StatData("Asignados", vehicles.count { it.status == VehicleStatus.ASSIGNED }.toString(), Icons.Default.AssignmentInd, Color(0xFF9C27B0)),
-        StatData("En Uso", vehicles.count { it.status == VehicleStatus.IN_USE }.toString(), Icons.Default.LocalShipping, Color(0xFF2196F3)),
-        StatData("En Mantenimiento", vehicles.count { it.status == VehicleStatus.MAINTENANCE }.toString(), Icons.Default.Build, Color(0xFFFF9800)),
-        StatData("Fuera de Servicio", vehicles.count { it.status == VehicleStatus.OUT_OF_SERVICE }.toString(), Icons.Default.Warning, Color(0xFFF44336)),
-        StatData("Conductores Activos", drivers.count { it.status == DriverStatus.ACTIVE }.toString(), Icons.Default.Person, Color(0xFF4CAF50)),
-        StatData("Conductores Inactivos", drivers.count { it.status == DriverStatus.INACTIVE }.toString(), Icons.Default.PersonOff, Color(0xFF9E9E9E)),
-        StatData("Mant. Pendientes", maintenances.count { it.status == MaintenanceStatus.PENDING }.toString(), Icons.Default.Schedule, Color(0xFFFF9800)),
-        StatData("Asignaciones Activas", assignments.count { it.status == AssignmentStatus.ACTIVE }.toString(), Icons.Default.Assignment, Color(0xFF3F51B5))
-    )
-
-    val overdueMaintenances = maintenances.count { it.status == MaintenanceStatus.PENDING && 
-            ((it.nextDate != null && it.nextDate.before(now)) || 
-             (it.nextMileage != null && vehicles.find { v -> v.id == it.vehicleId }?.let { v -> v.mileage >= it.nextMileage } == true)) 
+    val stats = remember(vehicles, drivers, maintenances, assignments) {
+        listOf(
+            StatData("Total Vehículos", vehicles.size.toString(), Icons.Default.DirectionsCar, Color.Gray),
+            StatData("Disponibles", vehicles.count { it.status == VehicleStatus.AVAILABLE }.toString(), Icons.Default.CheckCircle, Color(0xFF4CAF50)),
+            StatData("Asignados", vehicles.count { it.status == VehicleStatus.ASSIGNED }.toString(), Icons.Default.AssignmentInd, Color(0xFF9C27B0)),
+            StatData("En Uso", vehicles.count { it.status == VehicleStatus.IN_USE }.toString(), Icons.Default.LocalShipping, Color(0xFF2196F3)),
+            StatData("En Mantenimiento", vehicles.count { it.status == VehicleStatus.MAINTENANCE }.toString(), Icons.Default.Build, Color(0xFFFF9800)),
+            StatData("Fuera de Servicio", vehicles.count { it.status == VehicleStatus.OUT_OF_SERVICE }.toString(), Icons.Default.Warning, Color(0xFFF44336)),
+            StatData("Conductores Activos", drivers.count { it.status == DriverStatus.ACTIVE }.toString(), Icons.Default.Person, Color(0xFF4CAF50)),
+            StatData("Conductores Inactivos", drivers.count { it.status == DriverStatus.INACTIVE }.toString(), Icons.Default.PersonOff, Color(0xFF9E9E9E)),
+            StatData("Mant. Pendientes", maintenances.count { it.status == MaintenanceStatus.PENDING }.toString(), Icons.Default.Schedule, Color(0xFFFF9800)),
+            StatData("Asignaciones Activas", assignments.count { it.status == AssignmentStatus.ACTIVE }.toString(), Icons.AutoMirrored.Filled.Assignment, Color(0xFF3F51B5))
+        )
     }
 
-    val extraStats = listOf(
-        StatData("Mant. Vencidos", overdueMaintenances.toString(), Icons.Default.RunningWithErrors, Color.Red),
-        StatData("Pend. Revisión", vehicles.count { it.status == VehicleStatus.PENDING_REVIEW }.toString(), Icons.Default.FactCheck, Color(0xFF795548))
-    )
-
-    val alerts = mutableListOf<String>()
-
-    maintenances.filter { it.status == MaintenanceStatus.PENDING }.forEach { m ->
-        val vehicle = vehicles.find { it.id == m.vehicleId }
-        val vehicleLabel = vehicle?.let { "${it.brand} (${Validators.formatPlate(it.plate)})" } ?: "Vehículo"
-
-        if (m.nextDate != null) {
-            if (m.nextDate.before(now)) alerts.add("VENCIDO: Mantenimiento $vehicleLabel")
-            else if (m.nextDate.before(soon)) alerts.add("PRÓXIMO: Mantenimiento $vehicleLabel")
-        }
-
-        if (m.nextMileage != null && vehicle != null && vehicle.mileage >= m.nextMileage) {
-            alerts.add("VENCIDO (KM): Mantenimiento $vehicleLabel")
+    val overdueMaintenances = remember(maintenances, vehicles) {
+        maintenances.count { it.status == MaintenanceStatus.PENDING &&
+                ((it.nextDate != null && it.nextDate.before(now)) ||
+                 (it.nextMileage != null && vehicles.find { v -> v.id == it.vehicleId }?.let { v -> v.mileage >= it.nextMileage } == true))
         }
     }
 
-    drivers.filter { it.status == DriverStatus.ACTIVE }.forEach { d ->
-        if (d.licenseExpiryDate.before(now)) alerts.add("VENCIDO: Licencia de ${d.fullName}")
-        else if (d.licenseExpiryDate.before(soon)) alerts.add("PRÓXIMO: Venc. Licencia ${d.fullName}")
+    val extraStats = remember(overdueMaintenances, vehicles) {
+        listOf(
+            StatData("Mant. Vencidos", overdueMaintenances.toString(), Icons.Default.RunningWithErrors, Color.Red),
+            StatData("Pend. Revisión", vehicles.count { it.status == VehicleStatus.PENDING_REVIEW }.toString(), Icons.AutoMirrored.Filled.FactCheck, Color(0xFF795548))
+        )
     }
 
-    val lastCheckOuts = assignments.sortedByDescending { it.departureDate }.take(3)
-    val lastCheckIns = assignments.filter { it.status == AssignmentStatus.COMPLETED }.sortedByDescending { it.returnDate }.take(3)
+    val alerts = remember(maintenances, vehicles, drivers, now, soon) {
+        val list = mutableListOf<String>()
 
-    val totalKm = vehicles.sumOf { it.mileage }
+        maintenances.filter { it.status == MaintenanceStatus.PENDING }.forEach { m ->
+            val vehicle = vehicles.find { it.id == m.vehicleId }
+            val vehicleLabel = vehicle?.let { "${it.brand} (${Validators.formatPlate(it.plate)})" } ?: "Vehículo"
+
+            if (m.nextDate != null) {
+                if (m.nextDate.before(now)) list.add("VENCIDO: Mantenimiento $vehicleLabel")
+                else if (m.nextDate.before(soon)) list.add("PRÓXIMO: Mantenimiento $vehicleLabel")
+            }
+
+            if (m.nextMileage != null && vehicle != null && vehicle.mileage >= m.nextMileage) {
+                list.add("VENCIDO (KM): Mantenimiento $vehicleLabel")
+            }
+        }
+
+        drivers.filter { it.status == DriverStatus.ACTIVE }.forEach { d ->
+            if (d.licenseExpiryDate.before(now)) list.add("VENCIDO: Licencia de ${d.fullName}")
+            else if (d.licenseExpiryDate.before(soon)) list.add("PRÓXIMO: Venc. Licencia ${d.fullName}")
+        }
+        list
+    }
+
+    val lastCheckOuts = remember(assignments) { assignments.sortedByDescending { it.departureDate }.take(3) }
+    val lastCheckIns = remember(assignments) { assignments.filter { it.status == AssignmentStatus.COMPLETED }.sortedByDescending { it.returnDate }.take(3) }
+
+    val totalKm = remember(vehicles) { vehicles.sumOf { it.mileage } }
 
     LazyColumn(modifier = Modifier.fillMaxSize()) {
         item {
             Text("Estadísticas de Flota", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(vertical = 8.dp))
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(2),
-                modifier = Modifier.height(600.dp), // Increased height for more cards
-                contentPadding = PaddingValues(4.dp),
-                userScrollEnabled = false // Let LazyColumn handle scroll
-            ) {
-                items(stats + extraStats) { stat -> StatCard(stat) }
+            // Reemplazo de LazyVerticalGrid por Column + Rows para evitar problemas de anidamiento
+            val statsToDisplay = stats + extraStats
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                for (i in statsToDisplay.indices step 2) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        StatCard(statsToDisplay[i], modifier = Modifier.weight(1f))
+                        if (i + 1 < statsToDisplay.size) {
+                            StatCard(statsToDisplay[i + 1], modifier = Modifier.weight(1f))
+                        } else {
+                            Spacer(modifier = Modifier.weight(1f))
+                        }
+                    }
+                }
             }
         }
 
@@ -363,7 +474,7 @@ fun DashboardSection(
                     ListItem(
                         headlineContent = { Text("${vehicle?.brand} ${vehicle?.model} (${vehicle?.plate?.let { Validators.formatPlate(it) }})") },
                         supportingContent = { Text("Conductor: ${driver?.fullName}\nSalida: ${sdf.format(assignment.departureDate)}") },
-                        leadingContent = { Icon(Icons.Default.Logout, contentDescription = null, tint = Color.Red) }
+                        leadingContent = { Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = null, tint = Color.Red) }
                     )
                 }
             }
@@ -382,7 +493,7 @@ fun DashboardSection(
                     ListItem(
                         headlineContent = { Text("${vehicle?.brand} ${vehicle?.model} (${vehicle?.plate?.let { Validators.formatPlate(it) }})") },
                         supportingContent = { Text("Conductor: ${driver?.fullName}\nEntregado: ${assignment.returnDate?.let { sdf.format(it) }}") },
-                        leadingContent = { Icon(Icons.Default.Login, contentDescription = null, tint = Color(0xFF4CAF50)) }
+                        leadingContent = { Icon(Icons.AutoMirrored.Filled.Login, contentDescription = null, tint = Color(0xFF4CAF50)) }
                     )
                 }
             }
@@ -413,12 +524,31 @@ fun DashboardSection(
     }
 }
 
+@Composable
+fun SearchBar(query: String, onQueryChange: (String) -> Unit, label: String) {
+    OutlinedTextField(
+        value = query,
+        onValueChange = onQueryChange,
+        label = { Text(label) },
+        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+        trailingIcon = {
+            if (query.isNotEmpty()) {
+                IconButton(onClick = { onQueryChange("") }) {
+                    Icon(Icons.Default.Clear, contentDescription = "Limpiar")
+                }
+            }
+        },
+        modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+        shape = RoundedCornerShape(12.dp)
+    )
+}
+
 data class StatData(val label: String, val value: String, val icon: ImageVector, val color: Color)
 
 @Composable
-fun StatCard(stat: StatData) {
+fun StatCard(stat: StatData, modifier: Modifier = Modifier) {
     Card(
-        modifier = Modifier.padding(4.dp).fillMaxWidth(),
+        modifier = modifier.padding(4.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -513,7 +643,7 @@ fun VehicleFormDialog(
     var color by remember { mutableStateOf(vehicle?.color ?: "") }
     var chassisNumber by remember { mutableStateOf(vehicle?.chassisNumber ?: "") }
     var engineNumber by remember { mutableStateOf(vehicle?.engineNumber ?: "") }
-    var insuranceExpiry by remember { mutableStateOf<Date?>(vehicle?.insuranceExpiryDate) }
+    var insuranceExpiry by remember { mutableStateOf(vehicle?.insuranceExpiryDate) }
 
     // Dropdown de combustible (enum -> String al guardar)
     var fuelType by remember {
