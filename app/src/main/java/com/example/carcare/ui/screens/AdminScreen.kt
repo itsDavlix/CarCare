@@ -511,12 +511,9 @@ fun VehicleFormDialog(
     var year by remember { mutableStateOf(vehicle?.year?.toString() ?: "") }
     var plate by remember { mutableStateOf(vehicle?.plate?.let { Validators.formatPlate(it) } ?: "") }
     var color by remember { mutableStateOf(vehicle?.color ?: "") }
-    var vehicleType by remember { mutableStateOf(vehicle?.vehicleType ?: "") }
     var chassisNumber by remember { mutableStateOf(vehicle?.chassisNumber ?: "") }
     var engineNumber by remember { mutableStateOf(vehicle?.engineNumber ?: "") }
-    var insurancePolicy by remember { mutableStateOf(vehicle?.insurancePolicy ?: "") }
     var insuranceExpiry by remember { mutableStateOf<Date?>(vehicle?.insuranceExpiryDate) }
-    var circulationExpiry by remember { mutableStateOf<Date?>(vehicle?.circulationExpiryDate) }
 
     // Dropdown de combustible (enum -> String al guardar)
     var fuelType by remember {
@@ -529,8 +526,13 @@ fun VehicleFormDialog(
     var status by remember { mutableStateOf(vehicle?.status ?: VehicleStatus.AVAILABLE) }
     var expandedStatus by remember { mutableStateOf(false) }
 
+    var insurancePhotoUri by remember { mutableStateOf(vehicle?.insurancePhotoUri) }
     var vehiclePhotoUri by remember { mutableStateOf(vehicle?.vehiclePhotoUri) }
     var registrationPhotoUri by remember { mutableStateOf(vehicle?.registrationPhotoUri) }
+
+    val insurancePhotoLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? -> insurancePhotoUri = uri?.toString() }
 
     val vehiclePhotoLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
@@ -559,46 +561,63 @@ fun VehicleFormDialog(
         text = {
             LazyColumn(modifier = Modifier.fillMaxWidth()) {
                 item {
-                    Text("Documentación y Fotos", style = MaterialTheme.typography.labelMedium)
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                        PhotoPlaceholder(
-                            label = "Foto Vehículo",
-                            icon = Icons.Default.DirectionsCar,
-                            uri = vehiclePhotoUri,
-                            onPick = { vehiclePhotoLauncher.launch("image/*") }
-                        )
-                        PhotoPlaceholder(
-                            label = "Foto Circulación",
-                            icon = Icons.Default.Description,
-                            uri = registrationPhotoUri,
-                            onPick = { registrationPhotoLauncher.launch("image/*") }
-                        )
+                    Text("Fotos y Documentación", style = MaterialTheme.typography.labelMedium)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Box(modifier = Modifier.weight(1f)) {
+                            PhotoPlaceholder(
+                                label = "Vehículo",
+                                icon = Icons.Default.DirectionsCar,
+                                uri = vehiclePhotoUri,
+                                onPick = { vehiclePhotoLauncher.launch("image/*") }
+                            )
+                        }
+                        Box(modifier = Modifier.weight(1f)) {
+                            PhotoPlaceholder(
+                                label = "Circulación",
+                                icon = Icons.Default.Description,
+                                uri = registrationPhotoUri,
+                                onPick = { registrationPhotoLauncher.launch("image/*") }
+                            )
+                        }
+                        Box(modifier = Modifier.weight(1f)) {
+                            PhotoPlaceholder(
+                                label = "Seguro",
+                                icon = Icons.Default.Shield,
+                                uri = insurancePhotoUri,
+                                onPick = { insurancePhotoLauncher.launch("image/*") }
+                            )
+                        }
                     }
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // Selector de Estado
-                    ExposedDropdownMenuBox(
-                        expanded = expandedStatus,
-                        onExpandedChange = { expandedStatus = !expandedStatus }
-                    ) {
-                        OutlinedTextField(
-                            value = status.label,
-                            onValueChange = {},
-                            readOnly = true,
-                            label = { Text("Estado del Vehículo") },
-                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedStatus) },
-                            modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable).fillMaxWidth()
-                        )
-                        ExposedDropdownMenu(expanded = expandedStatus, onDismissRequest = { expandedStatus = false }) {
-                            VehicleStatus.entries.forEach { vs ->
-                                DropdownMenuItem(
-                                    text = { Text(vs.label) },
-                                    onClick = { status = vs; expandedStatus = false }
-                                )
+                    // Selector de Estado - Solo visible al editar
+                    if (vehicle != null) {
+                        ExposedDropdownMenuBox(
+                            expanded = expandedStatus,
+                            onExpandedChange = { expandedStatus = !expandedStatus }
+                        ) {
+                            OutlinedTextField(
+                                value = status.label,
+                                onValueChange = {},
+                                readOnly = true,
+                                label = { Text("Estado del Vehículo") },
+                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedStatus) },
+                                modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable).fillMaxWidth()
+                            )
+                            ExposedDropdownMenu(expanded = expandedStatus, onDismissRequest = { expandedStatus = false }) {
+                                VehicleStatus.entries.forEach { vs ->
+                                    DropdownMenuItem(
+                                        text = { Text(vs.label) },
+                                        onClick = { status = vs; expandedStatus = false }
+                                    )
+                                }
                             }
                         }
+                        Spacer(modifier = Modifier.height(8.dp))
                     }
-                    Spacer(modifier = Modifier.height(8.dp))
 
                     OutlinedTextField(
                         value = brand, onValueChange = { brand = it },
@@ -636,20 +655,12 @@ fun VehicleFormDialog(
                         )
                     }
                     OutlinedTextField(
-                        value = vehicleType, onValueChange = { vehicleType = it },
-                        label = { Text("Tipo de Vehículo (Ej: Camioneta)") },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    OutlinedTextField(
                         value = plate, onValueChange = { plate = it.uppercase() },
                         label = { Text("Placa") },
                         isError = attempted && !plateV.isValid,
-                        supportingText = {
-                            Text(
-                                if (attempted && !plateV.isValid) plateV.errorMessage ?: ""
-                                else "Formato Nicaragua: M 123 456 o MT 12345"
-                            )
-                        },
+                        supportingText = if (attempted && !plateV.isValid) {
+                            { Text(plateV.errorMessage ?: "") }
+                        } else null,
                         modifier = Modifier.fillMaxWidth()
                     )
 
@@ -704,27 +715,17 @@ fun VehicleFormDialog(
                     )
 
                     Spacer(modifier = Modifier.height(16.dp))
-                    Text("Seguro y Circulación", style = MaterialTheme.typography.labelMedium)
-                    OutlinedTextField(
-                        value = insurancePolicy, onValueChange = { insurancePolicy = it },
-                        label = { Text("Número de Póliza de Seguro") },
-                        modifier = Modifier.fillMaxWidth()
-                    )
+                    Text("Seguro", style = MaterialTheme.typography.labelMedium)
                     DatePickerField(
                         label = "Vencimiento del Seguro",
                         selectedDate = insuranceExpiry,
                         onDateSelected = { insuranceExpiry = it }
                     )
-                    DatePickerField(
-                        label = "Vencimiento de Circulación",
-                        selectedDate = circulationExpiry,
-                        onDateSelected = { circulationExpiry = it }
-                    )
 
                     Spacer(modifier = Modifier.height(8.dp))
                     OutlinedTextField(
                         value = description, onValueChange = { description = it },
-                        label = { Text("Observaciones Generales") },
+                        label = { Text("Notas") },
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
@@ -744,14 +745,12 @@ fun VehicleFormDialog(
                             fuelType = fuelType?.label ?: "",
                             mileage = mileage.toLongOrNull() ?: 0L,
                             color = color.trim(),
-                            vehicleType = vehicleType.trim(),
                             chassisNumber = chassisNumber.trim(),
                             engineNumber = engineNumber.trim(),
-                            insurancePolicy = insurancePolicy.trim(),
                             insuranceExpiryDate = insuranceExpiry,
-                            circulationExpiryDate = circulationExpiry,
                             vehiclePhotoUri = vehiclePhotoUri,
                             registrationPhotoUri = registrationPhotoUri,
+                            insurancePhotoUri = insurancePhotoUri,
                             status = status,
                             description = description.trim()
                         )
@@ -783,7 +782,6 @@ fun VehicleDetailsDialog(
                     Text("Placa: ${Validators.formatPlate(vehicle.plate)}")
                     Text("Año: ${vehicle.year}")
                     Text("Color: ${vehicle.color.ifBlank { "N/A" }}")
-                    Text("Tipo: ${vehicle.vehicleType.ifBlank { "N/A" }}")
                     Text("Combustible: ${vehicle.fuelType}")
                     Text("Kilometraje: ${vehicle.mileage} km")
                     Spacer(modifier = Modifier.height(8.dp))
@@ -792,24 +790,36 @@ fun VehicleDetailsDialog(
                     Text("Motor: ${vehicle.engineNumber.ifBlank { "N/A" }}")
                     Spacer(modifier = Modifier.height(8.dp))
                     Text("Documentación", style = MaterialTheme.typography.titleSmall)
-                    Text("Póliza Seguro: ${vehicle.insurancePolicy.ifBlank { "N/A" }}")
                     Text("Venc. Seguro: ${vehicle.insuranceExpiryDate?.let { sdf.format(it) } ?: "N/A"}")
-                    Text("Venc. Circulación: ${vehicle.circulationExpiryDate?.let { sdf.format(it) } ?: "N/A"}")
                     Spacer(modifier = Modifier.height(8.dp))
-                    Text("Descripción: ${vehicle.description.ifBlank { "Sin observaciones" }}")
+                    Text("Notas: ${vehicle.description.ifBlank { "Sin observaciones" }}")
                     Spacer(modifier = Modifier.height(16.dp))
-                    Text("Fotos del Vehículo", style = MaterialTheme.typography.titleSmall)
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                        PhotoPlaceholder(
-                            label = "Vehículo",
-                            icon = Icons.Default.DirectionsCar,
-                            uri = vehicle.vehiclePhotoUri
-                        )
-                        PhotoPlaceholder(
-                            label = "Circulación",
-                            icon = Icons.Default.Description,
-                            uri = vehicle.registrationPhotoUri
-                        )
+                    Text("Fotos", style = MaterialTheme.typography.titleSmall)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Box(modifier = Modifier.weight(1f)) {
+                            PhotoPlaceholder(
+                                label = "Vehículo",
+                                icon = Icons.Default.DirectionsCar,
+                                uri = vehicle.vehiclePhotoUri
+                            )
+                        }
+                        Box(modifier = Modifier.weight(1f)) {
+                            PhotoPlaceholder(
+                                label = "Circulación",
+                                icon = Icons.Default.Description,
+                                uri = vehicle.registrationPhotoUri
+                            )
+                        }
+                        Box(modifier = Modifier.weight(1f)) {
+                            PhotoPlaceholder(
+                                label = "Seguro",
+                                icon = Icons.Default.Shield,
+                                uri = vehicle.insurancePhotoUri
+                            )
+                        }
                     }
                     Spacer(modifier = Modifier.height(16.dp))
                     Text("Cambiar Estado:", style = MaterialTheme.typography.titleSmall)

@@ -16,7 +16,6 @@ class VehicleViewModel : ViewModel() {
             fuelType = "Diésel",
             mileage = 15000,
             color = "Blanco",
-            vehicleType = "Camioneta",
             status = VehicleStatus.AVAILABLE,
             description = "Vehículo en buen estado"
         ),
@@ -29,7 +28,6 @@ class VehicleViewModel : ViewModel() {
             fuelType = "Gasolina",
             mileage = 32000,
             color = "Gris",
-            vehicleType = "Camioneta",
             status = VehicleStatus.MAINTENANCE,
             description = "Cambio de aceite pendiente"
         )

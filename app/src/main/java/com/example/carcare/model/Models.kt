@@ -24,9 +24,7 @@ enum class VehicleStatus(val label: String) {
 enum class FuelType(val label: String) {
     GASOLINE("Gasolina"),
     DIESEL("Diésel"),
-    ELECTRIC("Eléctrico"),
-    HYBRID("Híbrido"),
-    LPG("GLP");
+    HEV("HEV");
 
     companion object {
         /** Busca un FuelType por su label. Retorna null si no se encuentra. */
@@ -44,14 +42,12 @@ data class Vehicle(
     val fuelType: String,
     val mileage: Long,
     val color: String = "",
-    val vehicleType: String = "",
     val chassisNumber: String = "",
     val engineNumber: String = "",
-    val insurancePolicy: String = "",
     val insuranceExpiryDate: Date? = null,
-    val circulationExpiryDate: Date? = null,
     val vehiclePhotoUri: String? = null,
     val registrationPhotoUri: String? = null,
+    val insurancePhotoUri: String? = null,
     val status: VehicleStatus = VehicleStatus.AVAILABLE,
     val description: String = ""
 )
