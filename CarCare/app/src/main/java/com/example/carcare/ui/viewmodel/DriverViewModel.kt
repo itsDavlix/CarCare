@@ -21,6 +21,16 @@ class DriverViewModel : ViewModel() {
             licenseNumber = "N/A",
             licenseExpiryDate = Calendar.getInstance().apply { set(2029, Calendar.AUGUST, 25, 0, 0, 0) }.time,
             status = DriverStatus.ACTIVE
+        ),
+        Driver(
+            firstName = "MANUEL JOAQUIN",
+            lastName = "CHAMORRO GOMEZ",
+            idCardNumber = "000-000000-0000L",
+            age = 19,
+            phone = "0000-0000",
+            licenseNumber = "N/A",
+            licenseExpiryDate = Calendar.getInstance().apply { set(2027, Calendar.JANUARY, 1, 0, 0, 0) }.time,
+            status = DriverStatus.ACTIVE
         )
     )
     val drivers: List<Driver> get() = _drivers
