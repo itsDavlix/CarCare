@@ -52,36 +52,17 @@ fun DashboardSection(
         )
     }
 
-    val overdueMaintenances = remember(maintenances, vehicles) {
-        maintenances.count { it.status == MaintenanceStatus.PENDING &&
-                ((it.nextDate != null && it.nextDate.before(now)) ||
-                 (it.nextMileage != null && vehicles.find { v -> v.id == it.vehicleId }?.let { v -> v.mileage >= it.nextMileage } == true))
-        }
-    }
+    val overdueMaintenances = 0
 
-    val extraStats = remember(overdueMaintenances, vehicles) {
+    val extraStats = remember(vehicles) {
         listOf(
             StatData("Mant. Vencidos", overdueMaintenances.toString(), Icons.Default.RunningWithErrors, Color.Red),
             StatData("Pend. Revisión", vehicles.count { it.status == VehicleStatus.PENDING_REVIEW }.toString(), Icons.AutoMirrored.Filled.FactCheck, Color(0xFF795548))
         )
     }
 
-    val alerts = remember(maintenances, vehicles, drivers, now, soon) {
+    val alerts = remember(vehicles, drivers, now, soon) {
         val list = mutableListOf<String>()
-
-        maintenances.filter { it.status == MaintenanceStatus.PENDING }.forEach { m ->
-            val vehicle = vehicles.find { it.id == m.vehicleId }
-            val vehicleLabel = vehicle?.let { "${it.brand} (${Validators.formatPlate(it.plate)})" } ?: "Vehículo"
-
-            if (m.nextDate != null) {
-                if (m.nextDate.before(now)) list.add("VENCIDO: Mantenimiento $vehicleLabel")
-                else if (m.nextDate.before(soon)) list.add("PRÓXIMO: Mantenimiento $vehicleLabel")
-            }
-
-            if (m.nextMileage != null && vehicle != null && vehicle.mileage >= m.nextMileage) {
-                list.add("VENCIDO (KM): Mantenimiento $vehicleLabel")
-            }
-        }
 
         drivers.filter { it.status == DriverStatus.ACTIVE }.forEach { d ->
             if (d.licenseExpiryDate.before(now)) list.add("VENCIDO: Licencia de ${d.fullName}")

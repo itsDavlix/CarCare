@@ -8,31 +8,9 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import com.example.carcare.model.Driver
 import com.example.carcare.model.DriverStatus
-import java.util.*
 
 class DriverViewModel : ViewModel() {
-    private val _drivers = mutableStateListOf<Driver>(
-        Driver(
-            firstName = "Juan",
-            lastName = "Pérez",
-            idCardNumber = "12345678",
-            age = 35,
-            phone = "555-0101",
-            licenseNumber = "LIC-99901",
-            licenseExpiryDate = Calendar.getInstance().apply { add(Calendar.YEAR, 2) }.time,
-            status = DriverStatus.ACTIVE
-        ),
-        Driver(
-            firstName = "María",
-            lastName = "García",
-            idCardNumber = "87654321",
-            age = 28,
-            phone = "555-0202",
-            licenseNumber = "LIC-99902",
-            licenseExpiryDate = Calendar.getInstance().apply { add(Calendar.MONTH, 1) }.time,
-            status = DriverStatus.ACTIVE
-        )
-    )
+    private val _drivers = mutableStateListOf<Driver>()
     val drivers: List<Driver> get() = _drivers
 
     var searchQuery by mutableStateOf("")

@@ -9,32 +9,36 @@ import androidx.lifecycle.ViewModel
 import com.example.carcare.model.FuelType
 import com.example.carcare.model.Vehicle
 import com.example.carcare.model.VehicleStatus
+import java.util.*
 
 class VehicleViewModel : ViewModel() {
     private val _vehicles = mutableStateListOf<Vehicle>(
         Vehicle(
-            id = "1",
             brand = "Toyota",
             model = "Hilux",
-            year = 2022,
-            plate = "ABC123",
+            year = 2025,
+            plate = "M460800",
             fuelType = FuelType.DIESEL,
-            mileage = 15000,
-            color = "Blanco",
-            status = VehicleStatus.AVAILABLE,
-            description = "Vehículo en buen estado"
+            mileage = 0,
+            color = "Plata",
+            chassisNumber = "TH213",
+            engineNumber = "2.4 2GD-FTV",
+            vehiclePhotoUri = "https://images.prd.kavak.io/eyJidWNrZXQiOiJrYXZhay1sdW1vcy1wcm9kLWltYWdlcyIsImtleSI6ImltYWdlcy9hZHMvMzc5NDU3L29wdGltaXplZC9pbWctMjAyNDEwMTUtMTEwNDMyLnBuZyIsImVkaXRzIjp7InJlc2l6ZSI6eyJ3aWR0aCI6NjQwLCJoZWlnaHQiOjQ4MH19fQ==",
+            insuranceExpiryDate = Calendar.getInstance().apply { set(2027, Calendar.JANUARY, 1, 0, 0, 0) }.time,
+            status = VehicleStatus.AVAILABLE
         ),
         Vehicle(
-            id = "2",
-            brand = "Ford",
-            model = "Ranger",
-            year = 2021,
-            plate = "XYZ789",
+            brand = "Toyota",
+            model = "Yaris E",
+            year = 2024,
+            plate = "M390789",
             fuelType = FuelType.GASOLINE,
-            mileage = 32000,
-            color = "Gris",
-            status = VehicleStatus.MAINTENANCE,
-            description = "Cambio de aceite pendiente"
+            mileage = 20000,
+            color = "Blanco",
+            chassisNumber = "TY204",
+            engineNumber = "1.5 2NR-FE",
+            insuranceExpiryDate = Calendar.getInstance().apply { set(2027, Calendar.JANUARY, 1, 0, 0, 0) }.time,
+            status = VehicleStatus.AVAILABLE
         )
     )
     val vehicles: List<Vehicle> get() = _vehicles

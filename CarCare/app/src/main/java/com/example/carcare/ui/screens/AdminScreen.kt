@@ -189,8 +189,13 @@ fun AdminScreen(
             vehicles = vehicleViewModel.vehicles,
             onDismiss = { showMaintenanceForm = false },
             onSave = { maintenance ->
-                if (maintenanceToEdit == null) maintenanceViewModel.addMaintenance(maintenance)
-                else maintenanceViewModel.updateMaintenance(maintenance)
+                if (maintenanceToEdit == null) {
+                    maintenanceViewModel.addMaintenance(maintenance)
+                    // Automáticamente pasar el vehículo a mantenimiento
+                    vehicleViewModel.changeStatus(maintenance.vehicleId, VehicleStatus.MAINTENANCE)
+                } else {
+                    maintenanceViewModel.updateMaintenance(maintenance)
+                }
                 showMaintenanceForm = false
             }
         )

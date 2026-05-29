@@ -411,11 +411,9 @@ fun MaintenanceFormDialog(
             vehicles.find { it.id == selectedVehicleId }?.mileage?.toString() ?: ""
         ) 
     }
-    var nextMileage by remember { mutableStateOf(maintenance?.nextMileage?.toString() ?: "") }
 
     var startDate by remember { mutableStateOf<Date?>(maintenance?.date ?: Date()) }
     var completionDate by remember { mutableStateOf<Date?>(maintenance?.completionDate) }
-    var nextDate by remember { mutableStateOf<Date?>(maintenance?.nextDate) }
 
     var expandedVehicle by remember { mutableStateOf(false) }
     var expandedType by remember { mutableStateOf(false) }
@@ -432,14 +430,9 @@ fun MaintenanceFormDialog(
         Validators.validateMaintenanceMileage(currentMileage, selectedVehicle.mileage)
     else
         Validators.validateMileage(currentMileage)
-    val nextMileageV = if (selectedVehicle != null)
-        Validators.validateNextMileage(nextMileage, selectedVehicle.mileage)
-    else
-        Validators.validateOptionalMileage(nextMileage)
     val datesV = Validators.validateMaintenanceDates(startDate, completionDate)
-    val nextDateV = Validators.validateFutureDate(nextDate, "La próxima fecha")
 
-    val isValid = !noVehicles && listOf(vehicleV, descV, responsibleV, mileageV, nextMileageV, datesV, nextDateV)
+    val isValid = !noVehicles && listOf(vehicleV, descV, responsibleV, mileageV, datesV)
         .all { it.isValid }
 
     AlertDialog(
@@ -543,26 +536,6 @@ fun MaintenanceFormDialog(
                             } else null,
                             modifier = Modifier.fillMaxWidth()
                         )
-
-                        DatePickerField(
-                            label = "Próxima fecha programada (opcional)",
-                            selectedDate = nextDate,
-                            onDateSelected = { nextDate = it },
-                            minDate = Date(),
-                            isError = attempted && !nextDateV.isValid,
-                            supportingText = if (attempted && !nextDateV.isValid) nextDateV.errorMessage else null
-                        )
-
-                        OutlinedTextField(
-                            value = nextMileage,
-                            onValueChange = { nextMileage = it.filter { c -> c.isDigit() } },
-                            label = { Text("Próximo Kilometraje (opcional)") },
-                            isError = attempted && !nextMileageV.isValid,
-                            supportingText = if (attempted && !nextMileageV.isValid) {
-                                { Text(nextMileageV.errorMessage ?: "") }
-                            } else null,
-                            modifier = Modifier.fillMaxWidth()
-                        )
                     }
                 }
             }
@@ -582,8 +555,8 @@ fun MaintenanceFormDialog(
                                 currentMileage = currentMileage.toLongOrNull() ?: 0L,
                                 description = description.trim(),
                                 responsible = responsible.trim(),
-                                nextDate = nextDate,
-                                nextMileage = nextMileage.toLongOrNull(),
+                                nextDate = null,
+                                nextMileage = null,
                                 status = maintenance?.status ?: MaintenanceStatus.PENDING
                             )
                         )
