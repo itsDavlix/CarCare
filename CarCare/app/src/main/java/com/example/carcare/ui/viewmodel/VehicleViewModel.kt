@@ -39,6 +39,19 @@ class VehicleViewModel : ViewModel() {
             engineNumber = "1.5 2NR-FE",
             insuranceExpiryDate = Calendar.getInstance().apply { set(2027, Calendar.JANUARY, 1, 0, 0, 0) }.time,
             status = VehicleStatus.AVAILABLE
+        ),
+        Vehicle(
+            brand = "Nissan",
+            model = "NP300 Frontier",
+            year = 2018,
+            plate = "M290700",
+            fuelType = FuelType.DIESEL,
+            mileage = 160700,
+            color = "Blanco",
+            chassisNumber = "NNP300F",
+            engineNumber = "2.5 QR25",
+            insuranceExpiryDate = Calendar.getInstance().apply { set(2027, Calendar.JANUARY, 1, 0, 0, 0) }.time,
+            status = VehicleStatus.AVAILABLE
         )
     )
     val vehicles: List<Vehicle> get() = _vehicles

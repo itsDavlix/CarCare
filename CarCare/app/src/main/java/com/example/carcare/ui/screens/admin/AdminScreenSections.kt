@@ -47,7 +47,7 @@ fun DashboardSection(
             StatData("Fuera de Servicio", vehicles.count { it.status == VehicleStatus.OUT_OF_SERVICE }.toString(), Icons.Default.Warning, Color(0xFFF44336)),
             StatData("Conductores Activos", drivers.count { it.status == DriverStatus.ACTIVE }.toString(), Icons.Default.Person, Color(0xFF4CAF50)),
             StatData("Conductores Inactivos", drivers.count { it.status == DriverStatus.INACTIVE }.toString(), Icons.Default.PersonOff, Color(0xFF9E9E9E)),
-            StatData("Mant. Pendientes", maintenances.count { it.status == MaintenanceStatus.PENDING }.toString(), Icons.Default.Schedule, Color(0xFFFF9800)),
+            StatData("Mant. En Proceso", maintenances.count { it.status == MaintenanceStatus.IN_PROGRESS }.toString(), Icons.Default.Schedule, Color(0xFFFF9800)),
             StatData("Asignaciones Activas", assignments.count { it.status == AssignmentStatus.ACTIVE }.toString(), Icons.AutoMirrored.Filled.Assignment, Color(0xFF3F51B5))
         )
     }
@@ -193,6 +193,7 @@ fun VehicleListSection(
 fun MaintenanceListSection(
     maintenances: List<Maintenance>,
     vehicles: List<Vehicle>,
+    onMaintenanceClick: (Maintenance) -> Unit,
     onEdit: (Maintenance) -> Unit,
     onDelete: (Maintenance) -> Unit,
     onStatusChange: (Maintenance, MaintenanceStatus) -> Unit
@@ -208,6 +209,7 @@ fun MaintenanceListSection(
                 MaintenanceItem(
                     maintenance = maintenance,
                     vehicle = vehicle,
+                    onClick = { onMaintenanceClick(maintenance) },
                     onEdit = { onEdit(maintenance) },
                     onDelete = { onDelete(maintenance) },
                     onStatusChange = { onStatusChange(maintenance, it) }
@@ -221,13 +223,17 @@ fun MaintenanceListSection(
 fun MaintenanceItem(
     maintenance: Maintenance,
     vehicle: Vehicle?,
+    onClick: () -> Unit,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
     onStatusChange: (MaintenanceStatus) -> Unit
 ) {
     val sdf = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
     val plateLabel = vehicle?.plate?.let { Validators.formatPlate(it) } ?: "N/A"
-    Card(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+    Card(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+        onClick = onClick
+    ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
                 Column {

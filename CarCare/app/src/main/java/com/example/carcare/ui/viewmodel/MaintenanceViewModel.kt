@@ -54,7 +54,11 @@ class MaintenanceViewModel : ViewModel() {
     fun updateStatus(maintenanceId: String, newStatus: MaintenanceStatus) {
         val index = _maintenances.indexOfFirst { it.id == maintenanceId }
         if (index != -1) {
-            _maintenances[index] = _maintenances[index].copy(status = newStatus)
+            val updated = _maintenances[index].copy(
+                status = newStatus,
+                completionDate = if (newStatus == MaintenanceStatus.COMPLETED) java.util.Date() else null
+            )
+            _maintenances[index] = updated
         }
     }
 }

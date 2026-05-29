@@ -16,6 +16,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.carcare.model.*
 import com.example.carcare.ui.components.DatePickerField
@@ -557,7 +558,7 @@ fun MaintenanceFormDialog(
                                 responsible = responsible.trim(),
                                 nextDate = null,
                                 nextMileage = null,
-                                status = maintenance?.status ?: MaintenanceStatus.PENDING
+                                status = maintenance?.status ?: MaintenanceStatus.IN_PROGRESS
                             )
                         )
                     }
@@ -566,6 +567,39 @@ fun MaintenanceFormDialog(
             ) { Text("Guardar") }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } }
+    )
+}
+
+@Composable
+fun MaintenanceDetailsDialog(
+    maintenance: Maintenance,
+    vehicle: Vehicle?,
+    onDismiss: () -> Unit
+) {
+    val sdf = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Detalles del Mantenimiento") },
+        text = {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Text(text = "Tipo: ${maintenance.type.label}", style = MaterialTheme.typography.titleMedium)
+                Text(text = "Vehículo: ${vehicle?.brand} ${vehicle?.model} (${vehicle?.plate?.let { Validators.formatPlate(it) } ?: "N/A"})")
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(text = "Fecha Inicio: ${sdf.format(maintenance.date)}")
+                maintenance.completionDate?.let {
+                    Text(text = "Fecha Finalización: ${sdf.format(it)}")
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(text = "Responsable: ${maintenance.responsible}")
+                Text(text = "Kilometraje: ${maintenance.currentMileage} km")
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(text = "Descripción:", style = MaterialTheme.typography.labelMedium)
+                Text(text = maintenance.description)
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(text = "Estado: ${maintenance.status.label}", fontWeight = FontWeight.Bold)
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text("Cerrar") } }
     )
 }
 

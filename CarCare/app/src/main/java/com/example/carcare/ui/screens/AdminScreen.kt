@@ -38,6 +38,7 @@ fun AdminScreen(
 
     var showMaintenanceForm by remember { mutableStateOf(false) }
     var maintenanceToEdit by remember { mutableStateOf<Maintenance?>(null) }
+    var maintenanceToShowDetails by remember { mutableStateOf<Maintenance?>(null) }
     var maintenanceToDelete by remember { mutableStateOf<Maintenance?>(null) }
 
     var showDriverForm by remember { mutableStateOf(false) }
@@ -134,9 +135,15 @@ fun AdminScreen(
                     MaintenanceListSection(
                         maintenances = maintenanceViewModel.getFilteredMaintenances(vehicleViewModel.vehicles),
                         vehicles = vehicleViewModel.vehicles,
+                        onMaintenanceClick = { maintenanceToShowDetails = it },
                         onEdit = { maintenanceToEdit = it; showMaintenanceForm = true },
                         onDelete = { maintenanceToDelete = it },
-                        onStatusChange = { m, s -> maintenanceViewModel.updateStatus(m.id, s) }
+                        onStatusChange = { m, s -> 
+                            maintenanceViewModel.updateStatus(m.id, s)
+                            if (s == MaintenanceStatus.COMPLETED) {
+                                vehicleViewModel.changeStatus(m.vehicleId, VehicleStatus.AVAILABLE)
+                            }
+                        }
                     )
                 }
                 3 -> {
@@ -287,6 +294,14 @@ fun AdminScreen(
                 }
             },
             onDismiss = { vehicleToDelete = null }
+        )
+    }
+
+    if (maintenanceToShowDetails != null) {
+        MaintenanceDetailsDialog(
+            maintenance = maintenanceToShowDetails!!,
+            vehicle = vehicleViewModel.vehicles.find { it.id == maintenanceToShowDetails!!.vehicleId },
+            onDismiss = { maintenanceToShowDetails = null }
         )
     }
 
