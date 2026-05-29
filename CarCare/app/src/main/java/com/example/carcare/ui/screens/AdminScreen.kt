@@ -6,6 +6,7 @@ import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -37,6 +38,7 @@ fun AdminScreen(
     var vehicleToDelete by remember { mutableStateOf<Vehicle?>(null) }
 
     var showMaintenanceForm by remember { mutableStateOf(false) }
+    var showGeneralHistory by remember { mutableStateOf(false) }
     var maintenanceToEdit by remember { mutableStateOf<Maintenance?>(null) }
     var maintenanceToShowDetails by remember { mutableStateOf<Maintenance?>(null) }
     var maintenanceToDelete by remember { mutableStateOf<Maintenance?>(null) }
@@ -127,11 +129,22 @@ fun AdminScreen(
                     )
                 }
                 2 -> {
-                    SearchBar(
-                        query = maintenanceViewModel.searchQuery,
-                        onQueryChange = { maintenanceViewModel.onSearchQueryChange(it) },
-                        label = "Buscar mantenimiento..."
-                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(modifier = Modifier.weight(1f)) {
+                            SearchBar(
+                                query = maintenanceViewModel.searchQuery,
+                                onQueryChange = { maintenanceViewModel.onSearchQueryChange(it) },
+                                label = "Buscar mantenimiento..."
+                            )
+                        }
+                        IconButton(onClick = { showGeneralHistory = true }) {
+                            Icon(Icons.Default.History, contentDescription = "Historial General")
+                        }
+                    }
                     MaintenanceListSection(
                         maintenances = maintenanceViewModel.getFilteredMaintenances(vehicleViewModel.vehicles),
                         vehicles = vehicleViewModel.vehicles,
@@ -302,6 +315,17 @@ fun AdminScreen(
             maintenance = maintenanceToShowDetails!!,
             vehicle = vehicleViewModel.vehicles.find { it.id == maintenanceToShowDetails!!.vehicleId },
             onDismiss = { maintenanceToShowDetails = null }
+        )
+    }
+
+    if (showGeneralHistory) {
+        GeneralMaintenanceHistoryDialog(
+            maintenances = maintenanceViewModel.maintenances,
+            vehicles = vehicleViewModel.vehicles,
+            onDismiss = { showGeneralHistory = false },
+            onMaintenanceClick = { 
+                maintenanceToShowDetails = it
+            }
         )
     }
 

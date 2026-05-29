@@ -41,6 +41,7 @@ class VehicleViewModel : ViewModel() {
             status = VehicleStatus.AVAILABLE
         ),
         Vehicle(
+            id = "nissan-np300",
             brand = "Nissan",
             model = "NP300 Frontier",
             year = 2018,
@@ -51,7 +52,7 @@ class VehicleViewModel : ViewModel() {
             chassisNumber = "NNP300F",
             engineNumber = "2.5 QR25",
             insuranceExpiryDate = Calendar.getInstance().apply { set(2027, Calendar.JANUARY, 1, 0, 0, 0) }.time,
-            status = VehicleStatus.AVAILABLE
+            status = VehicleStatus.MAINTENANCE
         )
     )
     val vehicles: List<Vehicle> get() = _vehicles

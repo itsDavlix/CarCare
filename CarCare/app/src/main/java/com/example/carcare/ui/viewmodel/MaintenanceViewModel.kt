@@ -10,10 +10,27 @@ import com.example.carcare.model.Maintenance
 import com.example.carcare.model.MaintenanceStatus
 import com.example.carcare.model.MaintenanceType
 import com.example.carcare.model.Vehicle
+import java.util.*
 
 class MaintenanceViewModel : ViewModel() {
     private val _maintenances = mutableStateListOf<Maintenance>()
     val maintenances: List<Maintenance> get() = _maintenances
+
+    init {
+        _maintenances.add(
+            Maintenance(
+                vehicleId = "nissan-np300",
+                type = MaintenanceType.OIL_CHANGE,
+                date = Date(),
+                currentMileage = 160700,
+                description = "Cambio de aceite de 5mil kilometros en casa comercial con aceite LiquiMoly molygen 10w30",
+                responsible = "GrupoQ",
+                nextDate = null,
+                nextMileage = null,
+                status = MaintenanceStatus.IN_PROGRESS
+            )
+        )
+    }
 
     var searchQuery by mutableStateOf("")
         private set
@@ -56,7 +73,7 @@ class MaintenanceViewModel : ViewModel() {
         if (index != -1) {
             val updated = _maintenances[index].copy(
                 status = newStatus,
-                completionDate = if (newStatus == MaintenanceStatus.COMPLETED) java.util.Date() else null
+                completionDate = if (newStatus == MaintenanceStatus.COMPLETED) Date() else null
             )
             _maintenances[index] = updated
         }

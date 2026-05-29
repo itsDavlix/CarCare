@@ -203,17 +203,24 @@ fun MaintenanceListSection(
             Text("No hay mantenimientos registrados.")
         }
     } else {
-        LazyColumn(modifier = Modifier.fillMaxSize()) {
-            items(maintenances) { maintenance ->
-                val vehicle = vehicles.find { it.id == maintenance.vehicleId }
-                MaintenanceItem(
-                    maintenance = maintenance,
-                    vehicle = vehicle,
-                    onClick = { onMaintenanceClick(maintenance) },
-                    onEdit = { onEdit(maintenance) },
-                    onDelete = { onDelete(maintenance) },
-                    onStatusChange = { onStatusChange(maintenance, it) }
-                )
+        val activeMaintenances = maintenances.filter { it.status == MaintenanceStatus.IN_PROGRESS }
+        if (activeMaintenances.isEmpty()) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text("No hay mantenimientos en proceso.")
+            }
+        } else {
+            LazyColumn(modifier = Modifier.fillMaxSize()) {
+                items(activeMaintenances) { maintenance ->
+                    val vehicle = vehicles.find { it.id == maintenance.vehicleId }
+                    MaintenanceItem(
+                        maintenance = maintenance,
+                        vehicle = vehicle,
+                        onClick = { onMaintenanceClick(maintenance) },
+                        onEdit = { onEdit(maintenance) },
+                        onDelete = { onDelete(maintenance) },
+                        onStatusChange = { onStatusChange(maintenance, it) }
+                    )
+                }
             }
         }
     }

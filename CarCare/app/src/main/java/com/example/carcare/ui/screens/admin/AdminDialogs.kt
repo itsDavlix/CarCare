@@ -603,6 +603,50 @@ fun MaintenanceDetailsDialog(
     )
 }
 
+@Composable
+fun GeneralMaintenanceHistoryDialog(
+    maintenances: List<Maintenance>,
+    vehicles: List<Vehicle>,
+    onDismiss: () -> Unit,
+    onMaintenanceClick: (Maintenance) -> Unit
+) {
+    val sdf = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Historial General de Mantenimiento") },
+        text = {
+            if (maintenances.isEmpty()) {
+                Text("No hay registros de mantenimiento.")
+            } else {
+                LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 400.dp)) {
+                    items(maintenances.sortedByDescending { it.date }) { maintenance ->
+                        val vehicle = vehicles.find { it.id == maintenance.vehicleId }
+                        Card(
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                            onClick = { onMaintenanceClick(maintenance) }
+                        ) {
+                            ListItem(
+                                headlineContent = { Text("${maintenance.type.label} - ${vehicle?.brand} ${vehicle?.model}") },
+                                supportingContent = { 
+                                    Text("Fecha: ${sdf.format(maintenance.date)} | Estado: ${maintenance.status.label}")
+                                },
+                                trailingContent = {
+                                    Icon(
+                                        if (maintenance.status == MaintenanceStatus.COMPLETED) Icons.Default.CheckCircle else Icons.Default.Schedule,
+                                        contentDescription = null,
+                                        tint = if (maintenance.status == MaintenanceStatus.COMPLETED) Color(0xFF4CAF50) else Color(0xFFFF9800)
+                                    )
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text("Cerrar") } }
+    )
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DriverFormDialog(
