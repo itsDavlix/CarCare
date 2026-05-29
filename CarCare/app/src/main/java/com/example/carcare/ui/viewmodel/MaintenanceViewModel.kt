@@ -1,10 +1,15 @@
 package com.example.carcare.ui.viewmodel
 
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import com.example.carcare.model.Maintenance
 import com.example.carcare.model.MaintenanceStatus
 import com.example.carcare.model.MaintenanceType
+import com.example.carcare.model.Vehicle
 import java.util.*
 
 class MaintenanceViewModel : ViewModel() {
@@ -26,6 +31,23 @@ class MaintenanceViewModel : ViewModel() {
                 status = MaintenanceStatus.COMPLETED
             )
         )
+    }
+
+    var searchQuery by mutableStateOf("")
+        private set
+
+    fun onSearchQueryChange(newQuery: String) {
+        searchQuery = newQuery
+    }
+
+    fun getFilteredMaintenances(vehicles: List<Vehicle>): List<Maintenance> {
+        if (searchQuery.isBlank()) return _maintenances
+        return _maintenances.filter { m ->
+            val vehicle = vehicles.find { it.id == m.vehicleId }
+            vehicle?.brand?.contains(searchQuery, ignoreCase = true) == true ||
+            vehicle?.plate?.contains(searchQuery, ignoreCase = true) == true ||
+            m.description.contains(searchQuery, ignoreCase = true)
+        }
     }
 
     fun addMaintenance(maintenance: Maintenance) {

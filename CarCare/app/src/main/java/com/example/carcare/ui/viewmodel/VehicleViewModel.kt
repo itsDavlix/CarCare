@@ -1,7 +1,12 @@
 package com.example.carcare.ui.viewmodel
 
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
+import com.example.carcare.model.FuelType
 import com.example.carcare.model.Vehicle
 import com.example.carcare.model.VehicleStatus
 
@@ -13,7 +18,7 @@ class VehicleViewModel : ViewModel() {
             model = "Hilux",
             year = 2022,
             plate = "ABC123",
-            fuelType = "Diésel",
+            fuelType = FuelType.DIESEL,
             mileage = 15000,
             color = "Blanco",
             status = VehicleStatus.AVAILABLE,
@@ -25,7 +30,7 @@ class VehicleViewModel : ViewModel() {
             model = "Ranger",
             year = 2021,
             plate = "XYZ789",
-            fuelType = "Gasolina",
+            fuelType = FuelType.GASOLINE,
             mileage = 32000,
             color = "Gris",
             status = VehicleStatus.MAINTENANCE,
@@ -33,6 +38,25 @@ class VehicleViewModel : ViewModel() {
         )
     )
     val vehicles: List<Vehicle> get() = _vehicles
+
+    var searchQuery by mutableStateOf("")
+        private set
+
+    val filteredVehicles by derivedStateOf {
+        if (searchQuery.isBlank()) {
+            _vehicles
+        } else {
+            _vehicles.filter {
+                it.brand.contains(searchQuery, ignoreCase = true) ||
+                it.plate.contains(searchQuery, ignoreCase = true) ||
+                it.model.contains(searchQuery, ignoreCase = true)
+            }
+        }
+    }
+
+    fun onSearchQueryChange(newQuery: String) {
+        searchQuery = newQuery
+    }
 
     fun addVehicle(vehicle: Vehicle) {
         _vehicles.add(vehicle)

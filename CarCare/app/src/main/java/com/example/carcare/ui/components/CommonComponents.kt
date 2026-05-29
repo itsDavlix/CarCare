@@ -33,6 +33,26 @@ fun StatusBadge(status: VehicleStatus) {
 }
 
 @Composable
+fun DriverStatusBadge(status: com.example.carcare.model.DriverStatus) {
+    val color = when (status) {
+        com.example.carcare.model.DriverStatus.ACTIVE -> Color(0xFF4CAF50)
+        com.example.carcare.model.DriverStatus.INACTIVE -> Color(0xFF9E9E9E)
+        com.example.carcare.model.DriverStatus.SUSPENDED -> Color(0xFFF44336)
+    }
+    Surface(
+        color = color.copy(alpha = 0.2f),
+        contentColor = color,
+        shape = MaterialTheme.shapes.small
+    ) {
+        Text(
+            text = status.label,
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+            style = MaterialTheme.typography.labelSmall
+        )
+    }
+}
+
+@Composable
 fun DeleteConfirmationDialog(
     title: String,
     message: String,

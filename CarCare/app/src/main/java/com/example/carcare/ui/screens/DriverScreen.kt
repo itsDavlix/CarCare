@@ -9,23 +9,22 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.carcare.model.Vehicle
 import com.example.carcare.model.VehicleStatus
 import com.example.carcare.ui.components.StatusBadge
+import com.example.carcare.ui.viewmodel.VehicleViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DriverScreen(onBack: () -> Unit) {
-    val assignedVehicle = Vehicle(
-        brand = "Toyota",
-        model = "Hilux",
-        year = 2022,
-        plate = "ABC-123",
-        fuelType = "Diesel",
-        mileage = 15000,
-        status = VehicleStatus.IN_USE,
-        description = "Vehículo asignado para ruta norte"
-    )
+fun DriverScreen(
+    onBack: () -> Unit,
+    vehicleViewModel: VehicleViewModel = viewModel()
+) {
+    // Para propósitos de esta optimización, simplemente tomamos el primer vehículo
+    // que esté "En Uso" o asignado, o el primero de la lista si no hay ninguno.
+    val assignedVehicle = vehicleViewModel.vehicles.firstOrNull { it.status == VehicleStatus.IN_USE || it.status == VehicleStatus.ASSIGNED }
+        ?: vehicleViewModel.vehicles.firstOrNull()
 
     Scaffold(
         topBar = {
@@ -45,14 +44,16 @@ fun DriverScreen(onBack: () -> Unit) {
         ) {
             Text("Tu Vehículo Asignado", style = MaterialTheme.typography.headlineSmall)
             Spacer(modifier = Modifier.height(16.dp))
-            Card(modifier = Modifier.fillMaxWidth()) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text(text = "${assignedVehicle.brand} ${assignedVehicle.model}", style = MaterialTheme.typography.titleLarge)
-                    Text(text = "Placa: ${assignedVehicle.plate}")
-                    Spacer(modifier = Modifier.height(8.dp))
-                    StatusBadge(status = assignedVehicle.status)
+            assignedVehicle?.let { vehicle ->
+                Card(modifier = Modifier.fillMaxWidth()) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text(text = "${vehicle.brand} ${vehicle.model}", style = MaterialTheme.typography.titleLarge)
+                        Text(text = "Placa: ${vehicle.plate}")
+                        Spacer(modifier = Modifier.height(8.dp))
+                        StatusBadge(status = vehicle.status)
+                    }
                 }
-            }
+            } ?: Text("No tienes un vehículo asignado actualmente.")
             Spacer(modifier = Modifier.height(24.dp))
             Button(
                 onClick = { /* Reportar mantenimiento */ },

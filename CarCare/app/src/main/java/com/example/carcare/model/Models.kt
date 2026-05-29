@@ -39,7 +39,7 @@ data class Vehicle(
     val model: String,
     val year: Int,
     val plate: String,
-    val fuelType: String,
+    val fuelType: FuelType,
     val mileage: Long,
     val color: String = "",
     val chassisNumber: String = "",
