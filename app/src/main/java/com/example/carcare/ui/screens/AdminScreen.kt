@@ -1388,6 +1388,7 @@ fun DriverFormDialog(
     var idCardNumber by remember { mutableStateOf(driver?.idCardNumber ?: "") }
     var age by remember { mutableStateOf(driver?.age?.toString() ?: "") }
     var phone by remember { mutableStateOf(driver?.phone ?: "") }
+    var licenseNumber by remember { mutableStateOf(driver?.licenseNumber ?: "") }
     var licenseExpiry by remember { mutableStateOf<Date?>(driver?.licenseExpiryDate) }
     val status by remember { mutableStateOf(driver?.status ?: DriverStatus.ACTIVE) }
 
@@ -1395,15 +1396,17 @@ fun DriverFormDialog(
 
     val idRegistry = existingDrivers.map { it.id to it.idCardNumber }
     val phoneRegistry = existingDrivers.map { it.id to it.phone }
+    val licenseRegistry = existingDrivers.map { it.id to it.licenseNumber }
 
     val firstNameV = Validators.validateName(firstName, "El nombre")
     val lastNameV = Validators.validateName(lastName, "El apellido")
     val idV = Validators.validateIdCard(idCardNumber, idRegistry, driver?.id)
     val ageV = Validators.validateAge(age)
     val phoneV = Validators.validatePhone(phone, phoneRegistry, driver?.id)
+    val licenseV = Validators.validateLicenseNumber(licenseNumber, licenseRegistry, driver?.id)
     val expiryV = Validators.validateLicenseExpiry(licenseExpiry)
 
-    val isValid = listOf(firstNameV, lastNameV, idV, ageV, phoneV, expiryV)
+    val isValid = listOf(firstNameV, lastNameV, idV, ageV, phoneV, licenseV, expiryV)
         .all { it.isValid }
 
     AlertDialog(
@@ -1469,6 +1472,15 @@ fun DriverFormDialog(
                             modifier = Modifier.weight(2f)
                         )
                     }
+                    OutlinedTextField(
+                        value = licenseNumber, onValueChange = { licenseNumber = it.uppercase() },
+                        label = { Text("Número de licencia") },
+                        isError = attempted && !licenseV.isValid,
+                        supportingText = if (attempted && !licenseV.isValid) {
+                            { Text(licenseV.errorMessage ?: "") }
+                        } else null,
+                        modifier = Modifier.fillMaxWidth()
+                    )
 
                     DatePickerField(
                         label = "Vencimiento de licencia",
@@ -1493,7 +1505,7 @@ fun DriverFormDialog(
                             idCardNumber = Validators.normalizeIdCard(idCardNumber),
                             age = age.toIntOrNull() ?: 0,
                             phone = phone.trim(),
-                            licenseNumber = "",
+                            licenseNumber = licenseNumber.trim(),
                             licenseExpiryDate = licenseExpiry ?: Date(),
                             status = status
                         )
