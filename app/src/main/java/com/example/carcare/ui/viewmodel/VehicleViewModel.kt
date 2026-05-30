@@ -1,65 +1,112 @@
 package com.example.carcare.ui.viewmodel
 
+import android.util.Log
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.example.carcare.data.repository.VehicleRepository
 import com.example.carcare.model.Vehicle
 import com.example.carcare.model.VehicleStatus
+import kotlinx.coroutines.launch
 
 class VehicleViewModel : ViewModel() {
-    private val _vehicles = mutableStateListOf<Vehicle>(
-        Vehicle(
-            id = "1",
-            brand = "Toyota",
-            model = "Hilux",
-            year = 2022,
-            plate = "ABC123",
-            fuelType = "Diésel",
-            mileage = 15000,
-            color = "Blanco",
-            status = VehicleStatus.AVAILABLE,
-            description = "Vehículo en buen estado"
-        ),
-        Vehicle(
-            id = "2",
-            brand = "Ford",
-            model = "Ranger",
-            year = 2021,
-            plate = "XYZ789",
-            fuelType = "Gasolina",
-            mileage = 32000,
-            color = "Gris",
-            status = VehicleStatus.MAINTENANCE,
-            description = "Cambio de aceite pendiente"
-        )
-    )
+
+    private val repository = VehicleRepository()
+
+    private val _vehicles = mutableStateListOf<Vehicle>()
     val vehicles: List<Vehicle> get() = _vehicles
 
+    var isLoading by mutableStateOf(false)
+        private set
+
+    var errorMessage by mutableStateOf<String?>(null)
+        private set
+
+    init {
+        loadVehicles()
+    }
+
+    fun loadVehicles() {
+        viewModelScope.launch {
+            isLoading = true
+            errorMessage = null
+            try {
+                val result = repository.getAll()
+                _vehicles.clear()
+                _vehicles.addAll(result)
+            } catch (e: Exception) {
+                errorMessage = "Error al cargar vehículos: ${e.message}"
+                Log.e("VehicleVM", "loadVehicles", e)
+            } finally {
+                isLoading = false
+            }
+        }
+    }
+
     fun addVehicle(vehicle: Vehicle) {
-        _vehicles.add(vehicle)
+        viewModelScope.launch {
+            try {
+                repository.create(vehicle)
+                loadVehicles()
+            } catch (e: Exception) {
+                errorMessage = "Error al crear vehículo: ${e.message}"
+                Log.e("VehicleVM", "addVehicle", e)
+            }
+        }
     }
 
     fun updateVehicle(updatedVehicle: Vehicle) {
-        val index = _vehicles.indexOfFirst { it.id == updatedVehicle.id }
-        if (index != -1) {
-            _vehicles[index] = updatedVehicle
+        viewModelScope.launch {
+            try {
+                repository.update(updatedVehicle)
+                loadVehicles()
+            } catch (e: Exception) {
+                errorMessage = "Error al actualizar vehículo: ${e.message}"
+                Log.e("VehicleVM", "updateVehicle", e)
+            }
         }
     }
 
     fun deleteVehicle(vehicleId: String) {
-        _vehicles.removeAll { it.id == vehicleId }
+        viewModelScope.launch {
+            try {
+                repository.delete(vehicleId)
+                loadVehicles()
+            } catch (e: Exception) {
+                errorMessage = "Error al eliminar vehículo: ${e.message}"
+                Log.e("VehicleVM", "deleteVehicle", e)
+            }
+        }
     }
 
     fun changeStatus(vehicleId: String, newStatus: VehicleStatus) {
-        val index = _vehicles.indexOfFirst { it.id == vehicleId }
-        if (index != -1) {
-            _vehicles[index] = _vehicles[index].copy(status = newStatus)
+        viewModelScope.launch {
+            try {
+                repository.changeStatus(vehicleId, newStatus)
+                loadVehicles()
+            } catch (e: Exception) {
+                errorMessage = "Error al cambiar estado: ${e.message}"
+                Log.e("VehicleVM", "changeStatus", e)
+            }
         }
     }
 
     fun updateMileage(vehicleId: String, newMileage: Long) {
-        val index = _vehicles.indexOfFirst { it.id == vehicleId }
-        if (index != -1) {
-            _vehicles[index] = _vehicles[index].copy(mileage = newMileage)
+        viewModelScope.launch {
+            try {
+                repository.updateMileage(vehicleId, newMileage)
+                loadVehicles()
+            } catch (e: Exception) {
+                errorMessage = "Error al actualizar kilometraje: ${e.message}"
+                Log.e("VehicleVM", "updateMileage", e)
+            }
         }
+    }
+
+    fun clearError() {
+        errorMessage = null
     }
 }
