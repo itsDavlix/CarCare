@@ -252,8 +252,7 @@ fun AdminScreen(
             },
             onDismiss = { showAssignmentForm = false },
             onSave = { assignment ->
-                assignmentViewModel.addAssignment(assignment)
-                vehicleViewModel.changeStatus(assignment.vehicleId, VehicleStatus.IN_USE)
+                assignmentViewModel.addAssignment(assignment) { vehicleViewModel.loadVehicles() }
                 showAssignmentForm = false
             }
         )
@@ -264,9 +263,9 @@ fun AdminScreen(
             assignment = assignmentToComplete!!,
             onDismiss = { assignmentToComplete = null },
             onSave = { returnDate, finalMileage, observations, nextStatus ->
-                assignmentViewModel.completeAssignment(assignmentToComplete!!.id, returnDate, finalMileage, observations)
-                vehicleViewModel.updateMileage(assignmentToComplete!!.vehicleId, finalMileage)
-                vehicleViewModel.changeStatus(assignmentToComplete!!.vehicleId, nextStatus)
+                assignmentViewModel.completeAssignment(
+                    assignmentToComplete!!.id, returnDate, finalMileage, observations, nextStatus
+                ) { vehicleViewModel.loadVehicles() }
                 assignmentToComplete = null
             }
         )
@@ -348,7 +347,7 @@ fun AdminScreen(
             title = "Eliminar Asignación",
             message = "¿Estás seguro de que deseas eliminar esta asignación?",
             onConfirm = {
-                assignmentViewModel.deleteAssignment(assignmentToDelete!!.id)
+                assignmentViewModel.deleteAssignment(assignmentToDelete!!.id) { vehicleViewModel.loadVehicles() }
                 scope.launch { snackbarHostState.showSnackbar("Asignación eliminada") }
             },
             onDismiss = { assignmentToDelete = null }
