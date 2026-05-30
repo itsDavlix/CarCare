@@ -11,6 +11,7 @@ import com.example.carcare.data.repository.DriverRepository
 import com.example.carcare.model.Driver
 import com.example.carcare.model.DriverStatus
 import kotlinx.coroutines.launch
+import com.example.carcare.data.network.toUserMessage
 
 class DriverViewModel : ViewModel() {
 
@@ -52,8 +53,8 @@ class DriverViewModel : ViewModel() {
                 val created = repository.create(driver)
                 _drivers.add(created)
             } catch (e: Exception) {
-                errorMessage = "Error al crear conductor: ${e.message}"
-                Log.e("DriverVM", "addDriver", e)
+                errorMessage = e.toUserMessage()
+                Log.e("DriverVM", "addDriver: $errorMessage", e)
             }
         }
     }
