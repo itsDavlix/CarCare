@@ -49,6 +49,11 @@ fun AdminScreen(
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+// Muestra en el snackbar cualquier error de red/backend de los ViewModels y lo limpia.
+    ErrorSnackbarEffect(vehicleViewModel.errorMessage, snackbarHostState) { vehicleViewModel.clearError() }
+    ErrorSnackbarEffect(driverViewModel.errorMessage, snackbarHostState) { driverViewModel.clearError() }
+    ErrorSnackbarEffect(maintenanceViewModel.errorMessage, snackbarHostState) { maintenanceViewModel.clearError() }
+    ErrorSnackbarEffect(assignmentViewModel.errorMessage, snackbarHostState) { assignmentViewModel.clearError() }
 
     var selectedTab by remember { mutableIntStateOf(0) }
     val tabs = listOf("Dashboard", "Vehículos", "Mantenimiento", "Conductores", "Asignaciones")
@@ -133,6 +138,21 @@ fun AdminScreen(
         Column(modifier = Modifier.padding(padding).padding(16.dp)) {
             Text(tabs[selectedTab], style = MaterialTheme.typography.titleLarge)
             Spacer(modifier = Modifier.height(8.dp))
+
+            // Barra fina mientras la sección activa carga datos del backend.
+            val sectionLoading = when (selectedTab) {
+                0 -> vehicleViewModel.isLoading || driverViewModel.isLoading ||
+                        maintenanceViewModel.isLoading || assignmentViewModel.isLoading
+                1 -> vehicleViewModel.isLoading
+                2 -> maintenanceViewModel.isLoading
+                3 -> driverViewModel.isLoading
+                4 -> assignmentViewModel.isLoading
+                else -> false
+            }
+            if (sectionLoading) {
+                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                Spacer(modifier = Modifier.height(8.dp))
+            }
 
             when (selectedTab) {
                 0 -> DashboardSection(
@@ -1902,6 +1922,24 @@ fun VehicleStatusDistributionChart(vehicles: List<Vehicle>) {
                         .background(color)
                 )
             }
+        }
+    }
+}
+
+/**
+ * Muestra un error en el snackbar cuando aparece y luego lo limpia.
+ * Reutilizable para cualquier ViewModel con un errorMessage nullable.
+ */
+@Composable
+private fun ErrorSnackbarEffect(
+    message: String?,
+    snackbarHostState: SnackbarHostState,
+    onShown: () -> Unit
+) {
+    LaunchedEffect(message) {
+        if (message != null) {
+            snackbarHostState.showSnackbar(message)
+            onShown()
         }
     }
 }
