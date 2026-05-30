@@ -35,6 +35,12 @@ fun MainApp() {
         try {
             val vehiculos = ApiClient.vehiculoApi.listar()
             Log.d("ApiTest", "OK - ${vehiculos.size} vehiculos recibidos")
+            val conductores = ApiClient.conductorApi.listar()
+            Log.d("ApiTest", "Conductores: ${conductores.size}")
+            val mantenimientos = ApiClient.mantenimientoApi.listar()
+            Log.d("ApiTest", "Mantenimientos: ${mantenimientos.size}")
+            val asignaciones = ApiClient.asignacionApi.listar()
+            Log.d("ApiTest", "Asignaciones: ${asignaciones.size}")
             vehiculos.forEach {
                 Log.d("ApiTest", "  id=${it.id} placa=${it.placa} ${it.marca} ${it.modelo} estado=${it.estado}")
             }
