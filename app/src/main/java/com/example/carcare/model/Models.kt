@@ -39,7 +39,7 @@ data class Vehicle(
     val model: String,
     val year: Int,
     val plate: String,
-    val fuelType: String,
+    val fuelType: FuelType,
     val mileage: Long,
     val color: String = "",
     val chassisNumber: String = "",
@@ -111,7 +111,7 @@ data class Maintenance(
     val responsible: String,
     val nextDate: Date?,
     val nextMileage: Long?,
-    val status: MaintenanceStatus = MaintenanceStatus.PENDING
+    val status: MaintenanceStatus = MaintenanceStatus.IN_PROGRESS
 )
 
 enum class AssignmentStatus {

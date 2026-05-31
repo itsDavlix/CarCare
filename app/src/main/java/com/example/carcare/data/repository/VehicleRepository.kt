@@ -44,7 +44,7 @@ private fun VehiculoResponseDto.toDomain(): Vehicle = Vehicle(
     model = modelo,
     year = anio,
     plate = placa,
-    fuelType = combustibleToLabel(combustible),
+    fuelType = parseFuelType(combustible),
     mileage = kilometraje,
     color = color ?: "",
     chassisNumber = numeroChasis ?: "",
@@ -64,7 +64,7 @@ private fun Vehicle.toRequestDto(): VehiculoRequestDto = VehiculoRequestDto(
     modelo = model,
     anio = year,
     placa = plate,
-    combustible = labelToCombustible(fuelType),
+    combustible = fuelType.name,
     kilometraje = mileage,
     color = color.ifBlank { null },
     tipo = null,
@@ -80,9 +80,10 @@ private fun Vehicle.toRequestDto(): VehiculoRequestDto = VehiculoRequestDto(
     descripcion = description.ifBlank { null }
 )
 
-// Backend usa el nombre del enum (DIESEL); Android guarda el label (Diésel).
-private fun combustibleToLabel(name: String): String =
-    runCatching { FuelType.valueOf(name).label }.getOrDefault(name)
-
-private fun labelToCombustible(label: String): String =
-    FuelType.fromLabel(label)?.name ?: label.uppercase()
+/**
+ * Backend manda el nombre del enum (ej: "DIESEL", "GASOLINE", "HEV").
+ * Si llega algo inesperado, default a GASOLINE para no romper la UI.
+ */
+private fun parseFuelType(name: String): FuelType =
+    runCatching { FuelType.valueOf(name.uppercase()) }
+        .getOrDefault(FuelType.GASOLINE)

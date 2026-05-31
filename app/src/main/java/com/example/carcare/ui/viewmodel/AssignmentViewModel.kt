@@ -9,6 +9,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.carcare.data.repository.AssignmentRepository
 import com.example.carcare.model.Assignment
+import com.example.carcare.model.Driver
+import com.example.carcare.model.Vehicle
 import com.example.carcare.model.VehicleStatus
 import kotlinx.coroutines.launch
 import java.util.Date
@@ -20,6 +22,9 @@ class AssignmentViewModel : ViewModel() {
     private val _assignments = mutableStateListOf<Assignment>()
     val assignments: List<Assignment> get() = _assignments
 
+    var searchQuery by mutableStateOf("")
+        private set
+
     var isLoading by mutableStateOf(false)
         private set
 
@@ -28,6 +33,20 @@ class AssignmentViewModel : ViewModel() {
 
     init {
         loadAssignments()
+    }
+
+    fun onSearchQueryChange(newQuery: String) {
+        searchQuery = newQuery
+    }
+
+    fun getFilteredAssignments(vehicles: List<Vehicle>, drivers: List<Driver>): List<Assignment> {
+        if (searchQuery.isBlank()) return _assignments
+        return _assignments.filter { a ->
+            val vehicle = vehicles.find { it.id == a.vehicleId }
+            val driver = drivers.find { it.id == a.driverId }
+            vehicle?.plate?.contains(searchQuery, ignoreCase = true) == true ||
+                    driver?.fullName?.contains(searchQuery, ignoreCase = true) == true
+        }
     }
 
     fun loadAssignments() {

@@ -1,6 +1,7 @@
 package com.example.carcare.ui.viewmodel
 
 import android.util.Log
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -25,8 +26,27 @@ class VehicleViewModel : ViewModel() {
     var errorMessage by mutableStateOf<String?>(null)
         private set
 
+    var searchQuery by mutableStateOf("")
+        private set
+
+    val filteredVehicles by derivedStateOf {
+        if (searchQuery.isBlank()) {
+            _vehicles
+        } else {
+            _vehicles.filter {
+                it.brand.contains(searchQuery, ignoreCase = true) ||
+                        it.plate.contains(searchQuery, ignoreCase = true) ||
+                        it.model.contains(searchQuery, ignoreCase = true)
+            }
+        }
+    }
+
     init {
         loadVehicles()
+    }
+
+    fun onSearchQueryChange(newQuery: String) {
+        searchQuery = newQuery
     }
 
     /** Carga completa desde la API. Solo en el arranque o refresco manual. */

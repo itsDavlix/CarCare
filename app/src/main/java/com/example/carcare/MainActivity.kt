@@ -28,11 +28,24 @@ class MainActivity : ComponentActivity() {
 fun MainApp() {
     var splashFinished by remember { mutableStateOf(false) }
     var currentRole by remember { mutableStateOf<Role?>(null) }
+    var loggedInDriverIdCard by remember { mutableStateOf<String?>(null) }
 
     when {
         !splashFinished -> SplashScreen(onSplashFinished = { splashFinished = true })
-        currentRole == null -> LoginScreen(onRoleSelected = { currentRole = it })
-        currentRole == Role.ADMIN -> AdminScreen(onBack = { currentRole = null })
-        currentRole == Role.DRIVER -> DriverScreen(onBack = { currentRole = null })
+        currentRole == null -> LoginScreen(onLogin = { role, idCard -> 
+            currentRole = role
+            loggedInDriverIdCard = idCard
+        })
+        currentRole == Role.ADMIN -> AdminScreen(onBack = { 
+            currentRole = null 
+            loggedInDriverIdCard = null
+        })
+        currentRole == Role.DRIVER -> DriverScreen(
+            driverIdCard = loggedInDriverIdCard ?: "",
+            onBack = { 
+                currentRole = null 
+                loggedInDriverIdCard = null
+            }
+        )
     }
 }

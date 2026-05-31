@@ -10,6 +10,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.carcare.data.repository.MaintenanceRepository
 import com.example.carcare.model.Maintenance
 import com.example.carcare.model.MaintenanceStatus
+import com.example.carcare.model.Vehicle
 import kotlinx.coroutines.launch
 
 class MaintenanceViewModel : ViewModel() {
@@ -25,9 +26,30 @@ class MaintenanceViewModel : ViewModel() {
     var errorMessage by mutableStateOf<String?>(null)
         private set
 
+    var searchQuery by mutableStateOf("")
+        private set
+
     init {
         loadMaintenances()
     }
+
+    fun onSearchQueryChange(newQuery: String) {
+        searchQuery = newQuery
+    }
+
+    fun getFilteredMaintenances(vehicles: List<Vehicle>): List<Maintenance> {
+        if (searchQuery.isBlank()) return _maintenances
+        return _maintenances.filter { m ->
+            val vehicle = vehicles.find { it.id == m.vehicleId }
+            vehicle?.brand?.contains(searchQuery, ignoreCase = true) == true ||
+                    vehicle?.plate?.contains(searchQuery, ignoreCase = true) == true ||
+                    m.description.contains(searchQuery, ignoreCase = true)
+        }
+    }
+
+    /** Filtro local sobre los mantenimientos ya cargados. Sincrono. */
+    fun getHistoryForVehicle(vehicleId: String): List<Maintenance> =
+        _maintenances.filter { it.vehicleId == vehicleId }
 
     fun loadMaintenances() {
         viewModelScope.launch {
@@ -117,10 +139,6 @@ class MaintenanceViewModel : ViewModel() {
             }
         }
     }
-
-    /** Filtro local sobre los mantenimientos ya cargados. Sincrono, como antes. */
-    fun getHistoryForVehicle(vehicleId: String): List<Maintenance> =
-        _maintenances.filter { it.vehicleId == vehicleId }
 
     fun clearError() {
         errorMessage = null

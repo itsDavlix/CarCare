@@ -1,17 +1,18 @@
 package com.example.carcare.ui.viewmodel
 
 import android.util.Log
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.carcare.data.network.toUserMessage
 import com.example.carcare.data.repository.DriverRepository
 import com.example.carcare.model.Driver
 import com.example.carcare.model.DriverStatus
 import kotlinx.coroutines.launch
-import com.example.carcare.data.network.toUserMessage
 
 class DriverViewModel : ViewModel() {
 
@@ -26,8 +27,26 @@ class DriverViewModel : ViewModel() {
     var errorMessage by mutableStateOf<String?>(null)
         private set
 
+    var searchQuery by mutableStateOf("")
+        private set
+
+    val filteredDrivers by derivedStateOf {
+        if (searchQuery.isBlank()) {
+            _drivers
+        } else {
+            _drivers.filter {
+                it.fullName.contains(searchQuery, ignoreCase = true) ||
+                        it.idCardNumber.contains(searchQuery, ignoreCase = true)
+            }
+        }
+    }
+
     init {
         loadDrivers()
+    }
+
+    fun onSearchQueryChange(newQuery: String) {
+        searchQuery = newQuery
     }
 
     fun loadDrivers() {
