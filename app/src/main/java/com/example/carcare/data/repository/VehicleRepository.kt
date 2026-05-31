@@ -13,19 +13,19 @@ import com.example.carcare.model.VehicleStatus
  * Conecta el modelo de dominio Vehicle con la API.
  * Convierte id Long<->String y fechas Date<->String en el borde de red.
  */
-class VehicleRepository {
+class VehicleRepository : CrudRepository<Vehicle> {
 
     private val api = ApiClient.vehiculoApi
 
-    suspend fun getAll(): List<Vehicle> = api.listar().map { it.toDomain() }
+    override suspend fun getAll(): List<Vehicle> = api.listar().map { it.toDomain() }
 
-    suspend fun create(vehicle: Vehicle): Vehicle =
+    override suspend fun create(vehicle: Vehicle): Vehicle =
         api.crear(vehicle.toRequestDto()).toDomain()
 
     suspend fun update(vehicle: Vehicle): Vehicle =
         api.actualizar(vehicle.id.toLong(), vehicle.toRequestDto()).toDomain()
 
-    suspend fun delete(id: String) {
+    override suspend fun delete(id: String) {
         api.eliminar(id.toLong())
     }
 

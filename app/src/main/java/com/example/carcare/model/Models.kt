@@ -34,7 +34,7 @@ enum class FuelType(val label: String) {
 }
 
 data class Vehicle(
-    val id: String = java.util.UUID.randomUUID().toString(),
+    override val id: String = java.util.UUID.randomUUID().toString(),
     val brand: String,
     val model: String,
     val year: Int,
@@ -52,7 +52,7 @@ data class Vehicle(
     val insurancePhotoUri: String? = null,
     val status: VehicleStatus = VehicleStatus.AVAILABLE,
     val description: String = ""
-)
+) : Identifiable
 
 data class User(
     val id: String,
@@ -67,7 +67,7 @@ enum class DriverStatus(val label: String) {
 }
 
 data class Driver(
-    val id: String = java.util.UUID.randomUUID().toString(),
+    override val id: String = java.util.UUID.randomUUID().toString(),
     val firstName: String,
     val lastName: String,
     val idCardNumber: String,
@@ -78,7 +78,7 @@ data class Driver(
     val profilePhotoUri: String? = null,
     val licensePhotoUri: String? = null,
     val status: DriverStatus = DriverStatus.ACTIVE
-) {
+) : Identifiable {
     val fullName: String get() = "$firstName $lastName"
 }
 
@@ -101,7 +101,7 @@ enum class MaintenanceType(val label: String) {
 }
 
 data class Maintenance(
-    val id: String = java.util.UUID.randomUUID().toString(),
+    override val id: String = java.util.UUID.randomUUID().toString(),
     val vehicleId: String,
     val type: MaintenanceType,
     val date: Date,
@@ -112,14 +112,14 @@ data class Maintenance(
     val nextDate: Date?,
     val nextMileage: Long?,
     val status: MaintenanceStatus = MaintenanceStatus.IN_PROGRESS
-)
+) : Identifiable
 
 enum class AssignmentStatus {
     ACTIVE, COMPLETED
 }
 
 data class Assignment(
-    val id: String = java.util.UUID.randomUUID().toString(),
+    override val id: String = java.util.UUID.randomUUID().toString(),
     val vehicleId: String,
     val driverId: String,
     val departureDate: Date = Date(),
@@ -130,4 +130,4 @@ data class Assignment(
     val departureObservations: String = "",
     val returnObservations: String = "",
     val status: AssignmentStatus = AssignmentStatus.ACTIVE
-)
+) : Identifiable
