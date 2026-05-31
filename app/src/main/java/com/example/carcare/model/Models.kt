@@ -83,6 +83,7 @@ data class Driver(
 }
 
 enum class MaintenanceStatus(val label: String) {
+    PENDING("Pendiente"),
     IN_PROGRESS("En proceso"),
     COMPLETED("Completado")
 }

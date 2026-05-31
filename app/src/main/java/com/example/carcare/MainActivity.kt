@@ -26,7 +26,6 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun MainApp() {
-    // Controla si el splash ya terminó
     var splashFinished by remember { mutableStateOf(false) }
     var currentRole by remember { mutableStateOf<Role?>(null) }
     var loggedInDriverIdCard by remember { mutableStateOf<String?>(null) }

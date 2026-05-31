@@ -1,61 +1,30 @@
 package com.example.carcare.ui.viewmodel
 
+import android.util.Log
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
-import com.example.carcare.model.FuelType
+import androidx.lifecycle.viewModelScope
+import com.example.carcare.data.repository.VehicleRepository
 import com.example.carcare.model.Vehicle
 import com.example.carcare.model.VehicleStatus
-import java.util.*
+import kotlinx.coroutines.launch
 
 class VehicleViewModel : ViewModel() {
-    private val _vehicles = mutableStateListOf<Vehicle>(
-        Vehicle(
-            brand = "Toyota",
-            model = "Hilux",
-            year = 2025,
-            plate = "M460800",
-            fuelType = FuelType.DIESEL,
-            mileage = 0,
-            color = "Plata",
-            chassisNumber = "TH213",
-            engineNumber = "2.4 2GD-FTV",
-            vehiclePhotoUri = "https://images.prd.kavak.io/eyJidWNrZXQiOiJrYXZhay1sdW1vcy1wcm9kLWltYWdlcyIsImtleSI6ImltYWdlcy9hZHMvMzc5NDU3L29wdGltaXplZC9pbWctMjAyNDEwMTUtMTEwNDMyLnBuZyIsImVkaXRzIjp7InJlc2l6ZSI6eyJ3aWR0aCI6NjQwLCJoZWlnaHQiOjQ4MH19fQ==",
-            insuranceExpiryDate = Calendar.getInstance().apply { set(2027, Calendar.JANUARY, 1, 0, 0, 0) }.time,
-            status = VehicleStatus.AVAILABLE
-        ),
-        Vehicle(
-            brand = "Toyota",
-            model = "Yaris E",
-            year = 2024,
-            plate = "M390789",
-            fuelType = FuelType.GASOLINE,
-            mileage = 20000,
-            color = "Blanco",
-            chassisNumber = "TY204",
-            engineNumber = "1.5 2NR-FE",
-            insuranceExpiryDate = Calendar.getInstance().apply { set(2027, Calendar.JANUARY, 1, 0, 0, 0) }.time,
-            status = VehicleStatus.AVAILABLE
-        ),
-        Vehicle(
-            id = "nissan-np300",
-            brand = "Nissan",
-            model = "NP300 Frontier",
-            year = 2018,
-            plate = "M290700",
-            fuelType = FuelType.DIESEL,
-            mileage = 160700,
-            color = "Blanco",
-            chassisNumber = "NNP300F",
-            engineNumber = "2.5 QR25",
-            insuranceExpiryDate = Calendar.getInstance().apply { set(2027, Calendar.JANUARY, 1, 0, 0, 0) }.time,
-            status = VehicleStatus.MAINTENANCE
-        )
-    )
+
+    private val repository = VehicleRepository()
+
+    private val _vehicles = mutableStateListOf<Vehicle>()
     val vehicles: List<Vehicle> get() = _vehicles
+
+    var isLoading by mutableStateOf(false)
+        private set
+
+    var errorMessage by mutableStateOf<String?>(null)
+        private set
 
     var searchQuery by mutableStateOf("")
         private set
@@ -66,42 +35,137 @@ class VehicleViewModel : ViewModel() {
         } else {
             _vehicles.filter {
                 it.brand.contains(searchQuery, ignoreCase = true) ||
-                it.plate.contains(searchQuery, ignoreCase = true) ||
-                it.model.contains(searchQuery, ignoreCase = true)
+                        it.plate.contains(searchQuery, ignoreCase = true) ||
+                        it.model.contains(searchQuery, ignoreCase = true)
             }
         }
+    }
+
+    init {
+        loadVehicles()
     }
 
     fun onSearchQueryChange(newQuery: String) {
         searchQuery = newQuery
     }
 
-    fun addVehicle(vehicle: Vehicle) {
-        _vehicles.add(vehicle)
+    /** Carga completa desde la API. Solo en el arranque o refresco manual. */
+    fun loadVehicles() {
+        viewModelScope.launch {
+            isLoading = true
+            errorMessage = null
+            try {
+                val result = repository.getAll()
+                _vehicles.clear()
+                _vehicles.addAll(result)
+            } catch (e: Exception) {
+                errorMessage = "Error al cargar vehículos: ${e.message}"
+                Log.e("VehicleVM", "loadVehicles", e)
+            } finally {
+                isLoading = false
+            }
+        }
     }
 
+    /** Crea en el backend y agrega el vehiculo devuelto (con id real). Sin recargar todo. */
+    fun addVehicle(vehicle: Vehicle) {
+        viewModelScope.launch {
+            try {
+                val created = repository.create(vehicle)
+                _vehicles.add(created)
+            } catch (e: Exception) {
+                errorMessage = "Error al crear vehículo: ${e.message}"
+                Log.e("VehicleVM", "addVehicle", e)
+            }
+        }
+    }
+
+    /** Optimista: refleja el cambio al instante, revierte si la red falla. */
     fun updateVehicle(updatedVehicle: Vehicle) {
         val index = _vehicles.indexOfFirst { it.id == updatedVehicle.id }
-        if (index != -1) {
-            _vehicles[index] = updatedVehicle
+        val previous = if (index != -1) _vehicles[index] else null
+        if (index != -1) _vehicles[index] = updatedVehicle
+
+        viewModelScope.launch {
+            try {
+                val saved = repository.update(updatedVehicle)
+                val i = _vehicles.indexOfFirst { it.id == saved.id }
+                if (i != -1) _vehicles[i] = saved
+            } catch (e: Exception) {
+                if (previous != null) {
+                    val i = _vehicles.indexOfFirst { it.id == previous.id }
+                    if (i != -1) _vehicles[i] = previous
+                }
+                errorMessage = "Error al actualizar vehículo: ${e.message}"
+                Log.e("VehicleVM", "updateVehicle", e)
+            }
         }
     }
 
+    /** Optimista: lo saca de la lista al instante, lo reinserta si falla. */
     fun deleteVehicle(vehicleId: String) {
-        _vehicles.removeAll { it.id == vehicleId }
+        val index = _vehicles.indexOfFirst { it.id == vehicleId }
+        val backup = if (index != -1) _vehicles[index] else null
+        if (index != -1) _vehicles.removeAt(index)
+
+        viewModelScope.launch {
+            try {
+                repository.delete(vehicleId)
+            } catch (e: Exception) {
+                if (backup != null) {
+                    _vehicles.add(index.coerceIn(0, _vehicles.size), backup)
+                }
+                errorMessage = "Error al eliminar vehículo: ${e.message}"
+                Log.e("VehicleVM", "deleteVehicle", e)
+            }
+        }
     }
 
+    /** Optimista. */
     fun changeStatus(vehicleId: String, newStatus: VehicleStatus) {
         val index = _vehicles.indexOfFirst { it.id == vehicleId }
-        if (index != -1) {
-            _vehicles[index] = _vehicles[index].copy(status = newStatus)
+        val previous = if (index != -1) _vehicles[index] else null
+        if (index != -1) _vehicles[index] = _vehicles[index].copy(status = newStatus)
+
+        viewModelScope.launch {
+            try {
+                val saved = repository.changeStatus(vehicleId, newStatus)
+                val i = _vehicles.indexOfFirst { it.id == saved.id }
+                if (i != -1) _vehicles[i] = saved
+            } catch (e: Exception) {
+                if (previous != null) {
+                    val i = _vehicles.indexOfFirst { it.id == previous.id }
+                    if (i != -1) _vehicles[i] = previous
+                }
+                errorMessage = "Error al cambiar estado: ${e.message}"
+                Log.e("VehicleVM", "changeStatus", e)
+            }
         }
     }
 
+    /** Optimista. */
     fun updateMileage(vehicleId: String, newMileage: Long) {
         val index = _vehicles.indexOfFirst { it.id == vehicleId }
-        if (index != -1) {
-            _vehicles[index] = _vehicles[index].copy(mileage = newMileage)
+        val previous = if (index != -1) _vehicles[index] else null
+        if (index != -1) _vehicles[index] = _vehicles[index].copy(mileage = newMileage)
+
+        viewModelScope.launch {
+            try {
+                val saved = repository.updateMileage(vehicleId, newMileage)
+                val i = _vehicles.indexOfFirst { it.id == saved.id }
+                if (i != -1) _vehicles[i] = saved
+            } catch (e: Exception) {
+                if (previous != null) {
+                    val i = _vehicles.indexOfFirst { it.id == previous.id }
+                    if (i != -1) _vehicles[i] = previous
+                }
+                errorMessage = "Error al actualizar kilometraje: ${e.message}"
+                Log.e("VehicleVM", "updateMileage", e)
+            }
         }
+    }
+
+    fun clearError() {
+        errorMessage = null
     }
 }
