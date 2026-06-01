@@ -52,17 +52,36 @@ fun DashboardSection(
         )
     }
 
-    val overdueMaintenances = 0
+    val overdueMaintenances = remember(maintenances, vehicles) {
+        maintenances.count { it.status == MaintenanceStatus.IN_PROGRESS &&
+                ((it.nextDate != null && it.nextDate.before(now)) ||
+                        (it.nextMileage != null && vehicles.find { v -> v.id == it.vehicleId }?.let { v -> v.mileage >= it.nextMileage } == true))
+        }
+    }
 
-    val extraStats = remember(vehicles) {
+    val extraStats = remember(overdueMaintenances, vehicles) {
         listOf(
             StatData("Mant. Vencidos", overdueMaintenances.toString(), Icons.Default.RunningWithErrors, Color.Red),
             StatData("Pend. Revisión", vehicles.count { it.status == VehicleStatus.PENDING_REVIEW }.toString(), Icons.AutoMirrored.Filled.FactCheck, Color(0xFF795548))
         )
     }
 
-    val alerts = remember(vehicles, drivers, now, soon) {
+    val alerts = remember(maintenances, vehicles, drivers, now, soon) {
         val list = mutableListOf<String>()
+
+        maintenances.filter { it.status == MaintenanceStatus.IN_PROGRESS }.forEach { m ->
+            val vehicle = vehicles.find { it.id == m.vehicleId }
+            val vehicleLabel = vehicle?.let { "${it.brand} (${Validators.formatPlate(it.plate)})" } ?: "Vehículo"
+
+            if (m.nextDate != null) {
+                if (m.nextDate.before(now)) list.add("VENCIDO: Mantenimiento $vehicleLabel")
+                else if (m.nextDate.before(soon)) list.add("PRÓXIMO: Mantenimiento $vehicleLabel")
+            }
+
+            if (m.nextMileage != null && vehicle != null && vehicle.mileage >= m.nextMileage) {
+                list.add("VENCIDO (KM): Mantenimiento $vehicleLabel")
+            }
+        }
 
         drivers.filter { it.status == DriverStatus.ACTIVE }.forEach { d ->
             if (d.licenseExpiryDate.before(now)) list.add("VENCIDO: Licencia de ${d.fullName}")
@@ -167,6 +186,10 @@ fun DashboardSection(
                 }
             }
         }
+
+        item {
+            Spacer(modifier = Modifier.height(32.dp))
+        }
     }
 }
 
@@ -178,7 +201,7 @@ fun VehicleListSection(
     onDelete: (Vehicle) -> Unit
 ) {
     LazyColumn(modifier = Modifier.fillMaxSize()) {
-        items(vehicles) { vehicle ->
+        items(vehicles, key = { it.id }) { vehicle ->
             VehicleItem(
                 vehicle = vehicle,
                 onClick = { onVehicleClick(vehicle) },
@@ -193,7 +216,6 @@ fun VehicleListSection(
 fun MaintenanceListSection(
     maintenances: List<Maintenance>,
     vehicles: List<Vehicle>,
-    onMaintenanceClick: (Maintenance) -> Unit,
     onEdit: (Maintenance) -> Unit,
     onDelete: (Maintenance) -> Unit,
     onStatusChange: (Maintenance, MaintenanceStatus) -> Unit
@@ -203,24 +225,16 @@ fun MaintenanceListSection(
             Text("No hay mantenimientos registrados.")
         }
     } else {
-        val activeMaintenances = maintenances.filter { it.status == MaintenanceStatus.IN_PROGRESS }
-        if (activeMaintenances.isEmpty()) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text("No hay mantenimientos en proceso.")
-            }
-        } else {
-            LazyColumn(modifier = Modifier.fillMaxSize()) {
-                items(activeMaintenances) { maintenance ->
-                    val vehicle = vehicles.find { it.id == maintenance.vehicleId }
-                    MaintenanceItem(
-                        maintenance = maintenance,
-                        vehicle = vehicle,
-                        onClick = { onMaintenanceClick(maintenance) },
-                        onEdit = { onEdit(maintenance) },
-                        onDelete = { onDelete(maintenance) },
-                        onStatusChange = { onStatusChange(maintenance, it) }
-                    )
-                }
+        LazyColumn(modifier = Modifier.fillMaxSize()) {
+            items(maintenances, key = { it.id }) { maintenance ->
+                val vehicle = vehicles.find { it.id == maintenance.vehicleId }
+                MaintenanceItem(
+                    maintenance = maintenance,
+                    vehicle = vehicle,
+                    onEdit = { onEdit(maintenance) },
+                    onDelete = { onDelete(maintenance) },
+                    onStatusChange = { onStatusChange(maintenance, it) }
+                )
             }
         }
     }
@@ -230,17 +244,13 @@ fun MaintenanceListSection(
 fun MaintenanceItem(
     maintenance: Maintenance,
     vehicle: Vehicle?,
-    onClick: () -> Unit,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
     onStatusChange: (MaintenanceStatus) -> Unit
 ) {
     val sdf = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
     val plateLabel = vehicle?.plate?.let { Validators.formatPlate(it) } ?: "N/A"
-    Card(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-        onClick = onClick
-    ) {
+    Card(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
                 Column {
@@ -296,7 +306,7 @@ fun DriverListSection(
         }
     } else {
         LazyColumn(modifier = Modifier.fillMaxSize()) {
-            items(drivers) { driver ->
+            items(drivers, key = { it.id }) { driver ->
                 DriverItem(
                     driver = driver,
                     onClick = { onDriverClick(driver) },
@@ -363,7 +373,7 @@ fun AssignmentListSection(
         }
     } else {
         LazyColumn(modifier = Modifier.fillMaxSize()) {
-            items(assignments) { assignment ->
+            items(assignments, key = { it.id }) { assignment ->
                 val vehicle = vehicles.find { it.id == assignment.vehicleId }
                 val driver = drivers.find { it.id == assignment.driverId }
                 AssignmentItem(
