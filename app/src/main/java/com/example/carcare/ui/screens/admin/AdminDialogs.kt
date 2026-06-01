@@ -691,6 +691,18 @@ fun DriverFormDialog(
     var licenseExpiry by remember { mutableStateOf<Date?>(driver?.licenseExpiryDate) }
     val status by remember { mutableStateOf(driver?.status ?: DriverStatus.ACTIVE) }
 
+    // Fotos: ahora funcionales (antes eran decorativas)
+    var profilePhotoUri by remember { mutableStateOf(driver?.profilePhotoUri) }
+    var licensePhotoUri by remember { mutableStateOf(driver?.licensePhotoUri) }
+
+    val profilePhotoLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? -> profilePhotoUri = uri?.toString() }
+
+    val licensePhotoLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? -> licensePhotoUri = uri?.toString() }
+
     var attempted by remember { mutableStateOf(false) }
 
     val idRegistry = existingDrivers.map { it.id to it.idCardNumber }
@@ -714,10 +726,20 @@ fun DriverFormDialog(
         text = {
             LazyColumn(modifier = Modifier.fillMaxWidth()) {
                 item {
-                    Text("Fotos (Simulado)", style = MaterialTheme.typography.labelMedium)
+                    Text("Fotos", style = MaterialTheme.typography.labelMedium)
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                        PhotoPlaceholder(label = "Foto Perfil", icon = Icons.Default.AddAPhoto)
-                        PhotoPlaceholder(label = "Foto Licencia", icon = Icons.Default.CameraAlt)
+                        PhotoPlaceholder(
+                            label = "Foto Perfil",
+                            icon = Icons.Default.AddAPhoto,
+                            uri = profilePhotoUri,
+                            onPick = { profilePhotoLauncher.launch("image/*") }
+                        )
+                        PhotoPlaceholder(
+                            label = "Foto Licencia",
+                            icon = Icons.Default.CameraAlt,
+                            uri = licensePhotoUri,
+                            onPick = { licensePhotoLauncher.launch("image/*") }
+                        )
                     }
                     Spacer(modifier = Modifier.height(16.dp))
                     OutlinedTextField(
@@ -806,6 +828,8 @@ fun DriverFormDialog(
                             phone = phone.trim(),
                             licenseNumber = licenseNumber.trim(),
                             licenseExpiryDate = licenseExpiry ?: Date(),
+                            profilePhotoUri = profilePhotoUri,
+                            licensePhotoUri = licensePhotoUri,
                             status = status
                         )
                     )
