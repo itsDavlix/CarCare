@@ -4,8 +4,13 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavType
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.example.carcare.model.Role
 import com.example.carcare.ui.screens.AdminScreen
 import com.example.carcare.ui.screens.DriverScreen
@@ -23,58 +28,86 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             CarCareTheme {
-                MainApp()
+                CarCareNavHost()
             }
         }
     }
 }
 
-@Composable
-fun MainApp() {
-    var splashFinished by remember { mutableStateOf(false) }
-    var currentRole by remember { mutableStateOf<Role?>(null) }
-    var loggedInDriverIdCard by remember { mutableStateOf<String?>(null) }
+/** Rutas de navegación de la app. */
+private object Routes {
+    const val SPLASH = "splash"
+    const val LOGIN = "login"
+    const val ADMIN = "admin"
+    const val DRIVER = "driver/{driverIdCard}"
+    fun driver(idCard: String) = "driver/$idCard"
+}
 
+@Composable
+fun CarCareNavHost() {
+    val navController = rememberNavController()
+
+    // Volver al login limpiando admin/conductor del historial.
     val logout: () -> Unit = {
-        currentRole = null
-        loggedInDriverIdCard = null
+        navController.popBackStack(Routes.LOGIN, inclusive = false)
     }
 
-    when {
-        !splashFinished -> SplashScreen(onSplashFinished = { splashFinished = true })
+    NavHost(navController = navController, startDestination = Routes.SPLASH) {
 
-        currentRole == null -> LoginScreen(onLogin = { role, idCard ->
-            currentRole = role
-            loggedInDriverIdCard = idCard
-        })
+        composable(Routes.SPLASH) {
+            SplashScreen(
+                onSplashFinished = {
+                    navController.navigate(Routes.LOGIN) {
+                        popUpTo(Routes.SPLASH) { inclusive = true }
+                    }
+                }
+            )
+        }
 
-        else -> {
-            // ViewModels izados al nivel de la Activity: una sola instancia, compartida
-            // entre Admin y Conductor, y lista para pasarse a un NavHost más adelante.
+        composable(Routes.LOGIN) {
+            LoginScreen(
+                onLogin = { role, idCard ->
+                    when (role) {
+                        Role.ADMIN -> navController.navigate(Routes.ADMIN)
+                        Role.DRIVER -> navController.navigate(Routes.driver(idCard.orEmpty()))
+                    }
+                }
+            )
+        }
+
+        composable(Routes.ADMIN) {
+            // ViewModels con alcance a esta pantalla; se comparten dentro del panel admin.
             val vehicleViewModel: VehicleViewModel = viewModel()
             val driverViewModel: DriverViewModel = viewModel()
             val maintenanceViewModel: MaintenanceViewModel = viewModel()
             val assignmentViewModel: AssignmentViewModel = viewModel()
 
-            when (currentRole) {
-                Role.ADMIN -> AdminScreen(
-                    onBack = logout,
-                    vehicleViewModel = vehicleViewModel,
-                    maintenanceViewModel = maintenanceViewModel,
-                    driverViewModel = driverViewModel,
-                    assignmentViewModel = assignmentViewModel
-                )
+            AdminScreen(
+                onBack = logout,
+                vehicleViewModel = vehicleViewModel,
+                maintenanceViewModel = maintenanceViewModel,
+                driverViewModel = driverViewModel,
+                assignmentViewModel = assignmentViewModel
+            )
+        }
 
-                Role.DRIVER -> DriverScreen(
-                    driverIdCard = loggedInDriverIdCard ?: "",
-                    onBack = logout,
-                    vehicleViewModel = vehicleViewModel,
-                    driverViewModel = driverViewModel,
-                    assignmentViewModel = assignmentViewModel
-                )
+        composable(
+            route = Routes.DRIVER,
+            arguments = listOf(navArgument("driverIdCard") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val driverIdCard = backStackEntry.arguments?.getString("driverIdCard").orEmpty()
 
-                null -> Unit // inalcanzable: lo cubre la rama currentRole == null
-            }
+            val vehicleViewModel: VehicleViewModel = viewModel()
+            val driverViewModel: DriverViewModel = viewModel()
+            val assignmentViewModel: AssignmentViewModel = viewModel()
+
+            DriverScreen(
+                driverIdCard = driverIdCard,
+                onBack = logout,
+                vehicleViewModel = vehicleViewModel,
+                driverViewModel = driverViewModel,
+                assignmentViewModel = assignmentViewModel
+            )
         }
     }
 }
