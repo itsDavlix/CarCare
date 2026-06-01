@@ -105,8 +105,8 @@ object Validators {
         if (yearStr.isBlank()) return ValidationResult.invalid("El año es obligatorio")
         val year = yearStr.toIntOrNull() ?: return ValidationResult.invalid("Año inválido")
         val currentYear = Calendar.getInstance().get(Calendar.YEAR)
-        if (year < 1980 || year > currentYear + 1) {
-            return ValidationResult.invalid("Año debe estar entre 1980 y ${currentYear + 1}")
+        if (year < 1990 || year > currentYear + 1) {
+            return ValidationResult.invalid("Año debe estar entre 1990 y ${currentYear + 1}")
         }
         return ValidationResult.Valid
     }
@@ -152,6 +152,8 @@ object Validators {
         return idCard.trim().replace("-", "").uppercase()
     }
 
+    private val nicaraguaIdRegex = Regex("^\\d{13}[A-Z]$")
+
     fun validateIdCard(
         idCard: String,
         existingIds: List<Pair<String, String>> = emptyList(),
@@ -160,11 +162,14 @@ object Validators {
         val trimmed = idCard.trim()
         if (trimmed.isBlank()) return ValidationResult.invalid("La cédula es obligatoria")
         val normalized = normalizeIdCard(trimmed)
-        if (normalized.length !in 13..16) {
-            return ValidationResult.invalid("Cédula debe tener 13 caracteres")
+        if (!nicaraguaIdRegex.matches(normalized)) {
+            return ValidationResult.invalid("Formato inválido. Ej: 001-150798-1000X")
         }
-        if (!normalized.all { it.isLetterOrDigit() }) {
-            return ValidationResult.invalid("Cédula solo acepta letras y números")
+        // Valida día (01-31) y mes (01-12) de la fecha embebida (posiciones DDMMAA)
+        val day = normalized.substring(3, 5).toInt()
+        val month = normalized.substring(5, 7).toInt()
+        if (day !in 1..31 || month !in 1..12) {
+            return ValidationResult.invalid("La fecha dentro de la cédula no es válida")
         }
         val duplicate = existingIds.any { (id, c) ->
             normalizeIdCard(c) == normalized && id != currentId
@@ -202,8 +207,11 @@ object Validators {
     ): ValidationResult {
         val trimmed = licenseNumber.trim()
         if (trimmed.isBlank()) return ValidationResult.invalid("El número de licencia es obligatorio")
-        if (trimmed.length < 5) {
-            return ValidationResult.invalid("Número de licencia muy corto")
+        if (trimmed.length !in 4..20) {
+            return ValidationResult.invalid("La licencia debe tener entre 4 y 20 caracteres")
+        }
+        if (!trimmed.all { it.isLetterOrDigit() }) {
+            return ValidationResult.invalid("La licencia solo acepta letras y números")
         }
         val normalized = trimmed.uppercase()
         val duplicate = existingLicenses.any { (id, l) ->
@@ -364,6 +372,9 @@ object Validators {
         val km = finalStr.toLongOrNull() ?: return ValidationResult.invalid("Kilometraje inválido")
         if (km < initialMileage) {
             return ValidationResult.invalid("Final ($km) no puede ser menor al inicial ($initialMileage)")
+        }
+        if (km - initialMileage > 100_000) {
+            return ValidationResult.invalid("Aumento poco realista: más de 100.000 km respecto al inicial")
         }
         return ValidationResult.Valid
     }
