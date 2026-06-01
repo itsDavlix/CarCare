@@ -13,19 +13,19 @@ import java.util.Date
  * Conecta el modelo Driver con la API de conductores.
  * Convierte id Long<->String y fecha Date<->String en el borde de red.
  */
-class DriverRepository {
+class DriverRepository : CrudRepository<Driver> {
 
     private val api = ApiClient.conductorApi
 
-    suspend fun getAll(): List<Driver> = api.listar().map { it.toDomain() }
+    override suspend fun getAll(): List<Driver> = api.listar().map { it.toDomain() }
 
-    suspend fun create(driver: Driver): Driver =
+    override suspend fun create(driver: Driver): Driver =
         api.crear(driver.toRequestDto()).toDomain()
 
     suspend fun update(driver: Driver): Driver =
         api.actualizar(driver.id.toLong(), driver.toRequestDto()).toDomain()
 
-    suspend fun delete(id: String) {
+    override suspend fun delete(id: String) {
         api.eliminar(id.toLong())
     }
 

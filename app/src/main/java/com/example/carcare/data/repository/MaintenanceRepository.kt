@@ -14,19 +14,19 @@ import java.util.Date
  * Conecta el modelo Maintenance con la API de mantenimientos.
  * Convierte id y vehicleId Long<->String y fechas Date<->String.
  */
-class MaintenanceRepository {
+class MaintenanceRepository : CrudRepository<Maintenance> {
 
     private val api = ApiClient.mantenimientoApi
 
-    suspend fun getAll(): List<Maintenance> = api.listar().map { it.toDomain() }
+    override suspend fun getAll(): List<Maintenance> = api.listar().map { it.toDomain() }
 
-    suspend fun create(maintenance: Maintenance): Maintenance =
+    override suspend fun create(maintenance: Maintenance): Maintenance =
         api.crear(maintenance.toRequestDto()).toDomain()
 
     suspend fun update(maintenance: Maintenance): Maintenance =
         api.actualizar(maintenance.id.toLong(), maintenance.toRequestDto()).toDomain()
 
-    suspend fun delete(id: String) {
+    override suspend fun delete(id: String) {
         api.eliminar(id.toLong())
     }
 
