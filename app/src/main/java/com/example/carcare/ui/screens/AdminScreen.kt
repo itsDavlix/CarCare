@@ -23,7 +23,6 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.example.carcare.model.*
 import com.example.carcare.ui.components.DatePickerField
@@ -44,10 +43,10 @@ import java.util.UUID
 @Composable
 fun AdminScreen(
     onBack: () -> Unit,
-    vehicleViewModel: VehicleViewModel = viewModel(),
-    maintenanceViewModel: MaintenanceViewModel = viewModel(),
-    driverViewModel: DriverViewModel = viewModel(),
-    assignmentViewModel: AssignmentViewModel = viewModel()
+    vehicleViewModel: VehicleViewModel,
+    maintenanceViewModel: MaintenanceViewModel,
+    driverViewModel: DriverViewModel,
+    assignmentViewModel: AssignmentViewModel
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
