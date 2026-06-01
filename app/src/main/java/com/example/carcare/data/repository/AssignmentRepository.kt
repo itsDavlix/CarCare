@@ -16,13 +16,13 @@ import java.util.Date
  * El backend coordina los efectos sobre el vehiculo (IN_USE al crear,
  * km+estado al completar, liberar al borrar). El cliente NO los replica.
  */
-class AssignmentRepository {
+class AssignmentRepository : CrudRepository<Assignment> {
 
     private val api = ApiClient.asignacionApi
 
-    suspend fun getAll(): List<Assignment> = api.listar().map { it.toDomain() }
+    override suspend fun getAll(): List<Assignment> = api.listar().map { it.toDomain() }
 
-    suspend fun create(assignment: Assignment): Assignment =
+    override suspend fun create(assignment: Assignment): Assignment =
         api.crear(assignment.toRequestDto()).toDomain()
 
     suspend fun complete(
@@ -41,7 +41,7 @@ class AssignmentRepository {
         return api.completar(id.toLong(), dto).toDomain()
     }
 
-    suspend fun delete(id: String) {
+    override suspend fun delete(id: String) {
         api.eliminar(id.toLong())
     }
 }

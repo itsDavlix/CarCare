@@ -1,146 +1,41 @@
 package com.example.carcare.ui.viewmodel
 
-import android.util.Log
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
 import com.example.carcare.data.repository.MaintenanceRepository
 import com.example.carcare.model.Maintenance
 import com.example.carcare.model.MaintenanceStatus
 import com.example.carcare.model.Vehicle
-import kotlinx.coroutines.launch
 
-class MaintenanceViewModel : ViewModel() {
+class MaintenanceViewModel :
+    BaseListViewModel<Maintenance, MaintenanceRepository>(MaintenanceRepository(), "MaintenanceVM") {
 
-    private val repository = MaintenanceRepository()
+    val maintenances: List<Maintenance> get() = items
 
-    private val _maintenances = mutableStateListOf<Maintenance>()
-    val maintenances: List<Maintenance> get() = _maintenances
-
-    var isLoading by mutableStateOf(false)
-        private set
-
-    var errorMessage by mutableStateOf<String?>(null)
-        private set
-
-    var searchQuery by mutableStateOf("")
-        private set
-
-    init {
-        loadMaintenances()
-    }
-
-    fun onSearchQueryChange(newQuery: String) {
-        searchQuery = newQuery
-    }
-
+    /** Filtro que cruza con vehículos (marca/placa) o por descripción. */
     fun getFilteredMaintenances(vehicles: List<Vehicle>): List<Maintenance> {
-        if (searchQuery.isBlank()) return _maintenances
-        return _maintenances.filter { m ->
-            val vehicle = vehicles.find { it.id == m.vehicleId }
-            vehicle?.brand?.contains(searchQuery, ignoreCase = true) == true ||
-                    vehicle?.plate?.contains(searchQuery, ignoreCase = true) == true ||
-                    m.description.contains(searchQuery, ignoreCase = true)
+        if (searchQuery.isBlank()) return items
+        return items.filter { m ->
+            val vehicle = vehicles.firstOrNull { it.id == m.vehicleId }
+            matchesQuery(vehicle?.brand, vehicle?.plate, m.description)
         }
     }
 
-    /** Filtro local sobre los mantenimientos ya cargados. Sincrono. */
+    /** Historial local (ya cargado) de un vehículo. Síncrono. */
     fun getHistoryForVehicle(vehicleId: String): List<Maintenance> =
-        _maintenances.filter { it.vehicleId == vehicleId }
+        items.filter { it.vehicleId == vehicleId }
 
-    fun loadMaintenances() {
-        viewModelScope.launch {
-            isLoading = true
-            errorMessage = null
-            try {
-                val result = repository.getAll()
-                _maintenances.clear()
-                _maintenances.addAll(result)
-            } catch (e: Exception) {
-                errorMessage = "Error al cargar mantenimientos: ${e.message}"
-                Log.e("MaintenanceVM", "loadMaintenances", e)
-            } finally {
-                isLoading = false
-            }
-        }
-    }
+    fun loadMaintenances() = load()
 
-    fun addMaintenance(maintenance: Maintenance) {
-        viewModelScope.launch {
-            try {
-                val created = repository.create(maintenance)
-                _maintenances.add(created)
-            } catch (e: Exception) {
-                errorMessage = "Error al crear mantenimiento: ${e.message}"
-                Log.e("MaintenanceVM", "addMaintenance", e)
-            }
-        }
-    }
+    fun addMaintenance(maintenance: Maintenance) = create(maintenance)
 
-    fun updateMaintenance(updatedMaintenance: Maintenance) {
-        val index = _maintenances.indexOfFirst { it.id == updatedMaintenance.id }
-        val previous = if (index != -1) _maintenances[index] else null
-        if (index != -1) _maintenances[index] = updatedMaintenance
+    fun updateMaintenance(updatedMaintenance: Maintenance) =
+        optimisticReplace(updatedMaintenance) { repository.update(updatedMaintenance) }
 
-        viewModelScope.launch {
-            try {
-                val saved = repository.update(updatedMaintenance)
-                val i = _maintenances.indexOfFirst { it.id == saved.id }
-                if (i != -1) _maintenances[i] = saved
-            } catch (e: Exception) {
-                if (previous != null) {
-                    val i = _maintenances.indexOfFirst { it.id == previous.id }
-                    if (i != -1) _maintenances[i] = previous
-                }
-                errorMessage = "Error al actualizar mantenimiento: ${e.message}"
-                Log.e("MaintenanceVM", "updateMaintenance", e)
-            }
-        }
-    }
-
-    fun deleteMaintenance(maintenanceId: String) {
-        val index = _maintenances.indexOfFirst { it.id == maintenanceId }
-        val backup = if (index != -1) _maintenances[index] else null
-        if (index != -1) _maintenances.removeAt(index)
-
-        viewModelScope.launch {
-            try {
-                repository.delete(maintenanceId)
-            } catch (e: Exception) {
-                if (backup != null) {
-                    _maintenances.add(index.coerceIn(0, _maintenances.size), backup)
-                }
-                errorMessage = "Error al eliminar mantenimiento: ${e.message}"
-                Log.e("MaintenanceVM", "deleteMaintenance", e)
-            }
-        }
-    }
+    fun deleteMaintenance(maintenanceId: String) = optimisticDelete(maintenanceId)
 
     fun updateStatus(maintenanceId: String, newStatus: MaintenanceStatus) {
-        val index = _maintenances.indexOfFirst { it.id == maintenanceId }
-        val previous = if (index != -1) _maintenances[index] else null
-        if (index != -1) _maintenances[index] = _maintenances[index].copy(status = newStatus)
-
-        viewModelScope.launch {
-            try {
-                val saved = repository.changeStatus(maintenanceId, newStatus)
-                val i = _maintenances.indexOfFirst { it.id == saved.id }
-                if (i != -1) _maintenances[i] = saved
-            } catch (e: Exception) {
-                if (previous != null) {
-                    val i = _maintenances.indexOfFirst { it.id == previous.id }
-                    if (i != -1) _maintenances[i] = previous
-                }
-                errorMessage = "Error al cambiar estado: ${e.message}"
-                Log.e("MaintenanceVM", "updateStatus", e)
-            }
+        val current = items.firstOrNull { it.id == maintenanceId } ?: return
+        optimisticReplace(current.copy(status = newStatus)) {
+            repository.changeStatus(maintenanceId, newStatus)
         }
-    }
-
-    fun clearError() {
-        errorMessage = null
     }
 }
