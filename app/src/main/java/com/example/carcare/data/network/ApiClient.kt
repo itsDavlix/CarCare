@@ -18,7 +18,7 @@ import java.util.concurrent.TimeUnit
  */
 object ApiClient {
 
-    private const val BASE_URL = "https://api-carcare.onrender.com/"
+    const val BASE_URL = "https://api-carcare.onrender.com/"
 
     private val moshi: Moshi = Moshi.Builder()
         .add(KotlinJsonAdapterFactory())
