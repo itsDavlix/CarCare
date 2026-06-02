@@ -100,13 +100,15 @@ fun CarCareNavHost() {
             val vehicleViewModel: VehicleViewModel = viewModel()
             val driverViewModel: DriverViewModel = viewModel()
             val assignmentViewModel: AssignmentViewModel = viewModel()
+            val maintenanceViewModel: MaintenanceViewModel = viewModel()
 
             DriverScreen(
                 driverIdCard = driverIdCard,
                 onBack = logout,
                 vehicleViewModel = vehicleViewModel,
                 driverViewModel = driverViewModel,
-                assignmentViewModel = assignmentViewModel
+                assignmentViewModel = assignmentViewModel,
+                maintenanceViewModel = maintenanceViewModel
             )
         }
     }
