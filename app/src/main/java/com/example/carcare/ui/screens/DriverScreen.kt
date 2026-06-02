@@ -16,6 +16,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.example.carcare.model.*
 import com.example.carcare.ui.components.StatusBadge
+import com.example.carcare.ui.components.SseRefreshEffect
 import com.example.carcare.ui.viewmodel.AssignmentViewModel
 import com.example.carcare.ui.viewmodel.DriverViewModel
 import com.example.carcare.ui.viewmodel.MaintenanceViewModel
@@ -49,6 +50,15 @@ fun DriverScreen(
 
     val assignedVehicle = activeAssignment?.let { a ->
         vehicleViewModel.vehicles.find { it.id == a.vehicleId }
+    }
+
+    SseRefreshEffect { entidad ->
+        when (entidad) {
+            "vehiculos" -> vehicleViewModel.reloadSilently()
+            "conductores" -> driverViewModel.reloadSilently()
+            "mantenimientos" -> maintenanceViewModel.reloadSilently()
+            "asignaciones" -> assignmentViewModel.reloadSilently()
+        }
     }
 
     val isLoading = driverViewModel.isLoading || vehicleViewModel.isLoading ||
