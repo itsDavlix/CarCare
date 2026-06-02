@@ -405,16 +405,18 @@ fun MaintenanceFormDialog(
     var type by remember { mutableStateOf(maintenance?.type ?: MaintenanceType.PREVENTIVE) }
     var description by remember { mutableStateOf(maintenance?.description ?: "") }
     var responsible by remember { mutableStateOf(maintenance?.responsible ?: "") }
-    
-    var currentMileage by remember { 
+
+    var currentMileage by remember {
         mutableStateOf(
-            maintenance?.currentMileage?.toString() ?: 
+            maintenance?.currentMileage?.toString() ?:
             vehicles.find { it.id == selectedVehicleId }?.mileage?.toString() ?: ""
-        ) 
+        )
     }
+    var nextMileage by remember { mutableStateOf(maintenance?.nextMileage?.toString() ?: "") }
 
     var startDate by remember { mutableStateOf<Date?>(maintenance?.date ?: Date()) }
     var completionDate by remember { mutableStateOf<Date?>(maintenance?.completionDate) }
+    var nextDate by remember { mutableStateOf<Date?>(maintenance?.nextDate) }
 
     var expandedVehicle by remember { mutableStateOf(false) }
     var expandedType by remember { mutableStateOf(false) }
@@ -431,9 +433,14 @@ fun MaintenanceFormDialog(
         Validators.validateMaintenanceMileage(currentMileage, selectedVehicle.mileage)
     else
         Validators.validateMileage(currentMileage)
+    val nextMileageV = if (selectedVehicle != null)
+        Validators.validateNextMileage(nextMileage, selectedVehicle.mileage)
+    else
+        Validators.validateOptionalMileage(nextMileage)
     val datesV = Validators.validateMaintenanceDates(startDate, completionDate)
+    val nextDateV = Validators.validateFutureDate(nextDate, "La próxima fecha")
 
-    val isValid = !noVehicles && listOf(vehicleV, descV, responsibleV, mileageV, datesV)
+    val isValid = !noVehicles && listOf(vehicleV, descV, responsibleV, mileageV, nextMileageV, datesV, nextDateV)
         .all { it.isValid }
 
     AlertDialog(
@@ -462,12 +469,12 @@ fun MaintenanceFormDialog(
                                 vehicles.forEach { v ->
                                     DropdownMenuItem(
                                         text = { Text("${v.brand} ${v.model} (${Validators.formatPlate(v.plate)})") },
-                                        onClick = { 
+                                        onClick = {
                                             selectedVehicleId = v.id
                                             if (maintenance == null) {
                                                 currentMileage = v.mileage.toString()
                                             }
-                                            expandedVehicle = false 
+                                            expandedVehicle = false
                                         }
                                     )
                                 }
@@ -537,6 +544,26 @@ fun MaintenanceFormDialog(
                             } else null,
                             modifier = Modifier.fillMaxWidth()
                         )
+
+                        DatePickerField(
+                            label = "Próxima fecha programada (opcional)",
+                            selectedDate = nextDate,
+                            onDateSelected = { nextDate = it },
+                            minDate = Date(),
+                            isError = attempted && !nextDateV.isValid,
+                            supportingText = if (attempted && !nextDateV.isValid) nextDateV.errorMessage else null
+                        )
+
+                        OutlinedTextField(
+                            value = nextMileage,
+                            onValueChange = { nextMileage = it.filter { c -> c.isDigit() } },
+                            label = { Text("Próximo Kilometraje (opcional)") },
+                            isError = attempted && !nextMileageV.isValid,
+                            supportingText = if (attempted && !nextMileageV.isValid) {
+                                { Text(nextMileageV.errorMessage ?: "") }
+                            } else null,
+                            modifier = Modifier.fillMaxWidth()
+                        )
                     }
                 }
             }
@@ -556,8 +583,8 @@ fun MaintenanceFormDialog(
                                 currentMileage = currentMileage.toLongOrNull() ?: 0L,
                                 description = description.trim(),
                                 responsible = responsible.trim(),
-                                nextDate = null,
-                                nextMileage = null,
+                                nextDate = nextDate,
+                                nextMileage = nextMileage.toLongOrNull(),
                                 status = maintenance?.status ?: MaintenanceStatus.IN_PROGRESS
                             )
                         )
@@ -660,22 +687,37 @@ fun DriverFormDialog(
     var idCardNumber by remember { mutableStateOf(driver?.idCardNumber ?: "") }
     var age by remember { mutableStateOf(driver?.age?.toString() ?: "") }
     var phone by remember { mutableStateOf(driver?.phone ?: "") }
+    var licenseNumber by remember { mutableStateOf(driver?.licenseNumber ?: "") }
     var licenseExpiry by remember { mutableStateOf<Date?>(driver?.licenseExpiryDate) }
     val status by remember { mutableStateOf(driver?.status ?: DriverStatus.ACTIVE) }
+
+    // Fotos: ahora funcionales (antes eran decorativas)
+    var profilePhotoUri by remember { mutableStateOf(driver?.profilePhotoUri) }
+    var licensePhotoUri by remember { mutableStateOf(driver?.licensePhotoUri) }
+
+    val profilePhotoLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? -> profilePhotoUri = uri?.toString() }
+
+    val licensePhotoLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? -> licensePhotoUri = uri?.toString() }
 
     var attempted by remember { mutableStateOf(false) }
 
     val idRegistry = existingDrivers.map { it.id to it.idCardNumber }
     val phoneRegistry = existingDrivers.map { it.id to it.phone }
+    val licenseRegistry = existingDrivers.map { it.id to it.licenseNumber }
 
     val firstNameV = Validators.validateName(firstName, "El nombre")
     val lastNameV = Validators.validateName(lastName, "El apellido")
     val idV = Validators.validateIdCard(idCardNumber, idRegistry, driver?.id)
     val ageV = Validators.validateAge(age)
     val phoneV = Validators.validatePhone(phone, phoneRegistry, driver?.id)
+    val licenseV = Validators.validateLicenseNumber(licenseNumber, licenseRegistry, driver?.id)
     val expiryV = Validators.validateLicenseExpiry(licenseExpiry)
 
-    val isValid = listOf(firstNameV, lastNameV, idV, ageV, phoneV, expiryV)
+    val isValid = listOf(firstNameV, lastNameV, idV, ageV, phoneV, licenseV, expiryV)
         .all { it.isValid }
 
     AlertDialog(
@@ -684,10 +726,20 @@ fun DriverFormDialog(
         text = {
             LazyColumn(modifier = Modifier.fillMaxWidth()) {
                 item {
-                    Text("Fotos (Simulado)", style = MaterialTheme.typography.labelMedium)
+                    Text("Fotos", style = MaterialTheme.typography.labelMedium)
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                        PhotoPlaceholder(label = "Foto Perfil", icon = Icons.Default.AddAPhoto)
-                        PhotoPlaceholder(label = "Foto Licencia", icon = Icons.Default.CameraAlt)
+                        PhotoPlaceholder(
+                            label = "Foto Perfil",
+                            icon = Icons.Default.AddAPhoto,
+                            uri = profilePhotoUri,
+                            onPick = { profilePhotoLauncher.launch("image/*") }
+                        )
+                        PhotoPlaceholder(
+                            label = "Foto Licencia",
+                            icon = Icons.Default.CameraAlt,
+                            uri = licensePhotoUri,
+                            onPick = { licensePhotoLauncher.launch("image/*") }
+                        )
                     }
                     Spacer(modifier = Modifier.height(16.dp))
                     OutlinedTextField(
@@ -741,6 +793,15 @@ fun DriverFormDialog(
                             modifier = Modifier.weight(2f)
                         )
                     }
+                    OutlinedTextField(
+                        value = licenseNumber, onValueChange = { licenseNumber = it.uppercase() },
+                        label = { Text("Número de licencia") },
+                        isError = attempted && !licenseV.isValid,
+                        supportingText = if (attempted && !licenseV.isValid) {
+                            { Text(licenseV.errorMessage ?: "") }
+                        } else null,
+                        modifier = Modifier.fillMaxWidth()
+                    )
 
                     DatePickerField(
                         label = "Vencimiento de licencia",
@@ -765,8 +826,10 @@ fun DriverFormDialog(
                             idCardNumber = Validators.normalizeIdCard(idCardNumber),
                             age = age.toIntOrNull() ?: 0,
                             phone = phone.trim(),
-                            licenseNumber = "",
+                            licenseNumber = licenseNumber.trim(),
                             licenseExpiryDate = licenseExpiry ?: Date(),
+                            profilePhotoUri = profilePhotoUri,
+                            licensePhotoUri = licensePhotoUri,
                             status = status
                         )
                     )

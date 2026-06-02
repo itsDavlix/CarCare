@@ -3,7 +3,6 @@ package com.example.carcare.ui.screens
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Logout
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -11,9 +10,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.carcare.model.AssignmentStatus
-import com.example.carcare.model.VehicleStatus
 import com.example.carcare.ui.components.StatusBadge
 import com.example.carcare.ui.viewmodel.AssignmentViewModel
 import com.example.carcare.ui.viewmodel.DriverViewModel
@@ -24,9 +21,9 @@ import com.example.carcare.ui.viewmodel.VehicleViewModel
 fun DriverScreen(
     driverIdCard: String,
     onBack: () -> Unit,
-    vehicleViewModel: VehicleViewModel = viewModel(),
-    driverViewModel: DriverViewModel = viewModel(),
-    assignmentViewModel: AssignmentViewModel = viewModel()
+    vehicleViewModel: VehicleViewModel,
+    driverViewModel: DriverViewModel,
+    assignmentViewModel: AssignmentViewModel
 ) {
     // Buscar al conductor por cédula
     val driver = remember(driverIdCard, driverViewModel.drivers) {
