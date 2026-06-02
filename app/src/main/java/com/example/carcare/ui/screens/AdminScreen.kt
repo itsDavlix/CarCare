@@ -11,6 +11,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.example.carcare.model.*
 import com.example.carcare.ui.components.DeleteConfirmationDialog
+import com.example.carcare.ui.components.SseRefreshEffect
 import com.example.carcare.ui.screens.admin.*
 import com.example.carcare.ui.viewmodel.*
 import kotlinx.coroutines.launch
@@ -31,6 +32,15 @@ fun AdminScreen(
     ErrorSnackbarEffect(driverViewModel.errorMessage, snackbarHostState) { driverViewModel.clearError() }
     ErrorSnackbarEffect(maintenanceViewModel.errorMessage, snackbarHostState) { maintenanceViewModel.clearError() }
     ErrorSnackbarEffect(assignmentViewModel.errorMessage, snackbarHostState) { assignmentViewModel.clearError() }
+
+    SseRefreshEffect { entidad ->
+        when (entidad) {
+            "vehiculos" -> vehicleViewModel.reloadSilently()
+            "conductores" -> driverViewModel.reloadSilently()
+            "mantenimientos" -> maintenanceViewModel.reloadSilently()
+            "asignaciones" -> assignmentViewModel.reloadSilently()
+        }
+    }
 
     var selectedTab by remember { mutableIntStateOf(0) }
     val tabs = listOf("Dashboard", "Vehículos", "Mantenimiento", "Conductores", "Asignaciones")

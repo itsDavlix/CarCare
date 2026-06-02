@@ -69,6 +69,22 @@ abstract class BaseListViewModel<T : Identifiable, R : CrudRepository<T>>(
         }
     }
 
+    /**
+     * Recarga desde la API SIN mostrar el indicador de carga ni pisar la UI con
+     * un error. Para refrescos por evento SSE (cambios hechos en otro dispositivo).
+     */
+    fun reloadSilently() {
+        viewModelScope.launch {
+            try {
+                val result = repository.getAll()
+                _items.clear()
+                _items.addAll(result)
+            } catch (e: Exception) {
+                Log.e(logTag, "reloadSilently", e)
+            }
+        }
+    }
+
     /** Crea en el backend y agrega la entidad devuelta (con su id real). Sin recargar todo. */
     protected fun create(item: T, onSuccess: () -> Unit = {}) {
         viewModelScope.launch {
