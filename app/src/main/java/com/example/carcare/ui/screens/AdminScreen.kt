@@ -43,7 +43,7 @@ fun AdminScreen(
     }
 
     var selectedTab by remember { mutableIntStateOf(0) }
-    val tabs = listOf("Dashboard", "Vehículos", "Mantenimiento", "Conductores", "Asignaciones")
+    val tabs = listOf("Panel", "Vehículos", "Taller", "Conduct.", "Asign.")
 
     var showVehicleForm by remember { mutableStateOf(false) }
     var vehicleToEdit by remember { mutableStateOf<Vehicle?>(null) }
