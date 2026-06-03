@@ -40,22 +40,6 @@ fun SearchBar(query: String, onQueryChange: (String) -> Unit, label: String) {
     )
 }
 
-data class StatData(val label: String, val value: String, val icon: ImageVector, val color: Color)
-
-@Composable
-fun StatCard(stat: StatData, modifier: Modifier = Modifier) {
-    Card(
-        modifier = modifier.padding(4.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Icon(stat.icon, contentDescription = null, tint = stat.color)
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(stat.value, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
-            Text(stat.label, style = MaterialTheme.typography.labelSmall)
-        }
-    }
-}
 
 @Composable
 fun VehicleItem(
