@@ -10,6 +10,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.example.carcare.model.*
+import com.example.carcare.ui.components.CarCareTopBar
 import com.example.carcare.ui.components.DeleteConfirmationDialog
 import com.example.carcare.ui.components.SseRefreshEffect
 import com.example.carcare.ui.screens.admin.*
@@ -43,7 +44,7 @@ fun AdminScreen(
     }
 
     var selectedTab by remember { mutableIntStateOf(0) }
-    val tabs = listOf("Dashboard", "Vehículos", "Mantenimiento", "Conductores", "Asignaciones")
+    val tabs = listOf("Panel", "Vehículos", "Taller", "Conduct.", "Asign.")
 
     var showVehicleForm by remember { mutableStateOf(false) }
     var vehicleToEdit by remember { mutableStateOf<Vehicle?>(null) }
@@ -67,16 +68,7 @@ fun AdminScreen(
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
-        topBar = {
-            TopAppBar(
-                title = { Text("Panel de Admin") },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
-                    }
-                }
-            )
-        },
+        topBar = { CarCareTopBar(onAvatarClick = onBack) },
         bottomBar = {
             NavigationBar {
                 tabs.forEachIndexed { index, title ->
