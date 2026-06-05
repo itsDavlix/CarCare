@@ -1,5 +1,7 @@
 package com.example.carcare.data.network.api
 
+import com.example.carcare.data.network.dto.ActualizarKilometrajeDto
+import com.example.carcare.data.network.dto.CambioEstadoDto
 import com.example.carcare.data.network.dto.VehiculoRequestDto
 import com.example.carcare.data.network.dto.VehiculoResponseDto
 import retrofit2.Response
@@ -25,12 +27,12 @@ interface VehiculoApiService {
     @PATCH("api/vehiculos/{id}/estado")
     suspend fun cambiarEstado(
         @Path("id") id: Long,
-        @Body body: Map<String, String>
+        @Body dto: CambioEstadoDto
     ): VehiculoResponseDto
 
     @PATCH("api/vehiculos/{id}/kilometraje")
     suspend fun actualizarKilometraje(
         @Path("id") id: Long,
-        @Body body: Map<String, Long>
+        @Body dto: ActualizarKilometrajeDto
     ): VehiculoResponseDto
 }

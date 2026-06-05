@@ -1,5 +1,6 @@
 package com.example.carcare.data.network.api
 
+import com.example.carcare.data.network.dto.CambioEstadoDto
 import com.example.carcare.data.network.dto.ConductorRequestDto
 import com.example.carcare.data.network.dto.ConductorResponseDto
 import retrofit2.Response
@@ -25,6 +26,6 @@ interface ConductorApiService {
     @PATCH("api/conductores/{id}/estado")
     suspend fun cambiarEstado(
         @Path("id") id: Long,
-        @Body body: Map<String, String>
+        @Body dto: CambioEstadoDto
     ): ConductorResponseDto
 }
