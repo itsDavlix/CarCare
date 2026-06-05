@@ -1,6 +1,8 @@
 package com.example.carcare.data.repository
 
 import com.example.carcare.data.network.ApiClient
+import com.example.carcare.data.network.dto.ActualizarKilometrajeDto
+import com.example.carcare.data.network.dto.CambioEstadoDto
 import com.example.carcare.data.network.dto.VehiculoRequestDto
 import com.example.carcare.data.network.dto.VehiculoResponseDto
 import com.example.carcare.data.network.formatApiDate
@@ -30,10 +32,10 @@ class VehicleRepository : CrudRepository<Vehicle> {
     }
 
     suspend fun changeStatus(id: String, status: VehicleStatus): Vehicle =
-        api.cambiarEstado(id.toLong(), mapOf("estado" to status.name)).toDomain()
+        api.cambiarEstado(id.toLong(), CambioEstadoDto(status.name)).toDomain()
 
     suspend fun updateMileage(id: String, mileage: Long): Vehicle =
-        api.actualizarKilometraje(id.toLong(), mapOf("kilometraje" to mileage)).toDomain()
+        api.actualizarKilometraje(id.toLong(), ActualizarKilometrajeDto(mileage)).toDomain()
 }
 
 // ---------- Mappers DTO <-> dominio ----------
