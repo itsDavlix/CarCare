@@ -67,7 +67,6 @@ private fun Vehicle.toRequestDto(): VehiculoRequestDto = VehiculoRequestDto(
     combustible = fuelType.name,
     kilometraje = mileage,
     color = color.ifBlank { null },
-    tipo = null,
     numeroChasis = chassisNumber.ifBlank { null },
     numeroMotor = engineNumber.ifBlank { null },
     polizaSeguro = insurancePolicy.ifBlank { null },
