@@ -13,7 +13,6 @@ data class VehiculoResponseDto(
     val combustible: String,
     val kilometraje: Long,
     val color: String? = null,
-    val tipo: String? = null,
     val numeroChasis: String? = null,
     val numeroMotor: String? = null,
     val polizaSeguro: String? = null,
