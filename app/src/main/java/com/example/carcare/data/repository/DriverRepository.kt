@@ -1,6 +1,7 @@
 package com.example.carcare.data.repository
 
 import com.example.carcare.data.network.ApiClient
+import com.example.carcare.data.network.dto.CambioEstadoDto
 import com.example.carcare.data.network.dto.ConductorRequestDto
 import com.example.carcare.data.network.dto.ConductorResponseDto
 import com.example.carcare.data.network.formatApiDate
@@ -30,7 +31,7 @@ class DriverRepository : CrudRepository<Driver> {
     }
 
     suspend fun changeStatus(id: String, status: DriverStatus): Driver =
-        api.cambiarEstado(id.toLong(), mapOf("estado" to status.name)).toDomain()
+        api.cambiarEstado(id.toLong(), CambioEstadoDto(status.name)).toDomain()
 }
 
 // ---------- Mappers DTO <-> dominio ----------

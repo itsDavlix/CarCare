@@ -1,6 +1,7 @@
 package com.example.carcare.data.repository
 
 import com.example.carcare.data.network.ApiClient
+import com.example.carcare.data.network.dto.CambioEstadoDto
 import com.example.carcare.data.network.dto.MantenimientoRequestDto
 import com.example.carcare.data.network.dto.MantenimientoResponseDto
 import com.example.carcare.data.network.formatApiDate
@@ -31,7 +32,7 @@ class MaintenanceRepository : CrudRepository<Maintenance> {
     }
 
     suspend fun changeStatus(id: String, status: MaintenanceStatus): Maintenance =
-        api.cambiarEstado(id.toLong(), mapOf("estado" to status.name)).toDomain()
+        api.cambiarEstado(id.toLong(), CambioEstadoDto(status.name)).toDomain()
 }
 
 // ---------- Mappers DTO <-> dominio ----------
