@@ -133,7 +133,7 @@ private fun AssistChipCount(n: Int) {
 private fun FleetHeroCard(total: Int, chips: List<Triple<String, Int, Color>>) {
     Card(
         Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary)
+        colors = CardDefaults.cardColors(containerColor = Petrol700)
     ) {
         Column(Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -323,7 +323,9 @@ fun DashboardSection(
             items(alerts) { (critical, text) ->
                 Card(
                     Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                    colors = CardDefaults.cardColors(containerColor = if (critical) StatusOutOfService.copy(alpha = 0.10f) else AmberSoft)
+                    colors = CardDefaults.cardColors(
+                        containerColor = if (critical) StatusOutOfService.copy(alpha = 0.10f)
+                        else Amber.copy(alpha = 0.12f))
                 ) {
                     Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Default.Warning, null, tint = if (critical) StatusOutOfService else AmberDeep)
