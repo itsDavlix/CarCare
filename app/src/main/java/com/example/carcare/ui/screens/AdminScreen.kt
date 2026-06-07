@@ -110,8 +110,7 @@ fun AdminScreen(
         }
     ) { padding ->
         Column(modifier = Modifier.padding(padding).padding(16.dp)) {
-            Text(tabs[selectedTab], style = MaterialTheme.typography.titleLarge)
-            Spacer(modifier = Modifier.height(8.dp))
+
 
             val sectionLoading = when (selectedTab) {
                 0 -> vehicleViewModel.isLoading || driverViewModel.isLoading ||
