@@ -17,6 +17,9 @@ val Amber = Color(0xFFF5A524)        // secondary / acentos, alertas suaves
 val AmberDeep = Color(0xFFC97F12)
 val AmberSoft = Color(0xFFFDF0D9)
 
+// Acento del logo: aguja del velocímetro (mismo tono que StatusOutOfService, pero con rol de marca)
+val NeedleRed = Color(0xFFE5484D)
+
 // Neutros
 val Ink = Color(0xFF14201F)          // texto principal
 val Paper = Color(0xFFF3F5F2)        // background

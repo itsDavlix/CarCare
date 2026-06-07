@@ -1,38 +1,30 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- res/drawable/ic_carcare_logo.xml
-     Velocímetro abierto (el arco forma una "C"); aguja ámbar al sector "en cuidado". -->
+     Logo R1 (velocímetro): pista teal, sector ámbar, marcas teal claro, aguja roja.
+     Misma geometría 0–100 del prototipo, escalada al lienzo de 128.
+     NOTA: hoy este drawable NO se referencia en el código (queda listo por si quieres usarlo, p.ej. en el Login). -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="128dp"
-    android:height="128dp"
-    android:viewportWidth="128"
-    android:viewportHeight="128">
+    android:width="128dp" android:height="128dp"
+    android:viewportWidth="128" android:viewportHeight="128">
 
-    <!-- Arco de fondo (atenuado) -->
-    <path
-        android:pathData="M30,96 A48,48 0 1 1 98,96"
-        android:strokeColor="#7FB6B0"
-        android:strokeWidth="9"
-        android:strokeAlpha="0.30"
-        android:strokeLineCap="round"
-        android:fillColor="@android:color/transparent" />
+    <group
+        android:pivotX="50" android:pivotY="50"
+        android:scaleX="1.6" android:scaleY="1.6"
+        android:translateX="14" android:translateY="14">
 
-    <!-- Arco activo (ámbar) -->
-    <path
-        android:pathData="M30,96 A48,48 0 0 1 64,15"
-        android:strokeColor="#F5A524"
-        android:strokeWidth="9"
-        android:strokeLineCap="round"
-        android:fillColor="@android:color/transparent" />
-
-    <!-- Ticks -->
-    <path android:pathData="M64,22 L64,32" android:strokeColor="#7FB6B0" android:strokeWidth="6" android:strokeLineCap="round" android:fillColor="@android:color/transparent"/>
-    <path android:pathData="M92,34 L85,42" android:strokeColor="#7FB6B0" android:strokeWidth="6" android:strokeLineCap="round" android:fillColor="@android:color/transparent"/>
-    <path android:pathData="M104,64 L94,64" android:strokeColor="#7FB6B0" android:strokeWidth="6" android:strokeLineCap="round" android:fillColor="@android:color/transparent"/>
-    <path android:pathData="M36,34 L43,42" android:strokeColor="#7FB6B0" android:strokeWidth="6" android:strokeLineCap="round" android:fillColor="@android:color/transparent"/>
-    <path android:pathData="M24,64 L34,64" android:strokeColor="#7FB6B0" android:strokeWidth="6" android:strokeLineCap="round" android:fillColor="@android:color/transparent"/>
-
-    <!-- Aguja -->
-    <path android:pathData="M64,64 L86,44" android:strokeColor="#F5A524" android:strokeWidth="7" android:strokeLineCap="round" android:fillColor="@android:color/transparent"/>
-    <!-- Centro -->
-    <path android:pathData="M55,64 a9,9 0 1 0 18,0 a9,9 0 1 0 -18,0 z" android:fillColor="#0A4244" android:strokeColor="#7FB6B0" android:strokeWidth="5"/>
+        <path android:pathData="M28.8,71.2 A30,30 0 1 1 71.2,71.2"
+            android:strokeColor="#7FB6B0" android:strokeWidth="6" android:strokeLineCap="round"
+            android:fillColor="@android:color/transparent"/>
+        <path android:pathData="M28.8,71.2 A30,30 0 0 1 60.3,21.8"
+            android:strokeColor="#F5A524" android:strokeWidth="6" android:strokeLineCap="round"
+            android:fillColor="@android:color/transparent"/>
+        <path android:pathData="M33,67 L36.6,63.4 M27.8,40.8 L32.4,42.7 M50,26 L50,31 M72.2,40.8 L67.6,42.7 M67,67 L63.4,63.4"
+            android:strokeColor="#CFE6E2" android:strokeWidth="2.5" android:strokeLineCap="round"
+            android:fillColor="@android:color/transparent"/>
+        <path android:pathData="M50,50 L57.9,28.4"
+            android:strokeColor="#E5484D" android:strokeWidth="4.5" android:strokeLineCap="round"
+            android:fillColor="@android:color/transparent"/>
+        <path android:pathData="M44.5,50 A5.5,5.5 0 1 0 55.5,50 A5.5,5.5 0 1 0 44.5,50 Z" android:fillColor="#E5484D"/>
+        <path android:pathData="M47.8,50 A2.2,2.2 0 1 0 52.2,50 A2.2,2.2 0 1 0 47.8,50 Z" android:fillColor="#06302F"/>
+    </group>
 </vector>
