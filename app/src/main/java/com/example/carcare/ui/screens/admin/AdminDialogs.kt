@@ -767,7 +767,7 @@ fun DriverFormDialog(
                         supportingText = {
                             Text(
                                 if (attempted && !idV.isValid) idV.errorMessage ?: ""
-                                else "Ej: 001-150798-1000X (con o sin guiones)"
+                                else "Ej: 001-150385-0001A (con o sin guiones)"
                             )
                         },
                         modifier = Modifier.fillMaxWidth()
@@ -826,7 +826,7 @@ fun DriverFormDialog(
                             idCardNumber = Validators.normalizeIdCard(idCardNumber),
                             age = age.toIntOrNull() ?: 0,
                             phone = phone.trim(),
-                            licenseNumber = licenseNumber.trim(),
+                            licenseNumber = Validators.normalizeIdCard(licenseNumber),
                             licenseExpiryDate = licenseExpiry ?: Date(),
                             profilePhotoUri = profilePhotoUri,
                             licensePhotoUri = licensePhotoUri,
