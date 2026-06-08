@@ -105,28 +105,6 @@ fun FleetBarChart(bars: List<Bar>, modifier: Modifier = Modifier, chartHeight: a
     }
 }
 
-@Composable
-private fun ChartCard(title: String, total: Int, height: androidx.compose.ui.unit.Dp = 180.dp, bars: List<Bar>) {
-    Card(Modifier.fillMaxWidth().padding(top = 12.dp)) {
-        Column(Modifier.padding(16.dp)) {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-                AssistChipCount(total)
-            }
-            Spacer(Modifier.height(4.dp))
-            FleetBarChart(bars, chartHeight = height)
-        }
-    }
-}
-
-@Composable
-private fun AssistChipCount(n: Int) {
-    Box(
-        Modifier.clip(RoundedCornerShape(8.dp)).background(MaterialTheme.colorScheme.primaryContainer)
-            .padding(horizontal = 9.dp, vertical = 3.dp)
-    ) { Text(n.toString(), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onPrimaryContainer, fontWeight = FontWeight.Bold) }
-}
-
 /* ───────────────────────── KPIs agrupados ───────────────────────── */
 
 @Composable
@@ -239,26 +217,6 @@ fun DashboardSection(
         }
     }
 
-    // Datos de gráficos (calculados en vivo)
-    val statusBars = remember(statusCount) {
-        VehicleStatus.entries.mapNotNull { s ->
-            val c = statusCount[s] ?: 0
-            if (c > 0) Bar(s.label, c, statusColor(s)) else null
-        }
-    }
-    val fuelBars = remember(vehicles) {
-        FuelType.entries.map { f ->
-            val color = when (f) { FuelType.GASOLINE -> StatusInUse; FuelType.DIESEL -> Petrol700; FuelType.HEV -> StatusAvailable }
-            Bar(f.label, vehicles.count { it.fuelType == f }, color)
-        }
-    }
-    val maintBars = remember(maintenances) {
-        val palette = listOf(Petrol700, Petrol800, StatusAssigned, StatusInUse, Amber, StatusPendingReview)
-        maintenances.groupingBy { it.type }.eachCount().entries
-            .sortedByDescending { it.value }.take(6)
-            .mapIndexed { i, e -> Bar(e.key.label, e.value, palette[i % palette.size]) }
-    }
-
     val alerts = remember(maintenances, vehicles, drivers, now, soon) {
         val list = mutableListOf<Pair<Boolean, String>>() // (esCrítico, texto)
         maintenances.filter { it.status == MaintenanceStatus.IN_PROGRESS }.forEach { m ->
@@ -313,9 +271,10 @@ fun DashboardSection(
 
         item {
             SectionTitle("Estadísticas")
-            ChartCard("Vehículos por estado", statusBars.sumOf { it.value }, bars = statusBars)
-            ChartCard("Flota por combustible", vehicles.size, height = 150.dp, bars = fuelBars)
-            ChartCard("Mantenimientos por tipo", maintenances.size, height = 150.dp, bars = maintBars)
+            val statGroups = remember(vehicles, drivers, maintenances, assignments) {
+                buildDashboardStats(vehicles, drivers, maintenances, assignments)
+            }
+            StatsCard(groups = statGroups)
         }
 
         if (alerts.isNotEmpty()) {
