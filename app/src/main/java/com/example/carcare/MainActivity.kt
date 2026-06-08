@@ -11,6 +11,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.example.carcare.data.network.ApiClient
 import com.example.carcare.model.Role
 import com.example.carcare.ui.screens.AdminScreen
 import com.example.carcare.ui.screens.DriverScreen
@@ -21,7 +22,6 @@ import com.example.carcare.ui.viewmodel.AssignmentViewModel
 import com.example.carcare.ui.viewmodel.DriverViewModel
 import com.example.carcare.ui.viewmodel.MaintenanceViewModel
 import com.example.carcare.ui.viewmodel.VehicleViewModel
-import com.example.carcare.data.network.ApiClient
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -48,6 +48,16 @@ private object Routes {
 @Composable
 fun CarCareNavHost() {
     val navController = rememberNavController()
+
+    // ViewModels con alcance de Activity: se crean UNA sola vez al arrancar la app
+    // (durante el splash) y se COMPARTEN entre el panel admin y el de conductor.
+    // Como `init { load() }` dispara la carga al crearse, los datos empiezan a bajar
+    // mientras se ve el splash y el login → al entrar al panel ya suelen estar listos.
+    // Además, re-login o cambiar de panel es instantáneo: no vuelve a recargar.
+    val vehicleViewModel: VehicleViewModel = viewModel()
+    val driverViewModel: DriverViewModel = viewModel()
+    val maintenanceViewModel: MaintenanceViewModel = viewModel()
+    val assignmentViewModel: AssignmentViewModel = viewModel()
 
     // Volver al login limpiando admin/conductor del historial.
     val logout: () -> Unit = {
@@ -78,12 +88,6 @@ fun CarCareNavHost() {
         }
 
         composable(Routes.ADMIN) {
-            // ViewModels con alcance a esta pantalla; se comparten dentro del panel admin.
-            val vehicleViewModel: VehicleViewModel = viewModel()
-            val driverViewModel: DriverViewModel = viewModel()
-            val maintenanceViewModel: MaintenanceViewModel = viewModel()
-            val assignmentViewModel: AssignmentViewModel = viewModel()
-
             AdminScreen(
                 onBack = logout,
                 vehicleViewModel = vehicleViewModel,
@@ -98,11 +102,6 @@ fun CarCareNavHost() {
             arguments = listOf(navArgument("driverIdCard") { type = NavType.StringType })
         ) { backStackEntry ->
             val driverIdCard = backStackEntry.arguments?.getString("driverIdCard").orEmpty()
-
-            val vehicleViewModel: VehicleViewModel = viewModel()
-            val driverViewModel: DriverViewModel = viewModel()
-            val assignmentViewModel: AssignmentViewModel = viewModel()
-            val maintenanceViewModel: MaintenanceViewModel = viewModel()
 
             DriverScreen(
                 driverIdCard = driverIdCard,
