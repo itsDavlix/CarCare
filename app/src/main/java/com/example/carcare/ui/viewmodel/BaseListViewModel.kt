@@ -2,7 +2,6 @@ package com.example.carcare.ui.viewmodel
 
 import android.util.Log
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
@@ -15,21 +14,22 @@ import kotlinx.coroutines.launch
 /**
  * ViewModel base para listas CRUD respaldadas por la API.
  *
- * Centraliza el estado reactivo (lista, carga, error, búsqueda) y la mecánica
- * repetida de las 4 entidades: carga completa, alta con id real, y
- * updates/borrados OPTIMISTAS con rollback automático si la red falla.
+ * El estado de la lista vive en un `mutableStateOf<List<T>>` INMUTABLE: cada cambio
+ * reemplaza la referencia por una lista nueva. Es clave para que CUALQUIER lector
+ * recomponga de forma confiable —incluido el dashboard, que deriva sus datos dentro
+ * de `remember(lista)`—. (Con `mutableStateListOf` la referencia no cambiaba al mutar
+ * en sitio, así que esos `remember` quedaban congelados en la lista vacía.)
  *
- * @param T tipo de dominio, identificable por Identifiable.id.
- * @param R repositorio concreto; expone el CRUD común vía CrudRepository y,
- *          en cada subclase, sus operaciones propias (update, estado, etc.).
+ * Centraliza carga, error, búsqueda y los updates/borrados OPTIMISTAS con rollback.
+ * Todas las mutaciones son funcionales (producen una lista nueva).
  */
 abstract class BaseListViewModel<T : Identifiable, R : CrudRepository<T>>(
     protected val repository: R,
     private val logTag: String
 ) : ViewModel() {
 
-    private val _items = mutableStateListOf<T>()
-    val items: List<T> get() = _items
+    var items by mutableStateOf<List<T>>(emptyList())
+        private set
 
     var isLoading by mutableStateOf(false)
         private set
@@ -58,9 +58,7 @@ abstract class BaseListViewModel<T : Identifiable, R : CrudRepository<T>>(
             isLoading = true
             errorMessage = null
             try {
-                val result = repository.getAll()
-                _items.clear()
-                _items.addAll(result)
+                items = repository.getAll()
             } catch (e: Exception) {
                 fail("load", e)
             } finally {
@@ -70,15 +68,13 @@ abstract class BaseListViewModel<T : Identifiable, R : CrudRepository<T>>(
     }
 
     /**
-     * Recarga desde la API SIN mostrar el indicador de carga ni pisar la UI con
-     * un error. Para refrescos por evento SSE (cambios hechos en otro dispositivo).
+     * Recarga desde la API SIN indicador de carga ni pisar la UI con error.
+     * Para refrescos por evento SSE (cambios hechos en otro dispositivo).
      */
     fun reloadSilently() {
         viewModelScope.launch {
             try {
-                val result = repository.getAll()
-                _items.clear()
-                _items.addAll(result)
+                items = repository.getAll()
             } catch (e: Exception) {
                 Log.e(logTag, "reloadSilently", e)
             }
@@ -89,7 +85,7 @@ abstract class BaseListViewModel<T : Identifiable, R : CrudRepository<T>>(
     protected fun create(item: T, onSuccess: () -> Unit = {}) {
         viewModelScope.launch {
             try {
-                _items.add(repository.create(item))
+                items = items + repository.create(item)
                 onSuccess()
             } catch (e: Exception) {
                 fail("create", e)
@@ -99,10 +95,10 @@ abstract class BaseListViewModel<T : Identifiable, R : CrudRepository<T>>(
 
     /**
      * Reemplazo OPTIMISTA por id: aplica [updated] al instante y revierte al valor
-     * anterior si [networkCall] falla. Tras el éxito sincroniza con lo que devuelve el backend.
+     * anterior si [networkCall] falla. Tras el éxito sincroniza con la respuesta del backend.
      */
     protected fun optimisticReplace(updated: T, networkCall: suspend () -> T) {
-        val previous = _items.firstOrNull { it.id == updated.id }
+        val previous = items.firstOrNull { it.id == updated.id }
         replaceById(updated)
         viewModelScope.launch {
             try {
@@ -115,8 +111,8 @@ abstract class BaseListViewModel<T : Identifiable, R : CrudRepository<T>>(
     }
 
     /**
-     * Ejecuta una operación de red que devuelve la entidad actualizada y la refleja
-     * en la lista (NO optimista: espera la respuesta). Para flujos como "completar".
+     * Operación de red que devuelve la entidad actualizada y la refleja en la lista
+     * (NO optimista: espera la respuesta). Para flujos como "completar".
      */
     protected fun replaceFromNetwork(onSuccess: () -> Unit = {}, networkCall: suspend () -> T) {
         viewModelScope.launch {
@@ -131,15 +127,17 @@ abstract class BaseListViewModel<T : Identifiable, R : CrudRepository<T>>(
 
     /** Borrado OPTIMISTA por id: lo saca al instante y lo reinserta si la red falla. */
     protected fun optimisticDelete(id: String, onSuccess: () -> Unit = {}) {
-        val index = _items.indexOfFirst { it.id == id }
-        val backup = _items.getOrNull(index)
-        if (index >= 0) _items.removeAt(index)
+        val index = items.indexOfFirst { it.id == id }
+        val backup = items.getOrNull(index)
+        if (index >= 0) items = items.filterNot { it.id == id }
         viewModelScope.launch {
             try {
                 repository.delete(id)
                 onSuccess()
             } catch (e: Exception) {
-                if (backup != null) _items.add(index.coerceIn(0, _items.size), backup)
+                if (backup != null) {
+                    items = items.toMutableList().apply { add(index.coerceIn(0, size), backup) }
+                }
                 fail("delete", e)
             }
         }
@@ -150,8 +148,7 @@ abstract class BaseListViewModel<T : Identifiable, R : CrudRepository<T>>(
         searchQuery.isBlank() || fields.any { it?.contains(searchQuery, ignoreCase = true) == true }
 
     private fun replaceById(item: T) {
-        val i = _items.indexOfFirst { it.id == item.id }
-        if (i >= 0) _items[i] = item
+        items = items.map { if (it.id == item.id) item else it }
     }
 
     private fun fail(op: String, e: Throwable) {
