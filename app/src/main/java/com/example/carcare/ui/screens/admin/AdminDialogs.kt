@@ -767,7 +767,7 @@ fun DriverFormDialog(
                         supportingText = {
                             Text(
                                 if (attempted && !idV.isValid) idV.errorMessage ?: ""
-                                else "Formato: 13 caracteres alfanuméricos"
+                                else "Ej: 001-150385-0001A (con o sin guiones)"
                             )
                         },
                         modifier = Modifier.fillMaxWidth()
@@ -826,7 +826,7 @@ fun DriverFormDialog(
                             idCardNumber = Validators.normalizeIdCard(idCardNumber),
                             age = age.toIntOrNull() ?: 0,
                             phone = phone.trim(),
-                            licenseNumber = licenseNumber.trim(),
+                            licenseNumber = Validators.normalizeIdCard(licenseNumber),
                             licenseExpiryDate = licenseExpiry ?: Date(),
                             profilePhotoUri = profilePhotoUri,
                             licensePhotoUri = licensePhotoUri,
@@ -1055,7 +1055,11 @@ fun ReturnVehicleDialog(
     var nextStatus by remember { mutableStateOf(VehicleStatus.AVAILABLE) }
     var attempted by remember { mutableStateOf(false) }
 
-    val mileageV = Validators.validateFinalMileage(finalMileage, assignment.initialMileage)
+    val mileageV = Validators.validateFinalMileage(
+        finalMileage,
+        assignment.initialMileage,
+        Validators.reasonableMileageDelta(assignment.departureDate)
+    )
     val isValid = mileageV.isValid && finalMileage.isNotBlank()
 
     AlertDialog(
