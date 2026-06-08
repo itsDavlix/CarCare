@@ -767,7 +767,7 @@ fun DriverFormDialog(
                         supportingText = {
                             Text(
                                 if (attempted && !idV.isValid) idV.errorMessage ?: ""
-                                else "Formato: 13 caracteres alfanuméricos"
+                                else "Ej: 001-150798-1000X (con o sin guiones)"
                             )
                         },
                         modifier = Modifier.fillMaxWidth()
@@ -1055,7 +1055,11 @@ fun ReturnVehicleDialog(
     var nextStatus by remember { mutableStateOf(VehicleStatus.AVAILABLE) }
     var attempted by remember { mutableStateOf(false) }
 
-    val mileageV = Validators.validateFinalMileage(finalMileage, assignment.initialMileage)
+    val mileageV = Validators.validateFinalMileage(
+        finalMileage,
+        assignment.initialMileage,
+        Validators.reasonableMileageDelta(assignment.departureDate)
+    )
     val isValid = mileageV.isValid && finalMileage.isNotBlank()
 
     AlertDialog(
