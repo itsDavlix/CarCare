@@ -21,11 +21,13 @@ import com.example.carcare.ui.viewmodel.AssignmentViewModel
 import com.example.carcare.ui.viewmodel.DriverViewModel
 import com.example.carcare.ui.viewmodel.MaintenanceViewModel
 import com.example.carcare.ui.viewmodel.VehicleViewModel
+import com.example.carcare.data.network.ApiClient
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        ApiClient.warmUp()   // despierta el servidor cuanto antes (cold start de Render)
         setContent {
             CarCareTheme {
                 CarCareNavHost()
