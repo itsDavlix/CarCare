@@ -148,29 +148,74 @@ object Validators {
         return ValidationResult.Valid
     }
 
+    // -------------------------------------------------------------------
+    //  Identificador nicaragüense (cédula / licencia) — XXX-DDMMYY-XXXXL
+    //
+    //  En Nicaragua el conductor se identifica por su cédula, y la licencia
+    //  se ancla a ese mismo número. Por eso cédula y licencia comparten el
+    //  mismo núcleo de validación de formato (13 dígitos + letra final),
+    //  incluyendo que la fecha embebida (DDMMAA) sea una fecha de calendario real.
+    // -------------------------------------------------------------------
+
+    /** Quita guiones/espacios y pasa a mayúsculas: "001-150798-1000x" -> "0011507981000X". */
     fun normalizeIdCard(idCard: String): String {
-        return idCard.trim().replace("-", "").uppercase()
+        return idCard.trim().replace(Regex("[\\s-]"), "").uppercase()
+    }
+
+    /** Formato de presentación: "0011507981000X" -> "001-150798-1000X". */
+    fun formatIdCard(idCard: String): String {
+        val normalized = normalizeIdCard(idCard)
+        return if (nicaraguaIdRegex.matches(normalized)) {
+            "${normalized.substring(0, 3)}-${normalized.substring(3, 9)}-${normalized.substring(9)}"
+        } else {
+            idCard
+        }
     }
 
     private val nicaraguaIdRegex = Regex("^\\d{13}[A-Z]$")
+
+    /** Días por mes; febrero permisivo (29) porque el siglo del AA embebido es ambiguo. */
+    private fun maxDayOfMonth(month: Int): Int = when (month) {
+        1, 3, 5, 7, 8, 10, 12 -> 31
+        4, 6, 9, 11 -> 30
+        2 -> 29
+        else -> 0
+    }
+
+    /** Valida la fecha embebida en posiciones DDMMAA (índices 3..8 del normalizado). */
+    private fun hasValidEmbeddedDate(normalized: String): Boolean {
+        val day = normalized.substring(3, 5).toIntOrNull() ?: return false
+        val month = normalized.substring(5, 7).toIntOrNull() ?: return false
+        if (month !in 1..12) return false
+        return day in 1..maxDayOfMonth(month)
+    }
+
+    /**
+     * Núcleo de formato para identificadores nicaragüenses (cédula y licencia).
+     * No verifica unicidad — eso lo agrega cada validador concreto.
+     */
+    private fun validateNicaraguaId(value: String, requiredMessage: String): ValidationResult {
+        val trimmed = value.trim()
+        if (trimmed.isBlank()) return ValidationResult.invalid(requiredMessage)
+        val normalized = normalizeIdCard(trimmed)
+        if (!nicaraguaIdRegex.matches(normalized)) {
+            return ValidationResult.invalid("Formato inválido. Ej: 001-150798-1000X")
+        }
+        if (!hasValidEmbeddedDate(normalized)) {
+            return ValidationResult.invalid("La fecha embebida (DDMMAA) no es una fecha válida")
+        }
+        return ValidationResult.Valid
+    }
 
     fun validateIdCard(
         idCard: String,
         existingIds: List<Pair<String, String>> = emptyList(),
         currentId: String? = null
     ): ValidationResult {
-        val trimmed = idCard.trim()
-        if (trimmed.isBlank()) return ValidationResult.invalid("La cédula es obligatoria")
-        val normalized = normalizeIdCard(trimmed)
-        if (!nicaraguaIdRegex.matches(normalized)) {
-            return ValidationResult.invalid("Formato inválido. Ej: 001-150798-1000X")
-        }
-        // Valida día (01-31) y mes (01-12) de la fecha embebida (posiciones DDMMAA)
-        val day = normalized.substring(3, 5).toInt()
-        val month = normalized.substring(5, 7).toInt()
-        if (day !in 1..31 || month !in 1..12) {
-            return ValidationResult.invalid("La fecha dentro de la cédula no es válida")
-        }
+        val base = validateNicaraguaId(idCard, "La cédula es obligatoria")
+        if (!base.isValid) return base
+
+        val normalized = normalizeIdCard(idCard)
         val duplicate = existingIds.any { (id, c) ->
             normalizeIdCard(c) == normalized && id != currentId
         }
@@ -200,22 +245,25 @@ object Validators {
         return ValidationResult.Valid
     }
 
+    /**
+     * Número de licencia nicaragüense: mismo formato que la cédula (XXX-DDMMYY-XXXXL),
+     * porque en Nicaragua la licencia se ancla a la cédula del conductor. Reutiliza el
+     * núcleo [validateNicaraguaId] y agrega unicidad.
+     *
+     * FALLBACK: si tu data tiene licencias en formato libre y no querés migrarla,
+     * reemplazá el cuerpo de este método por la validación genérica (ver nota del chat).
+     */
     fun validateLicenseNumber(
         licenseNumber: String,
         existingLicenses: List<Pair<String, String>> = emptyList(),
         currentId: String? = null
     ): ValidationResult {
-        val trimmed = licenseNumber.trim()
-        if (trimmed.isBlank()) return ValidationResult.invalid("El número de licencia es obligatorio")
-        if (trimmed.length !in 4..20) {
-            return ValidationResult.invalid("La licencia debe tener entre 4 y 20 caracteres")
-        }
-        if (!trimmed.all { it.isLetterOrDigit() }) {
-            return ValidationResult.invalid("La licencia solo acepta letras y números")
-        }
-        val normalized = trimmed.uppercase()
+        val base = validateNicaraguaId(licenseNumber, "El número de licencia es obligatorio")
+        if (!base.isValid) return base
+
+        val normalized = normalizeIdCard(licenseNumber)
         val duplicate = existingLicenses.any { (id, l) ->
-            l.trim().uppercase() == normalized && id != currentId
+            normalizeIdCard(l) == normalized && id != currentId
         }
         if (duplicate) return ValidationResult.invalid("Esta licencia ya está registrada a otro conductor")
         return ValidationResult.Valid
@@ -367,15 +415,40 @@ object Validators {
         return ValidationResult.Valid
     }
 
-    fun validateFinalMileage(finalStr: String, initialMileage: Long): ValidationResult {
+    /**
+     * Kilometraje final en la devolución:
+     *  - no puede ser menor al inicial,
+     *  - el aumento respecto al inicial no puede superar [maxDelta] km en una sola
+     *    asignación (atrapa errores de tipeo / lecturas absurdas del odómetro).
+     *
+     * [maxDelta] por defecto 10.000 km. Para una cota dependiente de la duración de
+     * la asignación, calculá el valor con [reasonableMileageDelta] y pasalo aquí.
+     */
+    fun validateFinalMileage(
+        finalStr: String,
+        initialMileage: Long,
+        maxDelta: Long = 10_000
+    ): ValidationResult {
         if (finalStr.isBlank()) return ValidationResult.invalid("Kilometraje final obligatorio")
         val km = finalStr.toLongOrNull() ?: return ValidationResult.invalid("Kilometraje inválido")
         if (km < initialMileage) {
             return ValidationResult.invalid("Final ($km) no puede ser menor al inicial ($initialMileage)")
         }
-        if (km - initialMileage > 100_000) {
-            return ValidationResult.invalid("Aumento poco realista: más de 100.000 km respecto al inicial")
+        if (km - initialMileage > maxDelta) {
+            return ValidationResult.invalid("Aumento poco realista: más de $maxDelta km en una sola asignación")
         }
         return ValidationResult.Valid
+    }
+
+    /**
+     * Cota razonable de kilómetros para una asignación según su duración.
+     * Útil para alimentar [validateFinalMileage] con un límite dependiente de los días:
+     * piso de 10.000 km y, para asignaciones largas, ~1.000 km por día.
+     */
+    fun reasonableMileageDelta(departureDate: Date?, referenceDate: Date = Date()): Long {
+        if (departureDate == null) return 10_000
+        val millis = referenceDate.time - departureDate.time
+        val days = (millis / (1000L * 60 * 60 * 24)).coerceAtLeast(1)
+        return maxOf(10_000L, days * 1_000L)
     }
 }
