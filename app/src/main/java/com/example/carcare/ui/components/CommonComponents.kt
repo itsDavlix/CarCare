@@ -1,31 +1,37 @@
 package com.example.carcare.ui.components
 
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.*
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import com.example.carcare.model.AssignmentStatus
+import com.example.carcare.model.DriverStatus
+import com.example.carcare.model.MaintenanceStatus
 import com.example.carcare.model.VehicleStatus
+import com.example.carcare.ui.theme.statusColor
+
+/* ───────────────────────── Badges de estado ─────────────────────────
+   Una sola implementación visual (BadgeChip) + un overload de StatusBadge
+   por enum del dominio. Etiqueta = enum.label, color = enum.statusColor
+   (paleta de marca en ui/theme/StatusColors.kt). Antes había dos badges
+   con hex de Material hardcodeados y dos entidades sin badge.            */
 
 @Composable
-fun StatusBadge(status: VehicleStatus) {
-    val color = when (status) {
-        VehicleStatus.AVAILABLE -> Color(0xFF4CAF50)
-        VehicleStatus.ASSIGNED -> Color(0xFF00BCD4)
-        VehicleStatus.IN_USE -> Color(0xFF2196F3)
-        VehicleStatus.PENDING_REVIEW -> Color(0xFFFFC107)
-        VehicleStatus.MAINTENANCE -> Color(0xFFFF9800)
-        VehicleStatus.OUT_OF_SERVICE -> Color(0xFFF44336)
-        VehicleStatus.INACTIVE -> Color(0xFF9E9E9E)
-    }
+private fun BadgeChip(label: String, color: Color) {
     Surface(
         color = color.copy(alpha = 0.2f),
         contentColor = color,
         shape = MaterialTheme.shapes.small
     ) {
         Text(
-            text = status.label,
+            text = label,
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
             style = MaterialTheme.typography.labelSmall
         )
@@ -33,24 +39,26 @@ fun StatusBadge(status: VehicleStatus) {
 }
 
 @Composable
-fun DriverStatusBadge(status: com.example.carcare.model.DriverStatus) {
-    val color = when (status) {
-        com.example.carcare.model.DriverStatus.ACTIVE -> Color(0xFF4CAF50)
-        com.example.carcare.model.DriverStatus.INACTIVE -> Color(0xFF9E9E9E)
-        com.example.carcare.model.DriverStatus.SUSPENDED -> Color(0xFFF44336)
-    }
-    Surface(
-        color = color.copy(alpha = 0.2f),
-        contentColor = color,
-        shape = MaterialTheme.shapes.small
-    ) {
-        Text(
-            text = status.label,
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
-            style = MaterialTheme.typography.labelSmall
-        )
-    }
-}
+fun StatusBadge(status: VehicleStatus) = BadgeChip(status.label, status.statusColor)
+
+@Composable
+fun StatusBadge(status: DriverStatus) = BadgeChip(status.label, status.statusColor)
+
+@Composable
+fun StatusBadge(status: MaintenanceStatus) = BadgeChip(status.label, status.statusColor)
+
+@Composable
+fun StatusBadge(status: AssignmentStatus) = BadgeChip(status.label, status.statusColor)
+
+/** Alias de transición: mismos pixeles que StatusBadge(status). */
+@Deprecated(
+    message = "Unificado: usar StatusBadge(status), hay un overload por tipo de estado.",
+    replaceWith = ReplaceWith("StatusBadge(status)")
+)
+@Composable
+fun DriverStatusBadge(status: DriverStatus) = StatusBadge(status)
+
+/* ───────────────────────── Diálogos comunes ───────────────────────── */
 
 @Composable
 fun DeleteConfirmationDialog(
@@ -70,7 +78,7 @@ fun DeleteConfirmationDialog(
                     onDismiss()
                 },
                 colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
-                    ) { Text("Eliminar") }
+            ) { Text("Eliminar") }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) { Text("Cancelar") }

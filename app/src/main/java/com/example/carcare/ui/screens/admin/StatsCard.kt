@@ -343,7 +343,4 @@ private fun assignColor(s: AssignmentStatus) = when (s) {
     AssignmentStatus.COMPLETED -> StatusAvailable
 }
 
-private fun assignLabel(s: AssignmentStatus) = when (s) {
-    AssignmentStatus.ACTIVE -> "Activa"
-    AssignmentStatus.COMPLETED -> "Finalizada"
-}
+private fun assignLabel(s: AssignmentStatus) = s.label

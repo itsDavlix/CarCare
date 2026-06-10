@@ -24,6 +24,7 @@ import com.example.carcare.util.ValidationResult
 import com.example.carcare.util.Validators
 import java.text.SimpleDateFormat
 import java.util.*
+import com.example.carcare.ui.theme.statusColor
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -382,8 +383,7 @@ fun VehicleDetailsDialog(
                                 assignment.returnDate?.let {
                                     Text("Retorno: ${sdf.format(it)}", style = MaterialTheme.typography.bodySmall)
                                 }
-                                Text("Estado: ${if (assignment.status == AssignmentStatus.ACTIVE) "Activa" else "Completada"}", style = MaterialTheme.typography.bodySmall)
-                            }
+                                Text("Estado: ${assignment.status.label}", style = MaterialTheme.typography.bodySmall)                            }
                         }
                     }
                 }
@@ -661,8 +661,7 @@ fun GeneralMaintenanceHistoryDialog(
                                     Icon(
                                         if (maintenance.status == MaintenanceStatus.COMPLETED) Icons.Default.CheckCircle else Icons.Default.Schedule,
                                         contentDescription = null,
-                                        tint = if (maintenance.status == MaintenanceStatus.COMPLETED) Color(0xFF4CAF50) else Color(0xFFFF9800)
-                                    )
+                                        tint = maintenance.status.statusColor                                    )
                                 }
                             )
                         }
