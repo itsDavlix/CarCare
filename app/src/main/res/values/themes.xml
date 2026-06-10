@@ -1,5 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <style name="Theme.CarCare" parent="android:Theme.Material.Light.NoActionBar" />
+    <!--
+      Tema de VENTANA (lo que se ve ANTES del primer frame de Compose).
+      El tema Material 3 real de la app vive en Compose: ui/theme/Theme.kt
+      (CarCareTheme con lightColorScheme/darkColorScheme de Material 3).
+
+      Heredamos del tema Material del framework a propósito: cambiar el parent
+      a Theme.Material3.* exigiría agregar la dependencia
+      com.google.android.material solo para vestir la ventana, sin beneficio
+      en una app 100% Compose.
+
+      windowBackground = paper: elimina el flash blanco puro en el arranque
+      en frío, pintando el fondo del tema antes de que Compose dibuje.
+    -->
+    <style name="Theme.CarCare" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/paper</item>
+    </style>
 </resources>
