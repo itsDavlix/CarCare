@@ -95,6 +95,14 @@ import kotlinx.coroutines.launch
 // del logo y de la hoja (Jakub: polish 200-500ms; nada de bounce en layout).
 private val EaseOutQuint = CubicBezierEasing(0.22f, 1f, 0.36f, 1f)
 
+// Alto estimado del bloque del logo (gauge 128 + espaciados + wordmark + tagline).
+// Se usa para centrarlo ópticamente: en el splash respecto a la pantalla completa,
+// y al asentarse respecto a la franja oscura que queda sobre la hoja.
+private val LogoBlockHeight = 210.dp
+
+// Escala final del logo al asentarse: apenas 6% más chico, conserva presencia.
+private const val LogoEndScale = 0.94f
+
 /**
  * Splash + Login en UNA sola escena.
  *
@@ -132,10 +140,16 @@ fun AuthScreen(
 
     var loadingMsg by remember { mutableStateOf("Verificando…") }
 
+    // Login OK: se guarda el destino y se deja que el gauge remate su animación
+    // antes de navegar. Recién al terminar el remate se llama onLoggedIn.
+    var pendingLogin by remember { mutableStateOf<Pair<Role, String>?>(null) }
+
     val focusManager = LocalFocusManager.current
     val submit: () -> Unit = {
-        focusManager.clearFocus()
-        viewModel.login { role, cedula -> onLoggedIn(role, cedula) }
+        if (pendingLogin == null) {
+            focusManager.clearFocus()
+            viewModel.login { role, cedula -> pendingLogin = role to cedula }
+        }
     }
 
     LaunchedEffect(Unit) {
@@ -164,10 +178,25 @@ fun AuthScreen(
                 needleLoop.animateTo(0.2f, tween(550, easing = FastOutSlowInEasing))
                 needleLoop.animateTo(1f, tween(550, easing = FastOutSlowInEasing))
             }
-        } else {
+        } else if (pendingLogin == null) {
+            // Solo si NO hay un login exitoso en curso: el remate de éxito
+            // es dueño de la aguja y del mensaje hasta que se navega.
             loadingMsg = "Verificando…"
             needleLoop.animateTo(1f, tween(250))
         }
+    }
+
+    // Remate de éxito: la aguja cae un instante y revienta hasta el tope con el
+    // mismo spring del splash (dampingRatio 0.42, el "arranque"). Un respiro de
+    // 150ms para que el ojo registre el tope, y recién entonces se navega.
+    LaunchedEffect(pendingLogin) {
+        val destino = pendingLogin ?: return@LaunchedEffect
+        loadingMsg = "¡Listo!"
+        needleLoop.animateTo(0.12f, tween(180, easing = FastOutSlowInEasing))
+        needleLoop.animateTo(1f, spring(dampingRatio = 0.42f, stiffness = Spring.StiffnessLow))
+        delay(150)
+        onLoggedIn(destino.first, destino.second)
+        pendingLogin = null
     }
 
     LaunchedEffect(viewModel.errorNonce) {
@@ -190,24 +219,27 @@ fun AuthScreen(
             .background(Brush.verticalGradient(listOf(Petrol700, Petrol900)))
     ) {
         val topInset = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
-        val logoStartY = maxHeight * 0.26f
-        val logoEndY = topInset + 28.dp
-        val sheetHeight = maxHeight * 0.60f
+        val sheetHeight = maxHeight * 0.56f
+        val darkZone = maxHeight - sheetHeight
+        // Splash: logo centrado en la pantalla. Asentado: centrado en la franja oscura.
+        val logoStartY = (maxHeight - LogoBlockHeight) / 2f
+        val logoEndY = ((darkZone - LogoBlockHeight * LogoEndScale) / 2f)
+            .coerceAtLeast(topInset + 8.dp)
 
-        // ── Bloque del logo: viaja hacia arriba y se reduce un 20% ──
+        // ── Bloque del logo: se asienta centrado en la franja oscura, casi a tamaño completo ──
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .offset { IntOffset(0, lerp(logoStartY, logoEndY, settle.value).roundToPx()) }
                 .graphicsLayer {
-                    val s = 1f - 0.2f * settle.value
+                    val s = 1f - (1f - LogoEndScale) * settle.value
                     scaleX = s
                     scaleY = s
                     transformOrigin = TransformOrigin(0.5f, 0f)
                 },
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Canvas(modifier = Modifier.size(120.dp)) {
+            Canvas(modifier = Modifier.size(128.dp)) {
                 drawCarCareGauge(
                     arcProgress = arc.value,
                     ticksProgress = ticks.value,
@@ -345,7 +377,7 @@ fun AuthScreen(
 
                         Button(
                             onClick = submit,
-                            enabled = !viewModel.isLoading,
+                            enabled = !viewModel.isLoading && pendingLogin == null,
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = Petrol700,
                                 disabledContainerColor = Petrol700.copy(alpha = 0.75f)
@@ -356,7 +388,7 @@ fun AuthScreen(
                                 .height(52.dp)
                         ) {
                             AnimatedContent(
-                                targetState = viewModel.isLoading,
+                                targetState = viewModel.isLoading || pendingLogin != null,
                                 label = "loginButtonContent"
                             ) { loading ->
                                 if (loading) {
