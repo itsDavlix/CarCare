@@ -14,11 +14,11 @@ import androidx.navigation.navArgument
 import com.example.carcare.data.network.ApiClient
 import com.example.carcare.model.Role
 import com.example.carcare.ui.screens.AdminScreen
+import com.example.carcare.ui.screens.AuthScreen
 import com.example.carcare.ui.screens.DriverScreen
-import com.example.carcare.ui.screens.LoginScreen
-import com.example.carcare.ui.screens.SplashScreen
 import com.example.carcare.ui.theme.CarCareTheme
 import com.example.carcare.ui.viewmodel.AssignmentViewModel
+import com.example.carcare.ui.viewmodel.AuthViewModel
 import com.example.carcare.ui.viewmodel.DriverViewModel
 import com.example.carcare.ui.viewmodel.MaintenanceViewModel
 import com.example.carcare.ui.viewmodel.VehicleViewModel
@@ -38,8 +38,7 @@ class MainActivity : ComponentActivity() {
 
 /** Rutas de navegación de la app. */
 private object Routes {
-    const val SPLASH = "splash"
-    const val LOGIN = "login"
+    const val AUTH = "auth"
     const val ADMIN = "admin"
     const val DRIVER = "driver/{driverIdCard}"
     fun driver(idCard: String) = "driver/$idCard"
@@ -58,30 +57,23 @@ fun CarCareNavHost() {
     val driverViewModel: DriverViewModel = viewModel()
     val maintenanceViewModel: MaintenanceViewModel = viewModel()
     val assignmentViewModel: AssignmentViewModel = viewModel()
+    val authViewModel: AuthViewModel = viewModel()
 
-    // Volver al login limpiando admin/conductor del historial.
+    // Cerrar sesión: limpia el token y vuelve al login (sin repetir la intro).
     val logout: () -> Unit = {
-        navController.popBackStack(Routes.LOGIN, inclusive = false)
+        authViewModel.onLoggedOut()
+        navController.popBackStack(Routes.AUTH, inclusive = false)
     }
 
-    NavHost(navController = navController, startDestination = Routes.SPLASH) {
+    NavHost(navController = navController, startDestination = Routes.AUTH) {
 
-        composable(Routes.SPLASH) {
-            SplashScreen(
-                onSplashFinished = {
-                    navController.navigate(Routes.LOGIN) {
-                        popUpTo(Routes.SPLASH) { inclusive = true }
-                    }
-                }
-            )
-        }
-
-        composable(Routes.LOGIN) {
-            LoginScreen(
-                onLogin = { role, idCard ->
+        composable(Routes.AUTH) {
+            AuthScreen(
+                viewModel = authViewModel,
+                onLoggedIn = { role, cedula ->
                     when (role) {
                         Role.ADMIN -> navController.navigate(Routes.ADMIN)
-                        Role.DRIVER -> navController.navigate(Routes.driver(idCard.orEmpty()))
+                        Role.DRIVER -> navController.navigate(Routes.driver(cedula))
                     }
                 }
             )
