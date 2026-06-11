@@ -2,7 +2,9 @@ package com.example.carcare.model
 
 import java.util.Date
 import java.util.UUID
+import androidx.compose.runtime.Immutable
 
+@Immutable
 data class Driver(
     override val id: String = UUID.randomUUID().toString(),
     val firstName: String,

@@ -369,7 +369,7 @@ fun VehicleDetailsDialog(
                 if (maintenanceHistory.isEmpty()) {
                     item { Text("No hay registros de mantenimiento.", style = MaterialTheme.typography.bodySmall) }
                 } else {
-                    items(maintenanceHistory) { maintenance ->
+                    items(maintenanceHistory, key = { it.id }) { maintenance ->
                         Card(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
                             Column(modifier = Modifier.padding(8.dp)) {
                                 Text("${maintenance.type.label} - ${sdf.format(maintenance.date)}")
@@ -385,7 +385,7 @@ fun VehicleDetailsDialog(
                 if (assignmentHistory.isEmpty()) {
                     item { Text("No hay registros de asignación.", style = MaterialTheme.typography.bodySmall) }
                 } else {
-                    items(assignmentHistory) { assignment ->
+                    items(assignmentHistory, key = { it.id }) { assignment ->
                         Card(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
                             Column(modifier = Modifier.padding(8.dp)) {
                                 Text("Salida: ${sdf.format(assignment.departureDate)}")
@@ -654,8 +654,11 @@ fun GeneralMaintenanceHistoryDialog(
             if (maintenances.isEmpty()) {
                 Text("No hay registros de mantenimiento.")
             } else {
+                val sortedMaintenances = remember(maintenances) {
+                    maintenances.sortedByDescending { it.date }
+                }
                 LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 400.dp)) {
-                    items(maintenances.sortedByDescending { it.date }) { maintenance ->
+                    items(sortedMaintenances, key = { it.id }) { maintenance ->
                         val vehicle = vehicles.find { it.id == maintenance.vehicleId }
                         Card(
                             modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),

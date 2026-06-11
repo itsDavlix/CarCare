@@ -52,12 +52,14 @@ fun VehicleListSection(
 ) {
     LazyColumn(modifier = Modifier.fillMaxSize()) {
         items(vehicles, key = { it.id }) { vehicle ->
-            VehicleItem(
-                vehicle = vehicle,
-                onClick = { onVehicleClick(vehicle) },
-                onEdit = { onEdit(vehicle) },
-                onDelete = { onDelete(vehicle) }
-            )
+            Box(Modifier.animateItem()) {
+                VehicleItem(
+                    vehicle = vehicle,
+                    onClick = { onVehicleClick(vehicle) },
+                    onEdit = { onEdit(vehicle) },
+                    onDelete = { onDelete(vehicle) }
+                )
+            }
         }
     }
 }
@@ -78,13 +80,15 @@ fun MaintenanceListSection(
         LazyColumn(modifier = Modifier.fillMaxSize()) {
             items(maintenances, key = { it.id }) { maintenance ->
                 val vehicle = vehicles.find { it.id == maintenance.vehicleId }
-                MaintenanceItem(
-                    maintenance = maintenance,
-                    vehicle = vehicle,
-                    onEdit = { onEdit(maintenance) },
-                    onDelete = { onDelete(maintenance) },
-                    onStatusChange = { onStatusChange(maintenance, it) }
-                )
+                Box(Modifier.animateItem()) {
+                    MaintenanceItem(
+                        maintenance = maintenance,
+                        vehicle = vehicle,
+                        onEdit = { onEdit(maintenance) },
+                        onDelete = { onDelete(maintenance) },
+                        onStatusChange = { onStatusChange(maintenance, it) }
+                    )
+                }
             }
         }
     }
@@ -98,7 +102,7 @@ fun MaintenanceItem(
     onDelete: () -> Unit,
     onStatusChange: (MaintenanceStatus) -> Unit
 ) {
-    val sdf = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+    val sdf = remember { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()) }
     val plateLabel = vehicle?.plate?.let { Validators.formatPlate(it) } ?: "N/A"
     Card(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -157,12 +161,14 @@ fun DriverListSection(
     } else {
         LazyColumn(modifier = Modifier.fillMaxSize()) {
             items(drivers, key = { it.id }) { driver ->
-                DriverItem(
-                    driver = driver,
-                    onClick = { onDriverClick(driver) },
-                    onEdit = { onEdit(driver) },
-                    onDelete = { onDelete(driver) }
-                )
+                Box(Modifier.animateItem()) {
+                    DriverItem(
+                        driver = driver,
+                        onClick = { onDriverClick(driver) },
+                        onEdit = { onEdit(driver) },
+                        onDelete = { onDelete(driver) }
+                    )
+                }
             }
         }
     }
@@ -226,13 +232,15 @@ fun AssignmentListSection(
             items(assignments, key = { it.id }) { assignment ->
                 val vehicle = vehicles.find { it.id == assignment.vehicleId }
                 val driver = drivers.find { it.id == assignment.driverId }
-                AssignmentItem(
-                    assignment = assignment,
-                    vehicle = vehicle,
-                    driver = driver,
-                    onEdit = { onEdit(assignment) },
-                    onDelete = { onDelete(assignment) }
-                )
+                Box(Modifier.animateItem()) {
+                    AssignmentItem(
+                        assignment = assignment,
+                        vehicle = vehicle,
+                        driver = driver,
+                        onEdit = { onEdit(assignment) },
+                        onDelete = { onDelete(assignment) }
+                    )
+                }
             }
         }
     }
@@ -246,8 +254,8 @@ fun AssignmentItem(
     onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
-    val sdf = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault())
-    val sdfDate = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+    val sdf = remember { SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()) }
+    val sdfDate = remember { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()) }
     val plateLabel = vehicle?.plate?.let { Validators.formatPlate(it) } ?: "N/A"
     Card(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -281,9 +289,11 @@ fun AssignmentItem(
 @Composable
 fun VehicleStatusDistributionChart(vehicles: List<Vehicle>) {
     val total = vehicles.size.coerceAtLeast(1)
-    val distribution = VehicleStatus.entries.map { status ->
-        status to vehicles.count { it.status == status }
-    }.filter { it.second > 0 }
+    val distribution = remember(vehicles) {
+        VehicleStatus.entries.map { status ->
+            status to vehicles.count { it.status == status }
+        }.filter { it.second > 0 }
+    }
 
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         distribution.forEach { (status, count) ->

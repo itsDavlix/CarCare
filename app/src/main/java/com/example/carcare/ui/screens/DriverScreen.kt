@@ -15,6 +15,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.example.carcare.model.*
+import com.example.carcare.ui.components.CarCareTopBar
 import com.example.carcare.ui.components.StatusBadge
 import com.example.carcare.ui.components.SseRefreshEffect
 import com.example.carcare.ui.viewmodel.AssignmentViewModel
@@ -68,16 +69,10 @@ fun DriverScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("Panel de Conductor") },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.Logout,
-                            contentDescription = "Cerrar sesión"
-                        )
-                    }
-                }
+            CarCareTopBar(
+                onAvatarClick = onBack,
+                avatarLetter = driver?.firstName?.trim()?.firstOrNull()?.uppercase() ?: "C",
+                subtitle = "Mi panel · Conductor"
             )
         }
     ) { padding ->

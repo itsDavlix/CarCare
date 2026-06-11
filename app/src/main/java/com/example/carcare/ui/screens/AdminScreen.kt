@@ -16,6 +16,11 @@ import com.example.carcare.ui.components.SseRefreshEffect
 import com.example.carcare.ui.screens.admin.*
 import com.example.carcare.ui.viewmodel.*
 import kotlinx.coroutines.launch
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
+import androidx.compose.animation.core.tween
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -126,83 +131,101 @@ fun AdminScreen(
                 Spacer(modifier = Modifier.height(8.dp))
             }
 
-            when (selectedTab) {
-                0 -> DashboardSection(
-                    vehicles = vehicleViewModel.vehicles,
-                    drivers = driverViewModel.drivers,
-                    maintenances = maintenanceViewModel.maintenances,
-                    assignments = assignmentViewModel.assignments
-                )
-                1 -> {
-                    SearchBar(
-                        query = vehicleViewModel.searchQuery,
-                        onQueryChange = { vehicleViewModel.onSearchQueryChange(it) },
-                        label = "Buscar vehículo (marca, placa...)"
-                    )
-                    VehicleListSection(
-                        vehicles = vehicleViewModel.filteredVehicles,
-                        onVehicleClick = { vehicleToShowDetails = it },
-                        onEdit = { vehicleToEdit = it; showVehicleForm = true },
-                        onDelete = { vehicleToDelete = it }
-                    )
-                }
-                2 -> {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Box(modifier = Modifier.weight(1f)) {
+            // Cambio de pestaña con crossfade corto: continuidad sin lentitud.
+            // Acción frecuente → animación drástica no; 170ms in / 90ms out (exit más rápido).
+            AnimatedContent(
+                targetState = selectedTab,
+                modifier = Modifier.fillMaxSize(),
+                transitionSpec = { fadeIn(tween(170)) togetherWith fadeOut(tween(90)) },
+                label = "adminTabContent"
+            ) { tab ->
+                Column(Modifier.fillMaxSize()) {
+                    when (tab) {
+                        0 -> DashboardSection(
+                            vehicles = vehicleViewModel.vehicles,
+                            drivers = driverViewModel.drivers,
+                            maintenances = maintenanceViewModel.maintenances,
+                            assignments = assignmentViewModel.assignments
+                        )
+                        1 -> {
                             SearchBar(
-                                query = maintenanceViewModel.searchQuery,
-                                onQueryChange = { maintenanceViewModel.onSearchQueryChange(it) },
-                                label = "Buscar mantenimiento..."
+                                query = vehicleViewModel.searchQuery,
+                                onQueryChange = { vehicleViewModel.onSearchQueryChange(it) },
+                                label = "Buscar vehículo (marca, placa...)"
+                            )
+                            VehicleListSection(
+                                vehicles = vehicleViewModel.filteredVehicles,
+                                onVehicleClick = { vehicleToShowDetails = it },
+                                onEdit = { vehicleToEdit = it; showVehicleForm = true },
+                                onDelete = { vehicleToDelete = it }
                             )
                         }
-                        IconButton(onClick = { showGeneralHistory = true }) {
-                            Icon(Icons.Default.History, contentDescription = "Historial General")
+                        2 -> {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Box(modifier = Modifier.weight(1f)) {
+                                    SearchBar(
+                                        query = maintenanceViewModel.searchQuery,
+                                        onQueryChange = { maintenanceViewModel.onSearchQueryChange(it) },
+                                        label = "Buscar mantenimiento..."
+                                    )
+                                }
+                                IconButton(onClick = { showGeneralHistory = true }) {
+                                    Icon(Icons.Default.History, contentDescription = "Historial General")
+                                }
+                            }
+                            val pendingMaintenances = remember(
+                                maintenanceViewModel.maintenances,
+                                maintenanceViewModel.searchQuery,
+                                vehicleViewModel.vehicles
+                            ) {
+                                maintenanceViewModel.getFilteredMaintenances(vehicleViewModel.vehicles)
+                                    .filter { it.status != MaintenanceStatus.COMPLETED }
+                            }
+                            MaintenanceListSection(
+                                maintenances = pendingMaintenances,
+                                vehicles = vehicleViewModel.vehicles,
+                                onEdit = { maintenanceToEdit = it; showMaintenanceForm = true },
+                                onDelete = { maintenanceToDelete = it },
+                                onStatusChange = { m, s ->
+                                    maintenanceViewModel.updateStatus(m.id, s)
+                                    if (s == MaintenanceStatus.COMPLETED) {
+                                        vehicleViewModel.changeStatus(m.vehicleId, VehicleStatus.AVAILABLE)
+                                    }
+                                }
+                            )
+                        }
+                        3 -> {
+                            SearchBar(
+                                query = driverViewModel.searchQuery,
+                                onQueryChange = { driverViewModel.onSearchQueryChange(it) },
+                                label = "Buscar conductor..."
+                            )
+                            DriverListSection(
+                                drivers = driverViewModel.filteredDrivers,
+                                onDriverClick = { driverToShowDetails = it },
+                                onEdit = { driverToEdit = it; showDriverForm = true },
+                                onDelete = { driverToDelete = it }
+                            )
+                        }
+                        4 -> {
+                            SearchBar(
+                                query = assignmentViewModel.searchQuery,
+                                onQueryChange = { assignmentViewModel.onSearchQueryChange(it) },
+                                label = "Buscar asignación..."
+                            )
+                            AssignmentListSection(
+                                assignments = assignmentViewModel.getFilteredAssignments(vehicleViewModel.vehicles, driverViewModel.drivers),
+                                vehicles = vehicleViewModel.vehicles,
+                                drivers = driverViewModel.drivers,
+                                onEdit = { assignmentToEdit = it; showAssignmentForm = true },
+                                onDelete = { assignmentToDelete = it }
+                            )
                         }
                     }
-                    MaintenanceListSection(
-                        maintenances = maintenanceViewModel.getFilteredMaintenances(vehicleViewModel.vehicles)
-                            .filter { it.status != MaintenanceStatus.COMPLETED },
-                        vehicles = vehicleViewModel.vehicles,
-                        onEdit = { maintenanceToEdit = it; showMaintenanceForm = true },
-                        onDelete = { maintenanceToDelete = it },
-                        onStatusChange = { m, s ->
-                            maintenanceViewModel.updateStatus(m.id, s)
-                            if (s == MaintenanceStatus.COMPLETED) {
-                                vehicleViewModel.changeStatus(m.vehicleId, VehicleStatus.AVAILABLE)
-                            }
-                        }
-                    )
-                }
-                3 -> {
-                    SearchBar(
-                        query = driverViewModel.searchQuery,
-                        onQueryChange = { driverViewModel.onSearchQueryChange(it) },
-                        label = "Buscar conductor..."
-                    )
-                    DriverListSection(
-                        drivers = driverViewModel.filteredDrivers,
-                        onDriverClick = { driverToShowDetails = it },
-                        onEdit = { driverToEdit = it; showDriverForm = true },
-                        onDelete = { driverToDelete = it }
-                    )
-                }
-                4 -> {
-                    SearchBar(
-                        query = assignmentViewModel.searchQuery,
-                        onQueryChange = { assignmentViewModel.onSearchQueryChange(it) },
-                        label = "Buscar asignación..."
-                    )
-                    AssignmentListSection(
-                        assignments = assignmentViewModel.getFilteredAssignments(vehicleViewModel.vehicles, driverViewModel.drivers),
-                        vehicles = vehicleViewModel.vehicles,
-                        drivers = driverViewModel.drivers,
-                        onEdit = { assignmentToEdit = it; showAssignmentForm = true },
-                        onDelete = { assignmentToDelete = it }
-                    )
                 }
             }
         }
@@ -252,19 +275,28 @@ fun AdminScreen(
     }
 
     if (showAssignmentForm) {
-        val busyDriverIds = assignmentViewModel.assignments
-            .filter { it.status == AssignmentStatus.ACTIVE && it.id != assignmentToEdit?.id }
-            .map { it.driverId }
-            .toSet()
+        // Memoizado: solo se recalcula cuando cambian las listas o la asignación en edición.
+        val busyDriverIds = remember(assignmentViewModel.assignments, assignmentToEdit) {
+            assignmentViewModel.assignments
+                .filter { it.status == AssignmentStatus.ACTIVE && it.id != assignmentToEdit?.id }
+                .map { it.driverId }
+                .toSet()
+        }
+        val selectableVehicles = remember(vehicleViewModel.vehicles, assignmentToEdit) {
+            vehicleViewModel.vehicles.filter {
+                it.status == VehicleStatus.AVAILABLE || it.id == assignmentToEdit?.vehicleId
+            }
+        }
+        val selectableDrivers = remember(driverViewModel.drivers, busyDriverIds, assignmentToEdit) {
+            driverViewModel.drivers.filter {
+                (it.status == DriverStatus.ACTIVE && it.id !in busyDriverIds) || it.id == assignmentToEdit?.driverId
+            }
+        }
 
         AssignmentFormDialog(
             assignment = assignmentToEdit,
-            vehicles = vehicleViewModel.vehicles.filter {
-                it.status == VehicleStatus.AVAILABLE || it.id == assignmentToEdit?.vehicleId
-            },
-            drivers = driverViewModel.drivers.filter {
-                (it.status == DriverStatus.ACTIVE && it.id !in busyDriverIds) || it.id == assignmentToEdit?.driverId
-            },
+            vehicles = selectableVehicles,
+            drivers = selectableDrivers,
             onDismiss = {
                 showAssignmentForm = false
                 assignmentToEdit = null
@@ -282,10 +314,13 @@ fun AdminScreen(
     }
 
     if (vehicleToShowDetails != null) {
+        val vehicleAssignments = remember(assignmentViewModel.assignments, vehicleToShowDetails) {
+            assignmentViewModel.assignments.filter { it.vehicleId == vehicleToShowDetails!!.id }
+        }
         VehicleDetailsDialog(
             vehicle = vehicleToShowDetails!!,
             maintenanceHistory = maintenanceViewModel.getHistoryForVehicle(vehicleToShowDetails!!.id),
-            assignmentHistory = assignmentViewModel.assignments.filter { it.vehicleId == vehicleToShowDetails!!.id },
+            assignmentHistory = vehicleAssignments,
             onDismiss = { vehicleToShowDetails = null },
             onStatusChange = { newStatus ->
                 vehicleViewModel.changeStatus(vehicleToShowDetails!!.id, newStatus)
