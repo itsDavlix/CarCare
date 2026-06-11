@@ -19,9 +19,9 @@ class MaintenanceViewModel :
         }
     }
 
-    /** Historial local (ya cargado) de un vehículo. Síncrono. */
+    /** Historial local (ya cargado) de un vehículo. Síncrono. Ordenado por fecha descendente. */
     fun getHistoryForVehicle(vehicleId: String): List<Maintenance> =
-        items.filter { it.vehicleId == vehicleId }
+        items.filter { it.vehicleId == vehicleId }.sortedByDescending { it.date }
 
     fun loadMaintenances() = load()
 

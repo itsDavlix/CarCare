@@ -25,6 +25,9 @@ class AssignmentRepository : CrudRepository<Assignment> {
     override suspend fun create(assignment: Assignment): Assignment =
         api.crear(assignment.toRequestDto()).toDomain()
 
+    suspend fun update(assignment: Assignment): Assignment =
+        api.actualizar(assignment.id.toLong(), assignment.toRequestDto()).toDomain()
+
     suspend fun complete(
         id: String,
         returnDate: Date,

@@ -4,6 +4,9 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.runtime.Composable
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
@@ -52,7 +55,6 @@ fun CarCareNavHost() {
     // (durante el splash) y se COMPARTEN entre el panel admin y el de conductor.
     // Como `init { load() }` dispara la carga al crearse, los datos empiezan a bajar
     // mientras se ve el splash y el login → al entrar al panel ya suelen estar listos.
-    // Además, re-login o cambiar de panel es instantáneo: no vuelve a recargar.
     val vehicleViewModel: VehicleViewModel = viewModel()
     val driverViewModel: DriverViewModel = viewModel()
     val maintenanceViewModel: MaintenanceViewModel = viewModel()
@@ -67,7 +69,15 @@ fun CarCareNavHost() {
 
     NavHost(navController = navController, startDestination = Routes.AUTH) {
 
-        composable(Routes.AUTH) {
+        // El match cut: al salir hacia el panel, AUTH se queda visible (fadeOut a 0.99,
+        // imperceptible) mostrando su TopBar real ya aterrizado, mientras el destino
+        // hace fadeIn ENCIMA. Como ambos TopBar son el mismo composable con los mismos
+        // parámetros, esos píxeles no cambian: solo se materializa el contenido.
+        composable(
+            route = Routes.AUTH,
+            exitTransition = { fadeOut(animationSpec = tween(300), targetAlpha = 0.99f) },
+            popEnterTransition = { fadeIn(animationSpec = tween(220)) }
+        ) {
             AuthScreen(
                 viewModel = authViewModel,
                 onLoggedIn = { role, cedula ->
@@ -79,7 +89,11 @@ fun CarCareNavHost() {
             )
         }
 
-        composable(Routes.ADMIN) {
+        composable(
+            route = Routes.ADMIN,
+            enterTransition = { fadeIn(animationSpec = tween(300)) },
+            popExitTransition = { fadeOut(animationSpec = tween(220)) }
+        ) {
             AdminScreen(
                 onBack = logout,
                 vehicleViewModel = vehicleViewModel,
@@ -91,7 +105,9 @@ fun CarCareNavHost() {
 
         composable(
             route = Routes.DRIVER,
-            arguments = listOf(navArgument("driverIdCard") { type = NavType.StringType })
+            arguments = listOf(navArgument("driverIdCard") { type = NavType.StringType }),
+            enterTransition = { fadeIn(animationSpec = tween(300)) },
+            popExitTransition = { fadeOut(animationSpec = tween(220)) }
         ) { backStackEntry ->
             val driverIdCard = backStackEntry.arguments?.getString("driverIdCard").orEmpty()
 

@@ -27,6 +27,9 @@ class AssignmentViewModel :
     fun addAssignment(assignment: Assignment, onSuccess: () -> Unit = {}) =
         create(assignment, onSuccess)
 
+    fun updateAssignment(assignment: Assignment, onSuccess: () -> Unit = {}) =
+        replaceFromNetwork(onSuccess) { repository.update(assignment) }
+
     /** El backend actualiza km + estado del vehículo; onSuccess debe refrescar vehículos. */
     fun completeAssignment(
         assignmentId: String,

@@ -7,11 +7,20 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Assignment
 import androidx.compose.material.icons.automirrored.filled.FactCheck
 import androidx.compose.material.icons.automirrored.filled.Login
 import androidx.compose.material.icons.automirrored.filled.Logout
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Build
+import androidx.compose.material.icons.filled.Dashboard
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.DirectionsCar
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.PostAdd
+import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -21,7 +30,14 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.example.carcare.model.*
+import com.example.carcare.model.Assignment
+import com.example.carcare.model.AssignmentStatus
+import com.example.carcare.model.Driver
+import com.example.carcare.model.Maintenance
+import com.example.carcare.model.MaintenanceStatus
+import com.example.carcare.model.Vehicle
+import com.example.carcare.model.VehicleStatus
+import com.example.carcare.model.MaintenanceType
 import com.example.carcare.ui.components.DriverStatusBadge
 import com.example.carcare.util.Validators
 import java.text.SimpleDateFormat
@@ -36,12 +52,14 @@ fun VehicleListSection(
 ) {
     LazyColumn(modifier = Modifier.fillMaxSize()) {
         items(vehicles, key = { it.id }) { vehicle ->
-            VehicleItem(
-                vehicle = vehicle,
-                onClick = { onVehicleClick(vehicle) },
-                onEdit = { onEdit(vehicle) },
-                onDelete = { onDelete(vehicle) }
-            )
+            Box(Modifier.animateItem()) {
+                VehicleItem(
+                    vehicle = vehicle,
+                    onClick = { onVehicleClick(vehicle) },
+                    onEdit = { onEdit(vehicle) },
+                    onDelete = { onDelete(vehicle) }
+                )
+            }
         }
     }
 }
@@ -62,13 +80,15 @@ fun MaintenanceListSection(
         LazyColumn(modifier = Modifier.fillMaxSize()) {
             items(maintenances, key = { it.id }) { maintenance ->
                 val vehicle = vehicles.find { it.id == maintenance.vehicleId }
-                MaintenanceItem(
-                    maintenance = maintenance,
-                    vehicle = vehicle,
-                    onEdit = { onEdit(maintenance) },
-                    onDelete = { onDelete(maintenance) },
-                    onStatusChange = { onStatusChange(maintenance, it) }
-                )
+                Box(Modifier.animateItem()) {
+                    MaintenanceItem(
+                        maintenance = maintenance,
+                        vehicle = vehicle,
+                        onEdit = { onEdit(maintenance) },
+                        onDelete = { onDelete(maintenance) },
+                        onStatusChange = { onStatusChange(maintenance, it) }
+                    )
+                }
             }
         }
     }
@@ -82,7 +102,7 @@ fun MaintenanceItem(
     onDelete: () -> Unit,
     onStatusChange: (MaintenanceStatus) -> Unit
 ) {
-    val sdf = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+    val sdf = remember { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()) }
     val plateLabel = vehicle?.plate?.let { Validators.formatPlate(it) } ?: "N/A"
     Card(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -141,12 +161,14 @@ fun DriverListSection(
     } else {
         LazyColumn(modifier = Modifier.fillMaxSize()) {
             items(drivers, key = { it.id }) { driver ->
-                DriverItem(
-                    driver = driver,
-                    onClick = { onDriverClick(driver) },
-                    onEdit = { onEdit(driver) },
-                    onDelete = { onDelete(driver) }
-                )
+                Box(Modifier.animateItem()) {
+                    DriverItem(
+                        driver = driver,
+                        onClick = { onDriverClick(driver) },
+                        onEdit = { onEdit(driver) },
+                        onDelete = { onDelete(driver) }
+                    )
+                }
             }
         }
     }
@@ -198,7 +220,7 @@ fun AssignmentListSection(
     assignments: List<Assignment>,
     vehicles: List<Vehicle>,
     drivers: List<Driver>,
-    onReturn: (Assignment) -> Unit,
+    onEdit: (Assignment) -> Unit,
     onDelete: (Assignment) -> Unit
 ) {
     if (assignments.isEmpty()) {
@@ -210,13 +232,15 @@ fun AssignmentListSection(
             items(assignments, key = { it.id }) { assignment ->
                 val vehicle = vehicles.find { it.id == assignment.vehicleId }
                 val driver = drivers.find { it.id == assignment.driverId }
-                AssignmentItem(
-                    assignment = assignment,
-                    vehicle = vehicle,
-                    driver = driver,
-                    onReturn = { onReturn(assignment) },
-                    onDelete = { onDelete(assignment) }
-                )
+                Box(Modifier.animateItem()) {
+                    AssignmentItem(
+                        assignment = assignment,
+                        vehicle = vehicle,
+                        driver = driver,
+                        onEdit = { onEdit(assignment) },
+                        onDelete = { onDelete(assignment) }
+                    )
+                }
             }
         }
     }
@@ -227,11 +251,11 @@ fun AssignmentItem(
     assignment: Assignment,
     vehicle: Vehicle?,
     driver: Driver?,
-    onReturn: () -> Unit,
+    onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
-    val sdf = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault())
-    val sdfDate = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+    val sdf = remember { SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()) }
+    val sdfDate = remember { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()) }
     val plateLabel = vehicle?.plate?.let { Validators.formatPlate(it) } ?: "N/A"
     Card(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -243,8 +267,13 @@ fun AssignmentItem(
                     Text(text = "Retorno planeado: ${sdfDate.format(assignment.plannedReturnDate)}")
                     Text(text = "Km Inicial: ${assignment.initialMileage}")
                 }
-                if (assignment.status == AssignmentStatus.ACTIVE) {
-                    Button(onClick = onReturn) { Text("Devolver") }
+                Row {
+                    IconButton(onClick = onEdit) {
+                        Icon(Icons.Default.Edit, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                    }
+                    IconButton(onClick = onDelete) {
+                        Icon(Icons.Default.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error)
+                    }
                 }
             }
             if (assignment.status == AssignmentStatus.COMPLETED) {
@@ -253,9 +282,6 @@ fun AssignmentItem(
                 Text(text = "Km Final: ${assignment.finalMileage}", style = MaterialTheme.typography.bodySmall)
                 Text(text = "Obs: ${assignment.returnObservations}", style = MaterialTheme.typography.bodySmall)
             }
-            IconButton(onClick = onDelete, modifier = Modifier.align(Alignment.End)) {
-                Icon(Icons.Default.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error)
-            }
         }
     }
 }
@@ -263,9 +289,11 @@ fun AssignmentItem(
 @Composable
 fun VehicleStatusDistributionChart(vehicles: List<Vehicle>) {
     val total = vehicles.size.coerceAtLeast(1)
-    val distribution = VehicleStatus.entries.map { status ->
-        status to vehicles.count { it.status == status }
-    }.filter { it.second > 0 }
+    val distribution = remember(vehicles) {
+        VehicleStatus.entries.map { status ->
+            status to vehicles.count { it.status == status }
+        }.filter { it.second > 0 }
+    }
 
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         distribution.forEach { (status, count) ->

@@ -217,20 +217,22 @@ fun DashboardSection(
         }
     }
 
+    // Cada alerta lleva una key estable derivada de los ids reales (m.id / d.id):
+    // el texto solo NO sirve de key porque dos homónimos lo duplicarían (crash de LazyColumn).
     val alerts = remember(maintenances, vehicles, drivers, now, soon) {
-        val list = mutableListOf<Pair<Boolean, String>>() // (esCrítico, texto)
+        val list = mutableListOf<Triple<String, Boolean, String>>() // (key, esCrítico, texto)
         maintenances.filter { it.status == MaintenanceStatus.IN_PROGRESS }.forEach { m ->
             val v = vehicles.find { it.id == m.vehicleId }
             val label = v?.let { "${it.brand} (${Validators.formatPlate(it.plate)})" } ?: "Vehículo"
             if (m.nextDate != null) {
-                if (m.nextDate.before(now)) list.add(true to "Mantenimiento vencido · $label")
-                else if (m.nextDate.before(soon)) list.add(false to "Mantenimiento próximo · $label")
+                if (m.nextDate.before(now)) list.add(Triple("m-fecha-${m.id}", true, "Mantenimiento vencido · $label"))
+                else if (m.nextDate.before(soon)) list.add(Triple("m-fecha-${m.id}", false, "Mantenimiento próximo · $label"))
             }
-            if (m.nextMileage != null && v != null && v.mileage >= m.nextMileage) list.add(true to "Mant. vencido por KM · $label")
+            if (m.nextMileage != null && v != null && v.mileage >= m.nextMileage) list.add(Triple("m-km-${m.id}", true, "Mant. vencido por KM · $label"))
         }
         drivers.filter { it.status == DriverStatus.ACTIVE }.forEach { d ->
-            if (d.licenseExpiryDate.before(now)) list.add(true to "Licencia vencida · ${d.fullName}")
-            else if (d.licenseExpiryDate.before(soon)) list.add(false to "Licencia por vencer · ${d.fullName}")
+            if (d.licenseExpiryDate.before(now)) list.add(Triple("d-lic-${d.id}", true, "Licencia vencida · ${d.fullName}"))
+            else if (d.licenseExpiryDate.before(soon)) list.add(Triple("d-lic-${d.id}", false, "Licencia por vencer · ${d.fullName}"))
         }
         list
     }
@@ -238,14 +240,16 @@ fun DashboardSection(
     val lastOut = remember(assignments) { assignments.sortedByDescending { it.departureDate }.take(3) }
     val lastIn = remember(assignments) { assignments.filter { it.status == AssignmentStatus.COMPLETED }.sortedByDescending { it.returnDate }.take(3) }
 
-    val fleetChips = listOf(
-        Triple("Disp.", statusCount[VehicleStatus.AVAILABLE] ?: 0, StatusAvailable),
-        Triple("En uso", statusCount[VehicleStatus.IN_USE] ?: 0, StatusInUse),
-        Triple("Asig.", statusCount[VehicleStatus.ASSIGNED] ?: 0, StatusAssigned),
-        Triple("Mant.", statusCount[VehicleStatus.MAINTENANCE] ?: 0, StatusMaintenance),
-        Triple("F. serv.", statusCount[VehicleStatus.OUT_OF_SERVICE] ?: 0, StatusOutOfService),
-        Triple("Rev.", statusCount[VehicleStatus.PENDING_REVIEW] ?: 0, StatusPendingReview),
-    )
+    val fleetChips = remember(statusCount) {
+        listOf(
+            Triple("Disp.", statusCount[VehicleStatus.AVAILABLE] ?: 0, StatusAvailable),
+            Triple("En uso", statusCount[VehicleStatus.IN_USE] ?: 0, StatusInUse),
+            Triple("Asig.", statusCount[VehicleStatus.ASSIGNED] ?: 0, StatusAssigned),
+            Triple("Mant.", statusCount[VehicleStatus.MAINTENANCE] ?: 0, StatusMaintenance),
+            Triple("F. serv.", statusCount[VehicleStatus.OUT_OF_SERVICE] ?: 0, StatusOutOfService),
+            Triple("Rev.", statusCount[VehicleStatus.PENDING_REVIEW] ?: 0, StatusPendingReview),
+        )
+    }
 
     LazyColumn(modifier = Modifier.fillMaxSize()) {
         item {
@@ -279,9 +283,9 @@ fun DashboardSection(
 
         if (alerts.isNotEmpty()) {
             item { SectionTitle("Alertas críticas") }
-            items(alerts) { (critical, text) ->
+            items(alerts, key = { it.first }) { (_, critical, text) ->
                 Card(
-                    Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                    Modifier.fillMaxWidth().padding(vertical = 4.dp).animateItem(),
                     colors = CardDefaults.cardColors(
                         containerColor = if (critical) StatusOutOfService.copy(alpha = 0.10f)
                         else Amber.copy(alpha = 0.12f))
@@ -297,11 +301,15 @@ fun DashboardSection(
 
         if (lastOut.isNotEmpty()) {
             item { SectionTitle("Últimas salidas") }
-            items(lastOut) { a -> ActivityRow(a, vehicles, drivers, out = true) }
+            items(lastOut, key = { "out-${it.id}" }) { a ->
+                Box(Modifier.animateItem()) { ActivityRow(a, vehicles, drivers, out = true) }
+            }
         }
         if (lastIn.isNotEmpty()) {
             item { SectionTitle("Últimas entregas") }
-            items(lastIn) { a -> ActivityRow(a, vehicles, drivers, out = false) }
+            items(lastIn, key = { "in-${it.id}" }) { a ->
+                Box(Modifier.animateItem()) { ActivityRow(a, vehicles, drivers, out = false) }
+            }
         }
 
         item { Spacer(Modifier.height(32.dp)) }

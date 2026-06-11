@@ -18,7 +18,16 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.example.carcare.model.*
+import com.example.carcare.model.Vehicle
+import com.example.carcare.model.VehicleStatus
+import com.example.carcare.model.FuelType
+import com.example.carcare.model.Maintenance
+import com.example.carcare.model.MaintenanceType
+import com.example.carcare.model.MaintenanceStatus
+import com.example.carcare.model.Driver
+import com.example.carcare.model.DriverStatus
+import com.example.carcare.model.Assignment as AssignmentModel
+import com.example.carcare.model.AssignmentStatus
 import com.example.carcare.ui.components.DatePickerField
 import com.example.carcare.util.ValidationResult
 import com.example.carcare.util.Validators
@@ -289,7 +298,7 @@ fun VehicleFormDialog(
 fun VehicleDetailsDialog(
     vehicle: Vehicle,
     maintenanceHistory: List<Maintenance>,
-    assignmentHistory: List<Assignment>,
+    assignmentHistory: List<AssignmentModel>,
     onDismiss: () -> Unit,
     onStatusChange: (VehicleStatus) -> Unit
 ) {
@@ -360,7 +369,7 @@ fun VehicleDetailsDialog(
                 if (maintenanceHistory.isEmpty()) {
                     item { Text("No hay registros de mantenimiento.", style = MaterialTheme.typography.bodySmall) }
                 } else {
-                    items(maintenanceHistory) { maintenance ->
+                    items(maintenanceHistory, key = { it.id }) { maintenance ->
                         Card(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
                             Column(modifier = Modifier.padding(8.dp)) {
                                 Text("${maintenance.type.label} - ${sdf.format(maintenance.date)}")
@@ -376,7 +385,7 @@ fun VehicleDetailsDialog(
                 if (assignmentHistory.isEmpty()) {
                     item { Text("No hay registros de asignación.", style = MaterialTheme.typography.bodySmall) }
                 } else {
-                    items(assignmentHistory) { assignment ->
+                    items(assignmentHistory, key = { it.id }) { assignment ->
                         Card(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
                             Column(modifier = Modifier.padding(8.dp)) {
                                 Text("Salida: ${sdf.format(assignment.departureDate)}")
@@ -645,8 +654,11 @@ fun GeneralMaintenanceHistoryDialog(
             if (maintenances.isEmpty()) {
                 Text("No hay registros de mantenimiento.")
             } else {
+                val sortedMaintenances = remember(maintenances) {
+                    maintenances.sortedByDescending { it.date }
+                }
                 LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 400.dp)) {
-                    items(maintenances.sortedByDescending { it.date }) { maintenance ->
+                    items(sortedMaintenances, key = { it.id }) { maintenance ->
                         val vehicle = vehicles.find { it.id == maintenance.vehicleId }
                         Card(
                             modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
@@ -690,7 +702,6 @@ fun DriverFormDialog(
     var licenseExpiry by remember { mutableStateOf<Date?>(driver?.licenseExpiryDate) }
     val status by remember { mutableStateOf(driver?.status ?: DriverStatus.ACTIVE) }
 
-    // Fotos: ahora funcionales (antes eran decorativas)
     var profilePhotoUri by remember { mutableStateOf(driver?.profilePhotoUri) }
     var licensePhotoUri by remember { mutableStateOf(driver?.licensePhotoUri) }
 
@@ -883,23 +894,24 @@ fun DriverDetailsDialog(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AssignmentFormDialog(
+    assignment: AssignmentModel? = null,
     vehicles: List<Vehicle>,
     drivers: List<Driver>,
     onDismiss: () -> Unit,
-    onSave: (Assignment) -> Unit
+    onSave: (AssignmentModel) -> Unit
 ) {
-    val noVehicles = vehicles.isEmpty()
-    val noDrivers = drivers.isEmpty()
+    val noVehicles = vehicles.isEmpty() && assignment == null
+    val noDrivers = drivers.isEmpty() && assignment == null
     val cannotProceed = noVehicles || noDrivers
 
-    var selectedVehicleId by remember { mutableStateOf(vehicles.firstOrNull()?.id ?: "") }
-    var selectedDriverId by remember { mutableStateOf(drivers.firstOrNull()?.id ?: "") }
-    var initialMileage by remember { mutableStateOf(vehicles.find { it.id == selectedVehicleId }?.mileage?.toString() ?: "") }
-    var observations by remember { mutableStateOf("") }
+    var selectedVehicleId by remember { mutableStateOf(assignment?.vehicleId ?: vehicles.firstOrNull()?.id ?: "") }
+    var selectedDriverId by remember { mutableStateOf(assignment?.driverId ?: drivers.firstOrNull()?.id ?: "") }
+    var initialMileage by remember { mutableStateOf(assignment?.initialMileage?.toString() ?: vehicles.find { it.id == selectedVehicleId }?.mileage?.toString() ?: "") }
+    var observations by remember { mutableStateOf(assignment?.departureObservations ?: "") }
 
-    var departureDate by remember { mutableStateOf<Date?>(Date()) }
+    var departureDate by remember { mutableStateOf<Date?>(assignment?.departureDate ?: Date()) }
     var plannedReturnDate by remember {
-        mutableStateOf<Date?>(Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, 7) }.time)
+        mutableStateOf<Date?>(assignment?.plannedReturnDate ?: Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, 7) }.time)
     }
 
     var expandedVehicle by remember { mutableStateOf(false) }
@@ -920,7 +932,7 @@ fun AssignmentFormDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Nueva Asignación") },
+        title = { Text(if (assignment == null) "Nueva Asignación" else "Editar Asignación") },
         text = {
             if (cannotProceed) {
                 Column {
@@ -935,55 +947,73 @@ fun AssignmentFormDialog(
             } else {
                 LazyColumn {
                     item {
-                        ExposedDropdownMenuBox(expanded = expandedVehicle, onExpandedChange = { expandedVehicle = !expandedVehicle }) {
-                            OutlinedTextField(
-                                value = vehicles.find { it.id == selectedVehicleId }?.let {
-                                    "${Validators.formatPlate(it.plate)} - ${it.model}"
-                                } ?: "Seleccionar Vehículo",
-                                onValueChange = {},
-                                readOnly = true,
-                                label = { Text("Vehículo Disponible") },
-                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedVehicle) },
-                                modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable).fillMaxWidth()
-                            )
-                            ExposedDropdownMenu(expanded = expandedVehicle, onDismissRequest = { expandedVehicle = false }) {
-                                vehicles.forEach { v ->
-                                    DropdownMenuItem(
-                                        text = { Text("${Validators.formatPlate(v.plate)} - ${v.model}") },
-                                        onClick = {
-                                            selectedVehicleId = v.id
-                                            initialMileage = v.mileage.toString()
-                                            expandedVehicle = false
-                                        }
-                                    )
+                        if (assignment == null) {
+                            ExposedDropdownMenuBox(expanded = expandedVehicle, onExpandedChange = { expandedVehicle = !expandedVehicle }) {
+                                OutlinedTextField(
+                                    value = vehicles.find { it.id == selectedVehicleId }?.let {
+                                        "${Validators.formatPlate(it.plate)} - ${it.model}"
+                                    } ?: "Seleccionar Vehículo",
+                                    onValueChange = {},
+                                    readOnly = true,
+                                    label = { Text("Vehículo Disponible") },
+                                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedVehicle) },
+                                    modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable).fillMaxWidth()
+                                )
+                                ExposedDropdownMenu(expanded = expandedVehicle, onDismissRequest = { expandedVehicle = false }) {
+                                    vehicles.forEach { v ->
+                                        DropdownMenuItem(
+                                            text = { Text("${Validators.formatPlate(v.plate)} - ${v.model}") },
+                                            onClick = {
+                                                selectedVehicleId = v.id
+                                                initialMileage = v.mileage.toString()
+                                                expandedVehicle = false
+                                            }
+                                        )
+                                    }
                                 }
                             }
-                        }
-                        Spacer(modifier = Modifier.height(8.dp))
-                        ExposedDropdownMenuBox(expanded = expandedDriver, onExpandedChange = { expandedDriver = !expandedDriver }) {
-                            OutlinedTextField(
-                                value = drivers.find { it.id == selectedDriverId }?.fullName ?: "Seleccionar Conductor",
-                                onValueChange = {},
-                                readOnly = true,
-                                label = { Text("Conductor Libre") },
-                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedDriver) },
-                                modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable).fillMaxWidth()
-                            )
-                            ExposedDropdownMenu(expanded = expandedDriver, onDismissRequest = { expandedDriver = false }) {
-                                drivers.forEach { d ->
-                                    DropdownMenuItem(
-                                        text = { Text(d.fullName) },
-                                        onClick = { selectedDriverId = d.id; expandedDriver = false }
-                                    )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            ExposedDropdownMenuBox(expanded = expandedDriver, onExpandedChange = { expandedDriver = !expandedDriver }) {
+                                OutlinedTextField(
+                                    value = drivers.find { it.id == selectedDriverId }?.fullName ?: "Seleccionar Conductor",
+                                    onValueChange = {},
+                                    readOnly = true,
+                                    label = { Text("Conductor Libre") },
+                                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedDriver) },
+                                    modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable).fillMaxWidth()
+                                )
+                                ExposedDropdownMenu(expanded = expandedDriver, onDismissRequest = { expandedDriver = false }) {
+                                    drivers.forEach { d ->
+                                        DropdownMenuItem(
+                                            text = { Text(d.fullName) },
+                                            onClick = { selectedDriverId = d.id; expandedDriver = false }
+                                        )
+                                    }
                                 }
                             }
+                        } else {
+                            Text("Vehículo y Conductor no editables una vez asignados", style = MaterialTheme.typography.labelSmall)
+                            OutlinedTextField(
+                                value = assignment.vehicleId,
+                                onValueChange = {},
+                                readOnly = true,
+                                label = { Text("ID Vehículo") },
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            OutlinedTextField(
+                                value = assignment.driverId,
+                                onValueChange = {},
+                                readOnly = true,
+                                label = { Text("ID Conductor") },
+                                modifier = Modifier.fillMaxWidth()
+                            )
                         }
 
                         DatePickerField(
                             label = "Fecha de salida",
                             selectedDate = departureDate,
                             onDateSelected = { departureDate = it },
-                            minDate = Date(),
+                            minDate = if (assignment == null) Date() else null,
                             maxDate = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, 30) }.time,
                             isError = attempted && !departureV.isValid,
                             supportingText = if (attempted && !departureV.isValid) departureV.errorMessage else null
@@ -1026,78 +1056,20 @@ fun AssignmentFormDialog(
                 onClick = {
                     attempted = true
                     if (isValid) {
-                        onSave(Assignment(
+                        onSave(AssignmentModel(
+                            id = assignment?.id ?: "",
                             vehicleId = selectedVehicleId,
                             driverId = selectedDriverId,
                             departureDate = departureDate ?: Date(),
                             plannedReturnDate = plannedReturnDate ?: Date(),
                             initialMileage = initialMileage.toLongOrNull() ?: 0L,
-                            departureObservations = observations.trim()
+                            departureObservations = observations.trim(),
+                            status = assignment?.status ?: AssignmentStatus.ACTIVE
                         ))
                     }
                 },
                 enabled = !cannotProceed
-            ) { Text("Asignar") }
-        },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } }
-    )
-}
-
-@Composable
-fun ReturnVehicleDialog(
-    assignment: Assignment,
-    onDismiss: () -> Unit,
-    onSave: (Date, Long, String, VehicleStatus) -> Unit
-) {
-    var finalMileage by remember { mutableStateOf("") }
-    var observations by remember { mutableStateOf("") }
-    var nextStatus by remember { mutableStateOf(VehicleStatus.AVAILABLE) }
-    var attempted by remember { mutableStateOf(false) }
-
-    val mileageV = Validators.validateFinalMileage(
-        finalMileage,
-        assignment.initialMileage,
-        Validators.reasonableMileageDelta(assignment.departureDate)
-    )
-    val isValid = mileageV.isValid && finalMileage.isNotBlank()
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Devolución de Vehículo") },
-        text = {
-            Column {
-                Text("Km Inicial: ${assignment.initialMileage}")
-                OutlinedTextField(
-                    value = finalMileage,
-                    onValueChange = { finalMileage = it.filter { c -> c.isDigit() } },
-                    label = { Text("Kilometraje Final") },
-                    isError = attempted && !mileageV.isValid,
-                    supportingText = if (attempted && !mileageV.isValid) {
-                        { Text(mileageV.errorMessage ?: "") }
-                    } else null,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                OutlinedTextField(
-                    value = observations, onValueChange = { observations = it },
-                    label = { Text("Observaciones de Entrega (opcional)") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Text("Estado posterior:", style = MaterialTheme.typography.labelMedium)
-                Row {
-                    FilterChip(selected = nextStatus == VehicleStatus.AVAILABLE, onClick = { nextStatus = VehicleStatus.AVAILABLE }, label = { Text("Disponible") })
-                    Spacer(modifier = Modifier.width(8.dp))
-                    FilterChip(selected = nextStatus == VehicleStatus.MAINTENANCE, onClick = { nextStatus = VehicleStatus.MAINTENANCE }, label = { Text("Mantenimiento") })
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = {
-                attempted = true
-                if (isValid) {
-                    onSave(Date(), finalMileage.toLongOrNull() ?: 0L, observations.trim(), nextStatus)
-                }
-            }) { Text("Confirmar Devolución") }
+            ) { Text(if (assignment == null) "Asignar" else "Guardar") }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } }
     )
