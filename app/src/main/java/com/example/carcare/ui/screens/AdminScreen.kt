@@ -164,7 +164,8 @@ fun AdminScreen(
                         }
                     }
                     MaintenanceListSection(
-                        maintenances = maintenanceViewModel.getFilteredMaintenances(vehicleViewModel.vehicles),
+                        maintenances = maintenanceViewModel.getFilteredMaintenances(vehicleViewModel.vehicles)
+                            .filter { it.status != MaintenanceStatus.COMPLETED },
                         vehicles = vehicleViewModel.vehicles,
                         onEdit = { maintenanceToEdit = it; showMaintenanceForm = true },
                         onDelete = { maintenanceToDelete = it },
@@ -332,7 +333,7 @@ fun AdminScreen(
 
     if (showGeneralHistory) {
         GeneralMaintenanceHistoryDialog(
-            maintenances = maintenanceViewModel.maintenances,
+            maintenances = maintenanceViewModel.maintenances.filter { it.status == MaintenanceStatus.COMPLETED },
             vehicles = vehicleViewModel.vehicles,
             onDismiss = { showGeneralHistory = false },
             onMaintenanceClick = {
