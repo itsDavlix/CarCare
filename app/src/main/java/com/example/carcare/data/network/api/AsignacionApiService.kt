@@ -26,6 +26,9 @@ interface AsignacionApiService {
     @POST("api/asignaciones")
     suspend fun crear(@Body dto: AsignacionRequestDto): AsignacionResponseDto
 
+    @PUT("api/asignaciones/{id}")
+    suspend fun actualizar(@Path("id") id: Long, @Body dto: AsignacionRequestDto): AsignacionResponseDto
+
     @PATCH("api/asignaciones/{id}/completar")
     suspend fun completar(@Path("id") id: Long, @Body dto: CompletarAsignacionDto): AsignacionResponseDto
 

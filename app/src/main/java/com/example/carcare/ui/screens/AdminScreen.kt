@@ -63,8 +63,8 @@ fun AdminScreen(
     var driverToDelete by remember { mutableStateOf<Driver?>(null) }
 
     var showAssignmentForm by remember { mutableStateOf(false) }
-    var assignmentToComplete by remember { mutableStateOf<Assignment?>(null) }
-    var assignmentToDelete by remember { mutableStateOf<Assignment?>(null) }
+    var assignmentToEdit by remember { mutableStateOf<com.example.carcare.model.Assignment?>(null) }
+    var assignmentToDelete by remember { mutableStateOf<com.example.carcare.model.Assignment?>(null) }
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -199,7 +199,7 @@ fun AdminScreen(
                         assignments = assignmentViewModel.getFilteredAssignments(vehicleViewModel.vehicles, driverViewModel.drivers),
                         vehicles = vehicleViewModel.vehicles,
                         drivers = driverViewModel.drivers,
-                        onReturn = { assignmentToComplete = it },
+                        onEdit = { assignmentToEdit = it; showAssignmentForm = true },
                         onDelete = { assignmentToDelete = it }
                     )
                 }
@@ -252,32 +252,30 @@ fun AdminScreen(
 
     if (showAssignmentForm) {
         val busyDriverIds = assignmentViewModel.assignments
-            .filter { it.status == AssignmentStatus.ACTIVE }
+            .filter { it.status == AssignmentStatus.ACTIVE && it.id != assignmentToEdit?.id }
             .map { it.driverId }
             .toSet()
 
         AssignmentFormDialog(
-            vehicles = vehicleViewModel.vehicles.filter { it.status == VehicleStatus.AVAILABLE },
-            drivers = driverViewModel.drivers.filter {
-                it.status == DriverStatus.ACTIVE && it.id !in busyDriverIds
+            assignment = assignmentToEdit,
+            vehicles = vehicleViewModel.vehicles.filter {
+                it.status == VehicleStatus.AVAILABLE || it.id == assignmentToEdit?.vehicleId
             },
-            onDismiss = { showAssignmentForm = false },
-            onSave = { assignment ->
-                assignmentViewModel.addAssignment(assignment) { vehicleViewModel.loadVehicles() }
+            drivers = driverViewModel.drivers.filter {
+                (it.status == DriverStatus.ACTIVE && it.id !in busyDriverIds) || it.id == assignmentToEdit?.driverId
+            },
+            onDismiss = {
                 showAssignmentForm = false
-            }
-        )
-    }
-
-    if (assignmentToComplete != null) {
-        ReturnVehicleDialog(
-            assignment = assignmentToComplete!!,
-            onDismiss = { assignmentToComplete = null },
-            onSave = { returnDate, finalMileage, observations, nextStatus ->
-                assignmentViewModel.completeAssignment(
-                    assignmentToComplete!!.id, returnDate, finalMileage, observations, nextStatus
-                ) { vehicleViewModel.loadVehicles() }
-                assignmentToComplete = null
+                assignmentToEdit = null
+            },
+            onSave = { assignmentData ->
+                if (assignmentToEdit == null) {
+                    assignmentViewModel.addAssignment(assignmentData) { vehicleViewModel.loadVehicles() }
+                } else {
+                    assignmentViewModel.updateAssignment(assignmentData) { vehicleViewModel.loadVehicles() }
+                }
+                showAssignmentForm = false
+                assignmentToEdit = null
             }
         )
     }
