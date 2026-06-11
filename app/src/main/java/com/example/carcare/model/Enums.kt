@@ -22,7 +22,8 @@ enum class VehicleStatus(val label: String) {
 enum class FuelType(val label: String) {
     GASOLINE("Gasolina"),
     DIESEL("Diésel"),
-    HEV("HEV");
+    HEV("HEV"),
+    ELECTRIC("Eléctrico");
 
     companion object {
         /** Busca un FuelType por su label. Retorna null si no se encuentra. */

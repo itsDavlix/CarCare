@@ -4,20 +4,34 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.AddAPhoto
+import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.DirectionsCar
+import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.Shield
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
 import com.example.carcare.model.Vehicle
 import com.example.carcare.model.VehicleStatus
 import com.example.carcare.model.FuelType
@@ -50,6 +64,7 @@ fun VehicleFormDialog(
     var color by remember { mutableStateOf(vehicle?.color ?: "") }
     var chassisNumber by remember { mutableStateOf(vehicle?.chassisNumber ?: "") }
     var engineNumber by remember { mutableStateOf(vehicle?.engineNumber ?: "") }
+    var insurancePolicy by remember { mutableStateOf(vehicle?.insurancePolicy ?: "") }
     var insuranceExpiry by remember { mutableStateOf(vehicle?.insuranceExpiryDate) }
 
     var fuelType by remember { mutableStateOf(vehicle?.fuelType ?: FuelType.GASOLINE) }
@@ -79,6 +94,8 @@ fun VehicleFormDialog(
     var attempted by remember { mutableStateOf(false) }
 
     val plateRegistry = existingVehicles.map { it.id to it.plate }
+    val chassisRegistry = existingVehicles.map { it.id to it.chassisNumber }
+    val engineRegistry = existingVehicles.map { it.id to it.engineNumber }
 
     val brandV = Validators.validateRequired(brand, "La marca")
     val modelV = Validators.validateRequired(model, "El modelo")
@@ -86,8 +103,11 @@ fun VehicleFormDialog(
     val plateV = Validators.validatePlate(plate, plateRegistry, vehicle?.id)
     val fuelV = Validators.validateFuelType(fuelType.label)
     val mileageV = Validators.validateMileage(mileage)
+    val chassisV = Validators.validateUniqueOptionalField(chassisNumber, "El número de chasis", chassisRegistry, vehicle?.id)
+    val engineV = Validators.validateUniqueOptionalField(engineNumber, "El número de motor", engineRegistry, vehicle?.id)
+    val policyV = Validators.validateRequired(insurancePolicy, "La póliza de seguro")
 
-    val isValid = listOf(brandV, modelV, yearV, plateV, fuelV, mileageV).all { it.isValid }
+    val isValid = listOf(brandV, modelV, yearV, plateV, fuelV, mileageV, chassisV, engineV, policyV).all { it.isValid }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -238,16 +258,33 @@ fun VehicleFormDialog(
                     OutlinedTextField(
                         value = chassisNumber, onValueChange = { chassisNumber = it.uppercase() },
                         label = { Text("Número de Chasis") },
+                        isError = attempted && !chassisV.isValid,
+                        supportingText = if (attempted && !chassisV.isValid) {
+                            { Text(chassisV.errorMessage ?: "") }
+                        } else null,
                         modifier = Modifier.fillMaxWidth()
                     )
                     OutlinedTextField(
                         value = engineNumber, onValueChange = { engineNumber = it.uppercase() },
                         label = { Text("Número de Motor") },
+                        isError = attempted && !engineV.isValid,
+                        supportingText = if (attempted && !engineV.isValid) {
+                            { Text(engineV.errorMessage ?: "") }
+                        } else null,
                         modifier = Modifier.fillMaxWidth()
                     )
 
                     Spacer(modifier = Modifier.height(16.dp))
                     Text("Seguro", style = MaterialTheme.typography.labelMedium)
+                    OutlinedTextField(
+                        value = insurancePolicy, onValueChange = { insurancePolicy = it.uppercase() },
+                        label = { Text("Número de Póliza de Seguro") },
+                        isError = attempted && !policyV.isValid,
+                        supportingText = if (attempted && !policyV.isValid) {
+                            { Text(policyV.errorMessage ?: "") }
+                        } else null,
+                        modifier = Modifier.fillMaxWidth()
+                    )
                     DatePickerField(
                         label = "Vencimiento del Seguro",
                         selectedDate = insuranceExpiry,
@@ -279,6 +316,7 @@ fun VehicleFormDialog(
                             color = color.trim(),
                             chassisNumber = chassisNumber.trim(),
                             engineNumber = engineNumber.trim(),
+                            insurancePolicy = insurancePolicy.trim(),
                             insuranceExpiryDate = insuranceExpiry,
                             vehiclePhotoUri = vehiclePhotoUri,
                             registrationPhotoUri = registrationPhotoUri,
@@ -321,6 +359,7 @@ fun VehicleDetailsDialog(
                     Text("Motor: ${vehicle.engineNumber.ifBlank { "N/A" }}")
                     Spacer(modifier = Modifier.height(8.dp))
                     Text("Documentación", style = MaterialTheme.typography.titleSmall)
+                    Text("Póliza: ${vehicle.insurancePolicy.ifBlank { "N/A" }}")
                     Text("Venc. Seguro: ${vehicle.insuranceExpiryDate?.let { sdf.format(it) } ?: "N/A"}")
                     Spacer(modifier = Modifier.height(8.dp))
                     Text("Notas: ${vehicle.description.ifBlank { "Sin observaciones" }}")
@@ -410,6 +449,7 @@ fun MaintenanceFormDialog(
     onDismiss: () -> Unit,
     onSave: (Maintenance) -> Unit
 ) {
+    val isEdit = maintenance != null
     var selectedVehicleId by remember { mutableStateOf(maintenance?.vehicleId ?: vehicles.firstOrNull()?.id ?: "") }
     var type by remember { mutableStateOf(maintenance?.type ?: MaintenanceType.PREVENTIVE) }
     var description by remember { mutableStateOf(maintenance?.description ?: "") }
@@ -447,7 +487,7 @@ fun MaintenanceFormDialog(
     else
         Validators.validateOptionalMileage(nextMileage)
     val datesV = Validators.validateMaintenanceDates(startDate, completionDate)
-    val nextDateV = Validators.validateFutureDate(nextDate, "La próxima fecha")
+    val nextDateV = Validators.validateFutureDate(nextDate, "La próxima fecha", isEdit)
 
     val isValid = !noVehicles && listOf(vehicleV, descV, responsibleV, mileageV, nextMileageV, datesV, nextDateV)
         .all { it.isValid }
@@ -558,7 +598,7 @@ fun MaintenanceFormDialog(
                             label = "Próxima fecha programada (opcional)",
                             selectedDate = nextDate,
                             onDateSelected = { nextDate = it },
-                            minDate = Date(),
+                            minDate = if (isEdit) null else Date(),
                             isError = attempted && !nextDateV.isValid,
                             supportingText = if (attempted && !nextDateV.isValid) nextDateV.errorMessage else null
                         )
@@ -654,11 +694,8 @@ fun GeneralMaintenanceHistoryDialog(
             if (maintenances.isEmpty()) {
                 Text("No hay registros de mantenimiento.")
             } else {
-                val sortedMaintenances = remember(maintenances) {
-                    maintenances.sortedByDescending { it.date }
-                }
                 LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 400.dp)) {
-                    items(sortedMaintenances, key = { it.id }) { maintenance ->
+                    items(maintenances.sortedByDescending { it.date }, key = { it.id }) { maintenance ->
                         val vehicle = vehicles.find { it.id == maintenance.vehicleId }
                         Card(
                             modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
@@ -725,7 +762,7 @@ fun DriverFormDialog(
     val ageV = Validators.validateAge(age)
     val phoneV = Validators.validatePhone(phone, phoneRegistry, driver?.id)
     val licenseV = Validators.validateLicenseNumber(licenseNumber, licenseRegistry, driver?.id)
-    val expiryV = Validators.validateLicenseExpiry(licenseExpiry)
+    val expiryV = Validators.validateLicenseExpiry(licenseExpiry, driver != null)
 
     val isValid = listOf(firstNameV, lastNameV, idV, ageV, phoneV, licenseV, expiryV)
         .all { it.isValid }
@@ -817,7 +854,7 @@ fun DriverFormDialog(
                         label = "Vencimiento de licencia",
                         selectedDate = licenseExpiry,
                         onDateSelected = { licenseExpiry = it },
-                        minDate = Date(),
+                        minDate = if (driver != null) null else Date(),
                         isError = attempted && !expiryV.isValid,
                         supportingText = if (attempted && !expiryV.isValid) expiryV.errorMessage else null
                     )
@@ -900,33 +937,47 @@ fun AssignmentFormDialog(
     onDismiss: () -> Unit,
     onSave: (AssignmentModel) -> Unit
 ) {
-    val noVehicles = vehicles.isEmpty() && assignment == null
-    val noDrivers = drivers.isEmpty() && assignment == null
+    val isEdit = assignment != null
+    val noVehicles = vehicles.isEmpty() && !isEdit
+    val noDrivers = drivers.isEmpty() && !isEdit
     val cannotProceed = noVehicles || noDrivers
 
     var selectedVehicleId by remember { mutableStateOf(assignment?.vehicleId ?: vehicles.firstOrNull()?.id ?: "") }
     var selectedDriverId by remember { mutableStateOf(assignment?.driverId ?: drivers.firstOrNull()?.id ?: "") }
     var initialMileage by remember { mutableStateOf(assignment?.initialMileage?.toString() ?: vehicles.find { it.id == selectedVehicleId }?.mileage?.toString() ?: "") }
-    var observations by remember { mutableStateOf(assignment?.departureObservations ?: "") }
-
     var departureDate by remember { mutableStateOf<Date?>(assignment?.departureDate ?: Date()) }
     var plannedReturnDate by remember {
         mutableStateOf<Date?>(assignment?.plannedReturnDate ?: Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, 7) }.time)
     }
+    var observations by remember { mutableStateOf(assignment?.departureObservations ?: "") }
+
+    // Campos de retorno (solo edición)
+    var status by remember { mutableStateOf(assignment?.status ?: AssignmentStatus.ACTIVE) }
+    var returnDate by remember { mutableStateOf<Date?>(assignment?.returnDate ?: if (isEdit) Date() else null) }
+    var finalMileage by remember { mutableStateOf(assignment?.finalMileage?.toString() ?: "") }
+    var returnObservations by remember { mutableStateOf(assignment?.returnObservations ?: "") }
 
     var expandedVehicle by remember { mutableStateOf(false) }
     var expandedDriver by remember { mutableStateOf(false) }
+    var expandedStatus by remember { mutableStateOf(false) }
     var attempted by remember { mutableStateOf(false) }
 
     val selectedVehicle = vehicles.find { it.id == selectedVehicleId }
+    
     val mileageV = if (selectedVehicle != null)
         Validators.validateAssignmentInitialMileage(initialMileage, selectedVehicle.mileage)
     else
         Validators.validateMileage(initialMileage)
-    val departureV = Validators.validateDepartureDate(departureDate)
+    
+    val departureV = Validators.validateDepartureDate(departureDate, isEdit)
     val datesV = Validators.validateAssignmentDates(departureDate, plannedReturnDate)
+    
+    val finalMileageV = if (isEdit && status == AssignmentStatus.COMPLETED) {
+        Validators.validateFinalMileage(finalMileage, assignment?.initialMileage ?: 0L)
+    } else ValidationResult.Valid
 
-    val isValid = !cannotProceed && listOf(mileageV, departureV, datesV).all { it.isValid } &&
+    val isValid = !cannotProceed && 
+            listOf(mileageV, departureV, datesV, finalMileageV).all { it.isValid } &&
             selectedVehicleId.isNotBlank() && selectedDriverId.isNotBlank() &&
             initialMileage.isNotBlank() && departureDate != null && plannedReturnDate != null
 
@@ -947,7 +998,7 @@ fun AssignmentFormDialog(
             } else {
                 LazyColumn {
                     item {
-                        if (assignment == null) {
+                        if (!isEdit) {
                             ExposedDropdownMenuBox(expanded = expandedVehicle, onExpandedChange = { expandedVehicle = !expandedVehicle }) {
                                 OutlinedTextField(
                                     value = vehicles.find { it.id == selectedVehicleId }?.let {
@@ -992,28 +1043,36 @@ fun AssignmentFormDialog(
                                 }
                             }
                         } else {
-                            Text("Vehículo y Conductor no editables una vez asignados", style = MaterialTheme.typography.labelSmall)
-                            OutlinedTextField(
-                                value = assignment.vehicleId,
-                                onValueChange = {},
-                                readOnly = true,
-                                label = { Text("ID Vehículo") },
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                            OutlinedTextField(
-                                value = assignment.driverId,
-                                onValueChange = {},
-                                readOnly = true,
-                                label = { Text("ID Conductor") },
-                                modifier = Modifier.fillMaxWidth()
-                            )
+                            Text("Información de Asignación", style = MaterialTheme.typography.labelMedium)
+                            Text("ID Vehículo: ${assignment?.vehicleId}", style = MaterialTheme.typography.bodySmall)
+                            Text("ID Conductor: ${assignment?.driverId}", style = MaterialTheme.typography.bodySmall)
+                            
+                            Spacer(modifier = Modifier.height(16.dp))
+                            ExposedDropdownMenuBox(expanded = expandedStatus, onExpandedChange = { expandedStatus = !expandedStatus }) {
+                                OutlinedTextField(
+                                    value = status.label,
+                                    onValueChange = {},
+                                    readOnly = true,
+                                    label = { Text("Estado de la Asignación") },
+                                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedStatus) },
+                                    modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable).fillMaxWidth()
+                                )
+                                ExposedDropdownMenu(expanded = expandedStatus, onDismissRequest = { expandedStatus = false }) {
+                                    AssignmentStatus.entries.forEach { s ->
+                                        DropdownMenuItem(
+                                            text = { Text(s.label) },
+                                            onClick = { status = s; expandedStatus = false }
+                                        )
+                                    }
+                                }
+                            }
                         }
 
                         DatePickerField(
                             label = "Fecha de salida",
                             selectedDate = departureDate,
                             onDateSelected = { departureDate = it },
-                            minDate = if (assignment == null) Date() else null,
+                            minDate = if (isEdit) null else Date(),
                             maxDate = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, 30) }.time,
                             isError = attempted && !departureV.isValid,
                             supportingText = if (attempted && !departureV.isValid) departureV.errorMessage else null
@@ -1033,6 +1092,7 @@ fun AssignmentFormDialog(
                             value = initialMileage,
                             onValueChange = { initialMileage = it.filter { c -> c.isDigit() } },
                             label = { Text("Kilometraje Inicial") },
+                            readOnly = isEdit,
                             isError = attempted && !mileageV.isValid,
                             supportingText = {
                                 Text(
@@ -1047,6 +1107,36 @@ fun AssignmentFormDialog(
                             label = { Text("Observaciones de Salida (opcional)") },
                             modifier = Modifier.fillMaxWidth()
                         )
+
+                        if (isEdit && status == AssignmentStatus.COMPLETED) {
+                            Spacer(modifier = Modifier.height(24.dp))
+                            Text("Información de Retorno", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+                            
+                            DatePickerField(
+                                label = "Fecha de retorno real",
+                                selectedDate = returnDate,
+                                onDateSelected = { returnDate = it },
+                                minDate = departureDate
+                            )
+                            
+                            OutlinedTextField(
+                                value = finalMileage,
+                                onValueChange = { finalMileage = it.filter { c -> c.isDigit() } },
+                                label = { Text("Kilometraje Final") },
+                                isError = attempted && !finalMileageV.isValid,
+                                supportingText = if (attempted && !finalMileageV.isValid) {
+                                    { Text(finalMileageV.errorMessage ?: "") }
+                                } else null,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            
+                            OutlinedTextField(
+                                value = returnObservations,
+                                onValueChange = { returnObservations = it },
+                                label = { Text("Observaciones de Entrega") },
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
                     }
                 }
             }
@@ -1057,20 +1147,49 @@ fun AssignmentFormDialog(
                     attempted = true
                     if (isValid) {
                         onSave(AssignmentModel(
-                            id = assignment?.id ?: "",
+                            id = assignment?.id ?: UUID.randomUUID().toString(),
                             vehicleId = selectedVehicleId,
                             driverId = selectedDriverId,
                             departureDate = departureDate ?: Date(),
                             plannedReturnDate = plannedReturnDate ?: Date(),
                             initialMileage = initialMileage.toLongOrNull() ?: 0L,
                             departureObservations = observations.trim(),
-                            status = assignment?.status ?: AssignmentStatus.ACTIVE
+                            returnDate = if (status == AssignmentStatus.COMPLETED) returnDate else null,
+                            finalMileage = if (status == AssignmentStatus.COMPLETED) finalMileage.toLongOrNull() else null,
+                            returnObservations = returnObservations.trim(),
+                            status = status
                         ))
                     }
                 },
                 enabled = !cannotProceed
-            ) { Text(if (assignment == null) "Asignar" else "Guardar") }
+            ) { Text(if (!isEdit) "Asignar" else "Guardar Cambios") }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } }
     )
+}
+
+@Composable
+fun PhotoPlaceholder(label: String, icon: androidx.compose.ui.graphics.vector.ImageVector, uri: String? = null, onPick: () -> Unit = {}) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Box(
+            modifier = Modifier
+                .size(80.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(MaterialTheme.colorScheme.surfaceVariant)
+                .clickable { onPick() },
+            contentAlignment = Alignment.Center
+        ) {
+            if (uri != null) {
+                coil.compose.AsyncImage(
+                    model = uri,
+                    contentDescription = null,
+                    contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
+                )
+            } else {
+                Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+        Text(label, style = MaterialTheme.typography.labelSmall)
+    }
 }

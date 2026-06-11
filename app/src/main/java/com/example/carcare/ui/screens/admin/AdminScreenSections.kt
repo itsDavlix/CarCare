@@ -38,7 +38,7 @@ import com.example.carcare.model.MaintenanceStatus
 import com.example.carcare.model.Vehicle
 import com.example.carcare.model.VehicleStatus
 import com.example.carcare.model.MaintenanceType
-import com.example.carcare.ui.components.DriverStatusBadge
+import com.example.carcare.ui.components.StatusBadge
 import com.example.carcare.util.Validators
 import java.text.SimpleDateFormat
 import java.util.*
@@ -52,14 +52,12 @@ fun VehicleListSection(
 ) {
     LazyColumn(modifier = Modifier.fillMaxSize()) {
         items(vehicles, key = { it.id }) { vehicle ->
-            Box(Modifier.animateItem()) {
-                VehicleItem(
-                    vehicle = vehicle,
-                    onClick = { onVehicleClick(vehicle) },
-                    onEdit = { onEdit(vehicle) },
-                    onDelete = { onDelete(vehicle) }
-                )
-            }
+            VehicleItem(
+                vehicle = vehicle,
+                onClick = { onVehicleClick(vehicle) },
+                onEdit = { onEdit(vehicle) },
+                onDelete = { onDelete(vehicle) }
+            )
         }
     }
 }
@@ -80,15 +78,13 @@ fun MaintenanceListSection(
         LazyColumn(modifier = Modifier.fillMaxSize()) {
             items(maintenances, key = { it.id }) { maintenance ->
                 val vehicle = vehicles.find { it.id == maintenance.vehicleId }
-                Box(Modifier.animateItem()) {
-                    MaintenanceItem(
-                        maintenance = maintenance,
-                        vehicle = vehicle,
-                        onEdit = { onEdit(maintenance) },
-                        onDelete = { onDelete(maintenance) },
-                        onStatusChange = { onStatusChange(maintenance, it) }
-                    )
-                }
+                MaintenanceItem(
+                    maintenance = maintenance,
+                    vehicle = vehicle,
+                    onEdit = { onEdit(maintenance) },
+                    onDelete = { onDelete(maintenance) },
+                    onStatusChange = { onStatusChange(maintenance, it) }
+                )
             }
         }
     }
@@ -161,14 +157,12 @@ fun DriverListSection(
     } else {
         LazyColumn(modifier = Modifier.fillMaxSize()) {
             items(drivers, key = { it.id }) { driver ->
-                Box(Modifier.animateItem()) {
-                    DriverItem(
-                        driver = driver,
-                        onClick = { onDriverClick(driver) },
-                        onEdit = { onEdit(driver) },
-                        onDelete = { onDelete(driver) }
-                    )
-                }
+                DriverItem(
+                    driver = driver,
+                    onClick = { onDriverClick(driver) },
+                    onEdit = { onEdit(driver) },
+                    onDelete = { onDelete(driver) }
+                )
             }
         }
     }
@@ -201,7 +195,7 @@ fun DriverItem(
             Column(modifier = Modifier.weight(1f)) {
                 Text(text = driver.fullName, style = MaterialTheme.typography.titleMedium)
                 Text(text = "ID: ${driver.idCardNumber}", style = MaterialTheme.typography.bodySmall)
-                DriverStatusBadge(status = driver.status)
+                StatusBadge(status = driver.status)
             }
             Row {
                 IconButton(onClick = onEdit) {
@@ -232,15 +226,13 @@ fun AssignmentListSection(
             items(assignments, key = { it.id }) { assignment ->
                 val vehicle = vehicles.find { it.id == assignment.vehicleId }
                 val driver = drivers.find { it.id == assignment.driverId }
-                Box(Modifier.animateItem()) {
-                    AssignmentItem(
-                        assignment = assignment,
-                        vehicle = vehicle,
-                        driver = driver,
-                        onEdit = { onEdit(assignment) },
-                        onDelete = { onDelete(assignment) }
-                    )
-                }
+                AssignmentItem(
+                    assignment = assignment,
+                    vehicle = vehicle,
+                    driver = driver,
+                    onEdit = { onEdit(assignment) },
+                    onDelete = { onDelete(assignment) }
+                )
             }
         }
     }
@@ -266,6 +258,7 @@ fun AssignmentItem(
                     Text(text = "Salida: ${sdf.format(assignment.departureDate)}")
                     Text(text = "Retorno planeado: ${sdfDate.format(assignment.plannedReturnDate)}")
                     Text(text = "Km Inicial: ${assignment.initialMileage}")
+                    StatusBadge(status = assignment.status)
                 }
                 Row {
                     IconButton(onClick = onEdit) {
