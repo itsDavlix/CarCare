@@ -1,6 +1,7 @@
 package com.example.carcare.data.network
 
 import android.util.Log
+import com.example.carcare.data.AuthSession
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -53,7 +54,11 @@ object SseClient {
 
         private fun openStream() {
             if (!scope.isActive) return
-            val request = Request.Builder().url(url).build()
+            // Manda el JWT igual que el authInterceptor de ApiClient: hoy /api/events es
+            // público (fase 1), pero al pasar a fase 2 el stream seguirá funcionando.
+            val request = Request.Builder().url(url).apply {
+                AuthSession.token?.let { header("Authorization", "Bearer $it") }
+            }.build()
             eventSource = EventSources.createFactory(client).newEventSource(request, listener)
         }
 

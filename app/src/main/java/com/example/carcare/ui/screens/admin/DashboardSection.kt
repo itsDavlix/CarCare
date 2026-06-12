@@ -333,8 +333,8 @@ private fun ActivityRow(a: Assignment, vehicles: List<Vehicle>, drivers: List<Dr
         ListItem(
             headlineContent = { Text(v?.let { "${it.brand} ${it.model} (${Validators.formatPlate(it.plate)})" } ?: "Vehículo eliminado") },            supportingContent = {
                 Text(
-                    "Conductor: ${d?.fullName}\n" +
-                            if (out) "Salida: ${sdf.format(a.departureDate)}" else "Entregado: ${a.returnDate?.let { sdf.format(it) }}"
+                    "Conductor: ${d?.fullName ?: "Conductor eliminado"}\n" +
+                            if (out) "Salida: ${sdf.format(a.departureDate)}" else "Entregado: ${a.returnDate?.let { sdf.format(it) } ?: "N/A"}"
                 )
             },
             leadingContent = {
