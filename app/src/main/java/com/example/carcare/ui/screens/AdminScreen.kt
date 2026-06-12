@@ -109,8 +109,9 @@ fun AdminScreen(
                     showDriverForm = true
                 }) { Icon(Icons.Default.PersonAdd, contentDescription = "Agregar Conductor") }
                 4 -> FloatingActionButton(onClick = {
+                    assignmentToEdit = null
                     showAssignmentForm = true
-                }) { Icon(Icons.Default.AddHomeWork, contentDescription = "Nueva Asignación") }
+                }) { Icon(Icons.Default.Add, contentDescription = "Nueva Asignación") }
             }
         }
     ) { padding ->
@@ -341,15 +342,17 @@ fun AdminScreen(
     }
 
     if (vehicleToDelete != null) {
-        val hasHistory = maintenanceViewModel.getHistoryForVehicle(vehicleToDelete!!.id).isNotEmpty() ||
-                assignmentViewModel.assignments.any { it.vehicleId == vehicleToDelete!!.id }
-
+        val hasActiveAssignment = assignmentViewModel.assignments.any {
+            it.vehicleId == vehicleToDelete!!.id && it.status == AssignmentStatus.ACTIVE
+        }
         DeleteConfirmationDialog(
             title = "Eliminar Vehículo",
-            message = if (hasHistory) "Este vehículo tiene historial de mantenimiento o asignaciones y no puede ser eliminado por integridad de datos."
-            else "¿Estás seguro de que deseas eliminar el vehículo ${vehicleToDelete?.brand} ${vehicleToDelete?.plate}?",
+            message = if (hasActiveAssignment)
+                "Este vehículo tiene una asignación ACTIVA. Completala o eliminala antes de borrar el vehículo."
+            else "¿Eliminar el vehículo ${vehicleToDelete?.brand} ${vehicleToDelete?.plate}? " +
+                    "Su historial de mantenimientos y asignaciones se conservará.",
             onConfirm = {
-                if (!hasHistory) {
+                if (!hasActiveAssignment) {
                     vehicleViewModel.deleteVehicle(vehicleToDelete!!.id)
                     scope.launch { snackbarHostState.showSnackbar("Vehículo eliminado") }
                 }

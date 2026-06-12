@@ -25,8 +25,8 @@ object Validators {
     // ===================================================================
 
     private val NICARAGUA_PLATE_CODES = listOf(
-        "M", "BO", "CA", "CI", "CO", "ES", "GR", "JI", "LE",
-        "MD", "MS", "MT", "NS", "RI", "SJ", "RACCN", "RACCS"
+        "M", "BO", "CA", "CZ", "CH", "CI", "CO", "CT", "ES", "GR", "JI", "LE",
+        "MD", "MT", "MZ", "MS", "MY", "NS", "RI", "SJ", "AN", "AS", "RACCN", "RACCS"
     )
 
     private val plateCodeAlternation = NICARAGUA_PLATE_CODES
@@ -34,7 +34,7 @@ object Validators {
         .joinToString("|")
 
     private val nicaraguaPlateRegex = Regex(
-        "^($plateCodeAlternation)[\\s-]?\\d{3}[\\s-]?\\d{2,3}$",
+        "^($plateCodeAlternation)[\\s-]?\\d[\\d\\s-]{0,7}$",
         RegexOption.IGNORE_CASE
     )
 
@@ -66,7 +66,9 @@ object Validators {
             return ValidationResult.invalid("Formato inválido. Ej: M 123 456 o MT 12345")
         }
         val normalized = normalizePlate(trimmed)
-        val duplicate = existingPlates.any { (id, p) -> p == normalized && id != currentId }
+        val duplicate = existingPlates.any { (id, p) -> 
+            normalizePlate(p) == normalized && id != currentId 
+        }
         if (duplicate) return ValidationResult.invalid("Esta placa ya está registrada")
         return ValidationResult.Valid
     }
@@ -81,10 +83,6 @@ object Validators {
         } else ValidationResult.Valid
     }
 
-    /**
-     * Nombres y apellidos: solo letras (incluye acentos y ñ), espacios, guiones y apóstrofes.
-     * Mínimo 2 caracteres útiles. Rechaza números y símbolos raros.
-     */
     private val nameRegex = Regex("^[A-Za-zÁÉÍÓÚáéíóúÑñÜü '-]+$")
 
     fun validateName(value: String, fieldName: String): ValidationResult {
@@ -105,8 +103,8 @@ object Validators {
         if (yearStr.isBlank()) return ValidationResult.invalid("El año es obligatorio")
         val year = yearStr.toIntOrNull() ?: return ValidationResult.invalid("Año inválido")
         val currentYear = Calendar.getInstance().get(Calendar.YEAR)
-        if (year < 1990 || year > currentYear + 1) {
-            return ValidationResult.invalid("Año debe estar entre 1990 y ${currentYear + 1}")
+        if (year < 1990 || year > currentYear + 2) {
+            return ValidationResult.invalid("Año debe estar entre 1990 y ${currentYear + 2}")
         }
         return ValidationResult.Valid
     }
@@ -127,9 +125,27 @@ object Validators {
     }
 
     /**
-     * Valida que el tipo de combustible no esté vacío. Como ahora viene de un dropdown
-     * con enum (FuelType), basta con verificar que se haya seleccionado uno.
+     * Valida un campo que debe ser único si se proporciona.
+     * Si está vacío, se considera válido (opcional).
      */
+    fun validateUniqueOptionalField(
+        value: String,
+        fieldName: String,
+        existingEntries: List<Pair<String, String>>,
+        currentId: String? = null
+    ): ValidationResult {
+        val normalizedInput = value.trim().replace(Regex("[\\s-]"), "").uppercase()
+        if (normalizedInput.isBlank()) return ValidationResult.Valid
+        
+        val duplicate = existingEntries.any { (id, v) -> 
+            val normalizedExisting = v.trim().replace(Regex("[\\s-]"), "").uppercase()
+            normalizedExisting.isNotBlank() && normalizedExisting == normalizedInput && id != currentId 
+        }
+        
+        if (duplicate) return ValidationResult.invalid("$fieldName ya está registrado en el sistema")
+        return ValidationResult.Valid
+    }
+
     fun validateFuelType(fuelType: String): ValidationResult {
         return if (fuelType.isBlank()) {
             ValidationResult.invalid("Debe seleccionar un tipo de combustible")
@@ -148,33 +164,12 @@ object Validators {
         return ValidationResult.Valid
     }
 
-    // -------------------------------------------------------------------
-    //  Identificador nicaragüense (cédula / licencia) — XXX-DDMMYY-XXXXL
-    //
-    //  En Nicaragua el conductor se identifica por su cédula, y la licencia
-    //  se ancla a ese mismo número. Por eso cédula y licencia comparten el
-    //  mismo núcleo de validación de formato (13 dígitos + letra final),
-    //  incluyendo que la fecha embebida (DDMMAA) sea una fecha de calendario real.
-    // -------------------------------------------------------------------
-
-    /** Quita guiones/espacios y pasa a mayúsculas: "001-150798-1000x" -> "0011507981000X". */
     fun normalizeIdCard(idCard: String): String {
         return idCard.trim().replace(Regex("[\\s-]"), "").uppercase()
     }
 
-    /** Formato de presentación: "0011507981000X" -> "001-150798-1000X". */
-    fun formatIdCard(idCard: String): String {
-        val normalized = normalizeIdCard(idCard)
-        return if (nicaraguaIdRegex.matches(normalized)) {
-            "${normalized.substring(0, 3)}-${normalized.substring(3, 9)}-${normalized.substring(9)}"
-        } else {
-            idCard
-        }
-    }
-
     private val nicaraguaIdRegex = Regex("^\\d{13}[A-Z]$")
 
-    /** Días por mes; febrero permisivo (29) porque el siglo del AA embebido es ambiguo. */
     private fun maxDayOfMonth(month: Int): Int = when (month) {
         1, 3, 5, 7, 8, 10, 12 -> 31
         4, 6, 9, 11 -> 30
@@ -182,7 +177,6 @@ object Validators {
         else -> 0
     }
 
-    /** Valida la fecha embebida en posiciones DDMMAA (índices 3..8 del normalizado). */
     private fun hasValidEmbeddedDate(normalized: String): Boolean {
         val day = normalized.substring(3, 5).toIntOrNull() ?: return false
         val month = normalized.substring(5, 7).toIntOrNull() ?: return false
@@ -190,10 +184,6 @@ object Validators {
         return day in 1..maxDayOfMonth(month)
     }
 
-    /**
-     * Núcleo de formato para identificadores nicaragüenses (cédula y licencia).
-     * No verifica unicidad — eso lo agrega cada validador concreto.
-     */
     private fun validateNicaraguaId(value: String, requiredMessage: String): ValidationResult {
         val trimmed = value.trim()
         if (trimmed.isBlank()) return ValidationResult.invalid(requiredMessage)
@@ -245,14 +235,6 @@ object Validators {
         return ValidationResult.Valid
     }
 
-    /**
-     * Número de licencia nicaragüense: mismo formato que la cédula (XXX-DDMMYY-XXXXL),
-     * porque en Nicaragua la licencia se ancla a la cédula del conductor. Reutiliza el
-     * núcleo [validateNicaraguaId] y agrega unicidad.
-     *
-     * FALLBACK: si tu data tiene licencias en formato libre y no querés migrarla,
-     * reemplazá el cuerpo de este método por la validación genérica (ver nota del chat).
-     */
     fun validateLicenseNumber(
         licenseNumber: String,
         existingLicenses: List<Pair<String, String>> = emptyList(),
@@ -269,22 +251,16 @@ object Validators {
         return ValidationResult.Valid
     }
 
-    /**
-     * Vencimiento de licencia: no puede estar vencida al registrar,
-     * tampoco puede ser absurdamente lejana (máx 10 años a futuro).
-     */
-    fun validateLicenseExpiry(date: Date?): ValidationResult {
+    fun validateLicenseExpiry(date: Date?, isEdit: Boolean = false): ValidationResult {
         if (date == null) return ValidationResult.invalid("La fecha de vencimiento es obligatoria")
+        if (isEdit) return ValidationResult.Valid
+        
         val today = Calendar.getInstance().apply {
             set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0)
             set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
         }.time
-        val maxAllowed = Calendar.getInstance().apply { add(Calendar.YEAR, 10) }.time
         if (date.before(today)) {
             return ValidationResult.invalid("La licencia no puede estar vencida al registrarse")
-        }
-        if (date.after(maxAllowed)) {
-            return ValidationResult.invalid("Fecha demasiado lejana (máx. 10 años)")
         }
         return ValidationResult.Valid
     }
@@ -316,9 +292,6 @@ object Validators {
         return ValidationResult.Valid
     }
 
-    /**
-     * Descripción del mantenimiento: required + longitud mínima útil.
-     */
     fun validateMaintenanceDescription(description: String): ValidationResult {
         val trimmed = description.trim()
         if (trimmed.isBlank()) return ValidationResult.invalid("La descripción es obligatoria")
@@ -328,17 +301,12 @@ object Validators {
         return ValidationResult.Valid
     }
 
-    /**
-     * Próximo kilometraje del mantenimiento: opcional, pero si se ingresa
-     * debe ser estrictamente mayor al actual del vehículo.
-     */
     fun validateNextMileage(
         nextStr: String,
         currentVehicleMileage: Long
     ): ValidationResult {
         if (nextStr.isBlank()) return ValidationResult.Valid
         val km = nextStr.toLongOrNull() ?: return ValidationResult.invalid("Kilometraje inválido")
-        if (km < 0) return ValidationResult.invalid("No puede ser negativo")
         if (km <= currentVehicleMileage) {
             return ValidationResult.invalid(
                 "Debe ser > kilometraje actual ($currentVehicleMileage km)"
@@ -347,12 +315,10 @@ object Validators {
         return ValidationResult.Valid
     }
 
-    /**
-     * Valida que una fecha (si se ingresó) sea hoy o futura.
-     * Pensada para campos opcionales como "Próxima fecha programada".
-     */
-    fun validateFutureDate(date: Date?, fieldName: String): ValidationResult {
+    fun validateFutureDate(date: Date?, fieldName: String, isEdit: Boolean = false): ValidationResult {
         if (date == null) return ValidationResult.Valid
+        if (isEdit) return ValidationResult.Valid
+        
         val today = Calendar.getInstance().apply {
             set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0)
             set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
@@ -367,12 +333,10 @@ object Validators {
     //  Asignación
     // ===================================================================
 
-    /**
-     * Fecha de salida de asignación: puede ser hoy o pre-asignar hasta 30 días.
-     * No se permite registrar salidas pasadas (eso es un dato histórico, no una asignación).
-     */
-    fun validateDepartureDate(date: Date?): ValidationResult {
+    fun validateDepartureDate(date: Date?, isEdit: Boolean = false): ValidationResult {
         if (date == null) return ValidationResult.invalid("Fecha de salida obligatoria")
+        if (isEdit) return ValidationResult.Valid
+
         val today = Calendar.getInstance().apply {
             set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0)
             set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
@@ -396,10 +360,6 @@ object Validators {
         return ValidationResult.Valid
     }
 
-    /**
-     * Kilometraje inicial de asignación: ≥ km registrado en el vehículo.
-     * El conductor no puede "salir" con menos kilómetros de los que tiene el auto.
-     */
     fun validateAssignmentInitialMileage(
         mileageStr: String,
         vehicleMileage: Long
@@ -415,15 +375,6 @@ object Validators {
         return ValidationResult.Valid
     }
 
-    /**
-     * Kilometraje final en la devolución:
-     *  - no puede ser menor al inicial,
-     *  - el aumento respecto al inicial no puede superar [maxDelta] km en una sola
-     *    asignación (atrapa errores de tipeo / lecturas absurdas del odómetro).
-     *
-     * [maxDelta] por defecto 10.000 km. Para una cota dependiente de la duración de
-     * la asignación, calculá el valor con [reasonableMileageDelta] y pasalo aquí.
-     */
     fun validateFinalMileage(
         finalStr: String,
         initialMileage: Long,
@@ -440,11 +391,6 @@ object Validators {
         return ValidationResult.Valid
     }
 
-    /**
-     * Cota razonable de kilómetros para una asignación según su duración.
-     * Útil para alimentar [validateFinalMileage] con un límite dependiente de los días:
-     * piso de 10.000 km y, para asignaciones largas, ~1.000 km por día.
-     */
     fun reasonableMileageDelta(departureDate: Date?, referenceDate: Date = Date()): Long {
         if (departureDate == null) return 10_000
         val millis = referenceDate.time - departureDate.time

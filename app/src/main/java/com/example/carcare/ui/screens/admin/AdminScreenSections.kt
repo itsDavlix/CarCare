@@ -38,7 +38,7 @@ import com.example.carcare.model.MaintenanceStatus
 import com.example.carcare.model.Vehicle
 import com.example.carcare.model.VehicleStatus
 import com.example.carcare.model.MaintenanceType
-import com.example.carcare.ui.components.DriverStatusBadge
+import com.example.carcare.ui.components.StatusBadge
 import com.example.carcare.util.Validators
 import java.text.SimpleDateFormat
 import java.util.*
@@ -201,7 +201,7 @@ fun DriverItem(
             Column(modifier = Modifier.weight(1f)) {
                 Text(text = driver.fullName, style = MaterialTheme.typography.titleMedium)
                 Text(text = "ID: ${driver.idCardNumber}", style = MaterialTheme.typography.bodySmall)
-                DriverStatusBadge(status = driver.status)
+                StatusBadge(status = driver.status)
             }
             Row {
                 IconButton(onClick = onEdit) {
@@ -261,11 +261,12 @@ fun AssignmentItem(
         Column(modifier = Modifier.padding(16.dp)) {
             Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(text = "Vehículo: ${vehicle?.let { "${it.brand} ${it.model} ($plateLabel)" } ?: "Vehículo eliminado"}")
+                    Text(text = "Vehículo: ${vehicle?.let { "${it.brand} ${it.model} ($plateLabel)" } ?: "Vehículo eliminado"}", style = MaterialTheme.typography.titleMedium)
                     Text(text = "Conductor: ${driver?.fullName}")
                     Text(text = "Salida: ${sdf.format(assignment.departureDate)}")
                     Text(text = "Retorno planeado: ${sdfDate.format(assignment.plannedReturnDate)}")
                     Text(text = "Km Inicial: ${assignment.initialMileage}")
+                    StatusBadge(status = assignment.status)
                 }
                 Row {
                     IconButton(onClick = onEdit) {
