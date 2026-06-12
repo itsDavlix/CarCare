@@ -52,12 +52,14 @@ fun VehicleListSection(
 ) {
     LazyColumn(modifier = Modifier.fillMaxSize()) {
         items(vehicles, key = { it.id }) { vehicle ->
-            VehicleItem(
-                vehicle = vehicle,
-                onClick = { onVehicleClick(vehicle) },
-                onEdit = { onEdit(vehicle) },
-                onDelete = { onDelete(vehicle) }
-            )
+            Box(Modifier.animateItem()) {
+                VehicleItem(
+                    vehicle = vehicle,
+                    onClick = { onVehicleClick(vehicle) },
+                    onEdit = { onEdit(vehicle) },
+                    onDelete = { onDelete(vehicle) }
+                )
+            }
         }
     }
 }
@@ -78,13 +80,15 @@ fun MaintenanceListSection(
         LazyColumn(modifier = Modifier.fillMaxSize()) {
             items(maintenances, key = { it.id }) { maintenance ->
                 val vehicle = vehicles.find { it.id == maintenance.vehicleId }
-                MaintenanceItem(
-                    maintenance = maintenance,
-                    vehicle = vehicle,
-                    onEdit = { onEdit(maintenance) },
-                    onDelete = { onDelete(maintenance) },
-                    onStatusChange = { onStatusChange(maintenance, it) }
-                )
+                Box(Modifier.animateItem()) {
+                    MaintenanceItem(
+                        maintenance = maintenance,
+                        vehicle = vehicle,
+                        onEdit = { onEdit(maintenance) },
+                        onDelete = { onDelete(maintenance) },
+                        onStatusChange = { onStatusChange(maintenance, it) }
+                    )
+                }
             }
         }
     }
@@ -105,7 +109,7 @@ fun MaintenanceItem(
             Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
                 Column {
                     Text(text = maintenance.type.label, style = MaterialTheme.typography.titleMedium)
-                    Text(text = "Vehículo: ${vehicle?.brand} ${vehicle?.model} ($plateLabel)")
+                    Text(text = "Vehículo: ${vehicle?.let { "${it.brand} ${it.model} ($plateLabel)" } ?: "Vehículo eliminado"}")
                     Text(text = "Inicio: ${sdf.format(maintenance.date)}")
                     if (maintenance.completionDate != null) {
                         Text(text = "Finalizado: ${sdf.format(maintenance.completionDate)}", style = MaterialTheme.typography.bodySmall)
@@ -157,12 +161,14 @@ fun DriverListSection(
     } else {
         LazyColumn(modifier = Modifier.fillMaxSize()) {
             items(drivers, key = { it.id }) { driver ->
-                DriverItem(
-                    driver = driver,
-                    onClick = { onDriverClick(driver) },
-                    onEdit = { onEdit(driver) },
-                    onDelete = { onDelete(driver) }
-                )
+                Box(Modifier.animateItem()) {
+                    DriverItem(
+                        driver = driver,
+                        onClick = { onDriverClick(driver) },
+                        onEdit = { onEdit(driver) },
+                        onDelete = { onDelete(driver) }
+                    )
+                }
             }
         }
     }
@@ -226,13 +232,15 @@ fun AssignmentListSection(
             items(assignments, key = { it.id }) { assignment ->
                 val vehicle = vehicles.find { it.id == assignment.vehicleId }
                 val driver = drivers.find { it.id == assignment.driverId }
-                AssignmentItem(
-                    assignment = assignment,
-                    vehicle = vehicle,
-                    driver = driver,
-                    onEdit = { onEdit(assignment) },
-                    onDelete = { onDelete(assignment) }
-                )
+                Box(Modifier.animateItem()) {
+                    AssignmentItem(
+                        assignment = assignment,
+                        vehicle = vehicle,
+                        driver = driver,
+                        onEdit = { onEdit(assignment) },
+                        onDelete = { onDelete(assignment) }
+                    )
+                }
             }
         }
     }
@@ -253,7 +261,7 @@ fun AssignmentItem(
         Column(modifier = Modifier.padding(16.dp)) {
             Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(text = "Vehículo: ${vehicle?.brand} ${vehicle?.model} ($plateLabel)", style = MaterialTheme.typography.titleMedium)
+                    Text(text = "Vehículo: ${vehicle?.let { "${it.brand} ${it.model} ($plateLabel)" } ?: "Vehículo eliminado"}", style = MaterialTheme.typography.titleMedium)
                     Text(text = "Conductor: ${driver?.fullName}")
                     Text(text = "Salida: ${sdf.format(assignment.departureDate)}")
                     Text(text = "Retorno planeado: ${sdfDate.format(assignment.plannedReturnDate)}")

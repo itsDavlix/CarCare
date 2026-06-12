@@ -2,7 +2,8 @@ package com.example.carcare.data.network.dto
 
 data class AsignacionResponseDto(
     val id: Long,
-    val vehiculoId: Long,
+    // Null si el vehículo fue eliminado (FK ON DELETE SET NULL conserva el historial)
+    val vehiculoId: Long? = null,
     val vehiculoPlaca: String? = null,
     val vehiculoMarca: String? = null,
     val vehiculoModelo: String? = null,

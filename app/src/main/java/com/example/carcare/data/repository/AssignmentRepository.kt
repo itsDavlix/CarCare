@@ -53,7 +53,8 @@ class AssignmentRepository : CrudRepository<Assignment> {
 
 private fun AsignacionResponseDto.toDomain(): Assignment = Assignment(
     id = id.toString(),
-    vehicleId = vehiculoId.toString(),
+    // vehicleId vacío = vehículo eliminado; la UI lo muestra como "Vehículo eliminado"
+    vehicleId = vehiculoId?.toString() ?: "",
     driverId = conductorId.toString(),
     departureDate = parseApiDate(fechaSalida) ?: Date(),
     plannedReturnDate = parseApiDate(fechaRetornoPlanificada) ?: Date(),
