@@ -2,7 +2,8 @@ package com.example.carcare.data.network.dto
 
 data class MantenimientoResponseDto(
     val id: Long,
-    val vehiculoId: Long,
+    // Null si el vehículo fue eliminado (FK ON DELETE SET NULL conserva el historial)
+    val vehiculoId: Long? = null,
     // Campos denormalizados que manda el backend (evitan otro GET)
     val vehiculoPlaca: String? = null,
     val vehiculoMarca: String? = null,

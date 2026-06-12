@@ -192,7 +192,7 @@ fun AdminScreen(
                                 onDelete = { maintenanceToDelete = it },
                                 onStatusChange = { m, s ->
                                     maintenanceViewModel.updateStatus(m.id, s)
-                                    if (s == MaintenanceStatus.COMPLETED) {
+                                    if (s == MaintenanceStatus.COMPLETED && m.vehicleId.isNotBlank()) {
                                         vehicleViewModel.changeStatus(m.vehicleId, VehicleStatus.AVAILABLE)
                                     }
                                 }

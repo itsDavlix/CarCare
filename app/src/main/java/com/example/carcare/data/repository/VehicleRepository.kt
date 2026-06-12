@@ -85,6 +85,10 @@ private fun Vehicle.toRequestDto(): VehiculoRequestDto = VehiculoRequestDto(
  * Backend manda el nombre del enum (ej: "DIESEL", "GASOLINE", "HEV").
  * Si llega algo inesperado, default a GASOLINE para no romper la UI.
  */
-private fun parseFuelType(name: String): FuelType =
-    runCatching { FuelType.valueOf(name.uppercase()) }
-        .getOrDefault(FuelType.GASOLINE)
+private fun parseFuelType(name: String): FuelType = when (name.trim().uppercase()) {
+    "HEV", "HYBRID", "HIBRIDO", "HÍBRIDO" -> FuelType.HEV
+    "DIESEL", "DIÉSEL" -> FuelType.DIESEL
+    else -> FuelType.entries.firstOrNull {
+        it.name == name.trim().uppercase() || it.label.equals(name.trim(), true)
+    } ?: FuelType.GASOLINE
+}

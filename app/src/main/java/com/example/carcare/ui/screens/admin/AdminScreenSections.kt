@@ -109,7 +109,7 @@ fun MaintenanceItem(
             Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
                 Column {
                     Text(text = maintenance.type.label, style = MaterialTheme.typography.titleMedium)
-                    Text(text = "Vehículo: ${vehicle?.brand} ${vehicle?.model} ($plateLabel)")
+                    Text(text = "Vehículo: ${vehicle?.let { "${it.brand} ${it.model} ($plateLabel)" } ?: "Vehículo eliminado"}")
                     Text(text = "Inicio: ${sdf.format(maintenance.date)}")
                     if (maintenance.completionDate != null) {
                         Text(text = "Finalizado: ${sdf.format(maintenance.completionDate)}", style = MaterialTheme.typography.bodySmall)
@@ -261,7 +261,7 @@ fun AssignmentItem(
         Column(modifier = Modifier.padding(16.dp)) {
             Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(text = "Vehículo: ${vehicle?.brand} ${vehicle?.model} ($plateLabel)", style = MaterialTheme.typography.titleMedium)
+                    Text(text = "Vehículo: ${vehicle?.let { "${it.brand} ${it.model} ($plateLabel)" } ?: "Vehículo eliminado"}")
                     Text(text = "Conductor: ${driver?.fullName}")
                     Text(text = "Salida: ${sdf.format(assignment.departureDate)}")
                     Text(text = "Retorno planeado: ${sdfDate.format(assignment.plannedReturnDate)}")

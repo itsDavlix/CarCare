@@ -57,8 +57,6 @@ fun VehicleFormDialog(
 
     var mileage by remember { mutableStateOf(vehicle?.mileage?.toString() ?: "") }
     var description by remember { mutableStateOf(vehicle?.description ?: "") }
-    var status by remember { mutableStateOf(vehicle?.status ?: VehicleStatus.AVAILABLE) }
-    var expandedStatus by remember { mutableStateOf(false) }
 
     var insurancePhotoUri by remember { mutableStateOf(vehicle?.insurancePhotoUri) }
     var vehiclePhotoUri by remember { mutableStateOf(vehicle?.vehiclePhotoUri) }
@@ -127,31 +125,6 @@ fun VehicleFormDialog(
                     }
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    if (vehicle != null) {
-                        ExposedDropdownMenuBox(
-                            expanded = expandedStatus,
-                            onExpandedChange = { expandedStatus = !expandedStatus }
-                        ) {
-                            OutlinedTextField(
-                                value = status.label,
-                                onValueChange = {},
-                                readOnly = true,
-                                label = { Text("Estado del Vehículo") },
-                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedStatus) },
-                                modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable).fillMaxWidth()
-                            )
-                            ExposedDropdownMenu(expanded = expandedStatus, onDismissRequest = { expandedStatus = false }) {
-                                VehicleStatus.entries.forEach { vs ->
-                                    DropdownMenuItem(
-                                        text = { Text(vs.label) },
-                                        onClick = { status = vs; expandedStatus = false }
-                                    )
-                                }
-                            }
-                        }
-                        Spacer(modifier = Modifier.height(8.dp))
-                    }
-
                     OutlinedTextField(
                         value = brand, onValueChange = { brand = it },
                         label = { Text("Marca") },
@@ -197,30 +170,42 @@ fun VehicleFormDialog(
                         modifier = Modifier.fillMaxWidth()
                     )
 
-                    ExposedDropdownMenuBox(
-                        expanded = expandedFuel,
-                        onExpandedChange = { expandedFuel = !expandedFuel }
-                    ) {
+                    if (vehicle == null) {
+                        ExposedDropdownMenuBox(
+                            expanded = expandedFuel,
+                            onExpandedChange = { expandedFuel = !expandedFuel }
+                        ) {
+                            OutlinedTextField(
+                                value = fuelType.label,
+                                onValueChange = {},
+                                readOnly = true,
+                                label = { Text("Tipo de Combustible") },
+                                isError = attempted && !fuelV.isValid,
+                                supportingText = if (attempted && !fuelV.isValid) {
+                                    { Text(fuelV.errorMessage ?: "") }
+                                } else null,
+                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedFuel) },
+                                modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable).fillMaxWidth()
+                            )
+                            ExposedDropdownMenu(expanded = expandedFuel, onDismissRequest = { expandedFuel = false }) {
+                                FuelType.entries.forEach { ft ->
+                                    DropdownMenuItem(
+                                        text = { Text(ft.label) },
+                                        onClick = { fuelType = ft; expandedFuel = false }
+                                    )
+                                }
+                            }
+                        }
+                    } else {
                         OutlinedTextField(
                             value = fuelType.label,
                             onValueChange = {},
                             readOnly = true,
+                            enabled = false,
                             label = { Text("Tipo de Combustible") },
-                            isError = attempted && !fuelV.isValid,
-                            supportingText = if (attempted && !fuelV.isValid) {
-                                { Text(fuelV.errorMessage ?: "") }
-                            } else null,
-                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedFuel) },
-                            modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable).fillMaxWidth()
+                            supportingText = { Text("No se modifica después del registro") },
+                            modifier = Modifier.fillMaxWidth()
                         )
-                        ExposedDropdownMenu(expanded = expandedFuel, onDismissRequest = { expandedFuel = false }) {
-                            FuelType.entries.forEach { ft ->
-                                DropdownMenuItem(
-                                    text = { Text(ft.label) },
-                                    onClick = { fuelType = ft; expandedFuel = false }
-                                )
-                            }
-                        }
                     }
 
                     OutlinedTextField(
@@ -280,10 +265,12 @@ fun VehicleFormDialog(
                             chassisNumber = chassisNumber.trim(),
                             engineNumber = engineNumber.trim(),
                             insuranceExpiryDate = insuranceExpiry,
+                            insurancePolicy = vehicle?.insurancePolicy ?: "",
+                            circulationExpiryDate = vehicle?.circulationExpiryDate,
                             vehiclePhotoUri = vehiclePhotoUri,
                             registrationPhotoUri = registrationPhotoUri,
                             insurancePhotoUri = insurancePhotoUri,
-                            status = status,
+                            status = vehicle?.status ?: VehicleStatus.AVAILABLE,
                             description = description.trim()
                         )
                     )
@@ -302,7 +289,7 @@ fun VehicleDetailsDialog(
     onDismiss: () -> Unit,
     onStatusChange: (VehicleStatus) -> Unit
 ) {
-    val sdf = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+    val sdf = remember { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()) }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Detalles del Vehículo") },
@@ -612,14 +599,14 @@ fun MaintenanceDetailsDialog(
     vehicle: Vehicle?,
     onDismiss: () -> Unit
 ) {
-    val sdf = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+    val sdf = remember { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()) }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Detalles del Mantenimiento") },
         text = {
             Column(modifier = Modifier.fillMaxWidth()) {
                 Text(text = "Tipo: ${maintenance.type.label}", style = MaterialTheme.typography.titleMedium)
-                Text(text = "Vehículo: ${vehicle?.brand} ${vehicle?.model} (${vehicle?.plate?.let { Validators.formatPlate(it) } ?: "N/A"})")
+                Text(text = "Vehículo: ${vehicle?.let { "${it.brand} ${it.model} (${Validators.formatPlate(it.plate)})" } ?: "Vehículo eliminado"}")
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(text = "Fecha Inicio: ${sdf.format(maintenance.date)}")
                 maintenance.completionDate?.let {
@@ -646,7 +633,7 @@ fun GeneralMaintenanceHistoryDialog(
     onDismiss: () -> Unit,
     onMaintenanceClick: (Maintenance) -> Unit
 ) {
-    val sdf = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+    val sdf = remember { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()) }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Historial General de Mantenimiento") },
@@ -665,8 +652,8 @@ fun GeneralMaintenanceHistoryDialog(
                             onClick = { onMaintenanceClick(maintenance) }
                         ) {
                             ListItem(
-                                headlineContent = { Text("${maintenance.type.label} - ${vehicle?.brand} ${vehicle?.model}") },
-                                supportingContent = { 
+                                headlineContent = { Text("${maintenance.type.label} - ${vehicle?.let { "${it.brand} ${it.model}" } ?: "Vehículo eliminado"}") },
+                                supportingContent = {
                                     Text("Fecha: ${sdf.format(maintenance.date)} | Estado: ${maintenance.status.label}")
                                 },
                                 trailingContent = {
@@ -856,7 +843,7 @@ fun DriverDetailsDialog(
     onDismiss: () -> Unit,
     onStatusChange: (DriverStatus) -> Unit
 ) {
-    val sdf = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+    val sdf = remember { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()) }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Detalles del Conductor") },

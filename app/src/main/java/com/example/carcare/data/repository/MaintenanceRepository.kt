@@ -39,7 +39,8 @@ class MaintenanceRepository : CrudRepository<Maintenance> {
 
 private fun MantenimientoResponseDto.toDomain(): Maintenance = Maintenance(
     id = id.toString(),
-    vehicleId = vehiculoId.toString(),
+    // vehicleId vacío = vehículo eliminado; la UI lo muestra como "Vehículo eliminado"
+    vehicleId = vehiculoId?.toString() ?: "",
     type = runCatching { MaintenanceType.valueOf(tipo) }.getOrDefault(MaintenanceType.GENERAL_REPAIR),
     date = parseApiDate(fecha) ?: Date(),
     completionDate = parseApiDate(fechaCompletado),
