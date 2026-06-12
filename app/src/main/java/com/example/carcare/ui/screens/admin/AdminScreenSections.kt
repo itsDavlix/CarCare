@@ -279,7 +279,7 @@ fun AssignmentItem(
             }
             if (assignment.status == AssignmentStatus.COMPLETED) {
                 HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-                Text(text = "Entregado: ${assignment.returnDate?.let { sdf.format(it) }}", style = MaterialTheme.typography.bodySmall)
+                Text(text = "Entregado: ${assignment.returnDate?.let { sdf.format(it) } ?: "N/A"}", style = MaterialTheme.typography.bodySmall)
                 Text(text = "Km Final: ${assignment.finalMileage}", style = MaterialTheme.typography.bodySmall)
                 Text(text = "Obs: ${assignment.returnObservations}", style = MaterialTheme.typography.bodySmall)
             }

@@ -13,19 +13,25 @@ import com.example.carcare.model.Role
  */
 object AuthSession {
 
+    // @Volatile en todos los campos: se escriben desde la coroutine de login y se
+    // leen desde otros hilos (p. ej. el interceptor de OkHttp lee token).
     @Volatile
     var token: String? = null
         private set
 
+    @Volatile
     var role: Role? = null
         private set
 
+    @Volatile
     var nombre: String? = null
         private set
 
+    @Volatile
     var cedula: String? = null
         private set
 
+    @Volatile
     var conductorId: Long? = null
         private set
 

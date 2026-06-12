@@ -8,6 +8,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import java.text.SimpleDateFormat
+import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
@@ -107,12 +108,18 @@ private fun DatePickerDialogContent(
     onConfirm: (Date) -> Unit
 ) {
     val initialMillis = initialDate?.time ?: System.currentTimeMillis()
+    // El DatePicker representa cada día como medianoche UTC, mientras que minDate/maxDate
+    // son Dates locales (con hora). Comparar contra it.time directamente des-habilitaba el
+    // propio día límite (p. ej. "hoy" con minDate = Date()): hay que normalizar ambos lados
+    // a medianoche UTC del día calendario local.
+    val minUtcMidnight = remember(minDate) { minDate?.toUtcMidnightOfLocalDay() }
+    val maxUtcMidnight = remember(maxDate) { maxDate?.toUtcMidnightOfLocalDay() }
     val datePickerState = rememberDatePickerState(
         initialSelectedDateMillis = initialMillis,
         selectableDates = object : SelectableDates {
             override fun isSelectableDate(utcTimeMillis: Long): Boolean {
-                val afterMin = minDate?.let { utcTimeMillis >= it.time } ?: true
-                val beforeMax = maxDate?.let { utcTimeMillis <= it.time } ?: true
+                val afterMin = minUtcMidnight?.let { utcTimeMillis >= it } ?: true
+                val beforeMax = maxUtcMidnight?.let { utcTimeMillis <= it } ?: true
                 return afterMin && beforeMax
             }
         }
@@ -137,4 +144,16 @@ private fun DatePickerDialogContent(
     ) {
         DatePicker(state = datePickerState)
     }
+}
+
+/**
+ * Medianoche UTC del día calendario LOCAL de esta fecha: la unidad con la que el
+ * DatePicker de Material 3 representa cada día seleccionable.
+ */
+private fun Date.toUtcMidnightOfLocalDay(): Long {
+    val local = Calendar.getInstance().apply { time = this@toUtcMidnightOfLocalDay }
+    return Calendar.getInstance(TimeZone.getTimeZone("UTC")).apply {
+        clear()
+        set(local.get(Calendar.YEAR), local.get(Calendar.MONTH), local.get(Calendar.DAY_OF_MONTH))
+    }.timeInMillis
 }

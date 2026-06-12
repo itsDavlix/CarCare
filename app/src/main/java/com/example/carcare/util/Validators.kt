@@ -33,8 +33,10 @@ object Validators {
         .sortedByDescending { it.length }
         .joinToString("|")
 
+    // Mismo formato que PLACA_NI en el backend (VehiculoService): 5 o 6 dígitos.
+    // Mantenerlos alineados evita placas "válidas en la app" que el servidor rechaza.
     private val nicaraguaPlateRegex = Regex(
-        "^($plateCodeAlternation)[\\s-]?\\d[\\d\\s-]{0,7}$",
+        "^($plateCodeAlternation)[\\s-]?\\d{3}[\\s-]?\\d{2,3}$",
         RegexOption.IGNORE_CASE
     )
 
