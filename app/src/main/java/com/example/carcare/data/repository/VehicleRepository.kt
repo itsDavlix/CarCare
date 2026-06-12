@@ -82,13 +82,15 @@ private fun Vehicle.toRequestDto(): VehiculoRequestDto = VehiculoRequestDto(
 )
 
 /**
- * Backend manda el nombre del enum (ej: "DIESEL", "GASOLINE", "HYBRID").
- * Mapeamos "HEV" o "HYBRID" a nuestra constante interna por compatibilidad.
+ * Backend manda el nombre del enum (ej: "DIESEL", "GASOLINE", "HEV", "ELECTRIC").
+ * Tolera valores legados de la BD ("HYBRID", etiquetas en español) mapeándolos
+ * a la constante interna; si llega algo inesperado, default a GASOLINE.
  */
-private fun parseFuelType(name: String): FuelType =
-    when (name.uppercase()) {
-        "HEV", "HYBRID" -> FuelType.HYBRID
-        "DIESEL" -> FuelType.DIESEL
-        "GASOLINE" -> FuelType.GASOLINE
-        else -> FuelType.GASOLINE
-    }
+private fun parseFuelType(name: String): FuelType = when (name.trim().uppercase()) {
+    "HEV", "HYBRID", "HIBRIDO", "HÍBRIDO" -> FuelType.HEV
+    "DIESEL", "DIÉSEL" -> FuelType.DIESEL
+    "ELECTRIC", "ELECTRICO", "ELÉCTRICO" -> FuelType.ELECTRIC
+    else -> FuelType.entries.firstOrNull {
+        it.name == name.trim().uppercase() || it.label.equals(name.trim(), true)
+    } ?: FuelType.GASOLINE
+}

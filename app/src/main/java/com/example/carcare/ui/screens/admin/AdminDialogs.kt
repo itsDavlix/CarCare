@@ -4,34 +4,20 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AddAPhoto
-import androidx.compose.material.icons.filled.CameraAlt
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Description
-import androidx.compose.material.icons.filled.DirectionsCar
-import androidx.compose.material.icons.filled.Schedule
-import androidx.compose.material.icons.filled.Shield
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import coil.compose.AsyncImage
 import com.example.carcare.model.Vehicle
 import com.example.carcare.model.VehicleStatus
 import com.example.carcare.model.FuelType
@@ -72,8 +58,6 @@ fun VehicleFormDialog(
 
     var mileage by remember { mutableStateOf(vehicle?.mileage?.toString() ?: "") }
     var description by remember { mutableStateOf(vehicle?.description ?: "") }
-    var status by remember { mutableStateOf(vehicle?.status ?: VehicleStatus.AVAILABLE) }
-    var expandedStatus by remember { mutableStateOf(false) }
 
     var insurancePhotoUri by remember { mutableStateOf(vehicle?.insurancePhotoUri) }
     var vehiclePhotoUri by remember { mutableStateOf(vehicle?.vehiclePhotoUri) }
@@ -147,31 +131,6 @@ fun VehicleFormDialog(
                     }
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    if (vehicle != null) {
-                        ExposedDropdownMenuBox(
-                            expanded = expandedStatus,
-                            onExpandedChange = { expandedStatus = !expandedStatus }
-                        ) {
-                            OutlinedTextField(
-                                value = status.label,
-                                onValueChange = {},
-                                readOnly = true,
-                                label = { Text("Estado del Vehículo") },
-                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedStatus) },
-                                modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable).fillMaxWidth()
-                            )
-                            ExposedDropdownMenu(expanded = expandedStatus, onDismissRequest = { expandedStatus = false }) {
-                                VehicleStatus.entries.forEach { vs ->
-                                    DropdownMenuItem(
-                                        text = { Text(vs.label) },
-                                        onClick = { status = vs; expandedStatus = false }
-                                    )
-                                }
-                            }
-                        }
-                        Spacer(modifier = Modifier.height(8.dp))
-                    }
-
                     OutlinedTextField(
                         value = brand, onValueChange = { brand = it },
                         label = { Text("Marca") },
@@ -217,30 +176,42 @@ fun VehicleFormDialog(
                         modifier = Modifier.fillMaxWidth()
                     )
 
-                    ExposedDropdownMenuBox(
-                        expanded = expandedFuel,
-                        onExpandedChange = { expandedFuel = !expandedFuel }
-                    ) {
+                    if (vehicle == null) {
+                        ExposedDropdownMenuBox(
+                            expanded = expandedFuel,
+                            onExpandedChange = { expandedFuel = !expandedFuel }
+                        ) {
+                            OutlinedTextField(
+                                value = fuelType.label,
+                                onValueChange = {},
+                                readOnly = true,
+                                label = { Text("Tipo de Combustible") },
+                                isError = attempted && !fuelV.isValid,
+                                supportingText = if (attempted && !fuelV.isValid) {
+                                    { Text(fuelV.errorMessage ?: "") }
+                                } else null,
+                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedFuel) },
+                                modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable).fillMaxWidth()
+                            )
+                            ExposedDropdownMenu(expanded = expandedFuel, onDismissRequest = { expandedFuel = false }) {
+                                FuelType.entries.forEach { ft ->
+                                    DropdownMenuItem(
+                                        text = { Text(ft.label) },
+                                        onClick = { fuelType = ft; expandedFuel = false }
+                                    )
+                                }
+                            }
+                        }
+                    } else {
                         OutlinedTextField(
                             value = fuelType.label,
                             onValueChange = {},
                             readOnly = true,
+                            enabled = false,
                             label = { Text("Tipo de Combustible") },
-                            isError = attempted && !fuelV.isValid,
-                            supportingText = if (attempted && !fuelV.isValid) {
-                                { Text(fuelV.errorMessage ?: "") }
-                            } else null,
-                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedFuel) },
-                            modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable).fillMaxWidth()
+                            supportingText = { Text("No se modifica después del registro") },
+                            modifier = Modifier.fillMaxWidth()
                         )
-                        ExposedDropdownMenu(expanded = expandedFuel, onDismissRequest = { expandedFuel = false }) {
-                            FuelType.entries.forEach { ft ->
-                                DropdownMenuItem(
-                                    text = { Text(ft.label) },
-                                    onClick = { fuelType = ft; expandedFuel = false }
-                                )
-                            }
-                        }
                     }
 
                     OutlinedTextField(
@@ -316,12 +287,13 @@ fun VehicleFormDialog(
                             color = color.trim(),
                             chassisNumber = chassisNumber.trim(),
                             engineNumber = engineNumber.trim(),
-                            insurancePolicy = insurancePolicy.trim(),
                             insuranceExpiryDate = insuranceExpiry,
+                            insurancePolicy = insurancePolicy.trim(),
+                            circulationExpiryDate = vehicle?.circulationExpiryDate,
                             vehiclePhotoUri = vehiclePhotoUri,
                             registrationPhotoUri = registrationPhotoUri,
                             insurancePhotoUri = insurancePhotoUri,
-                            status = status,
+                            status = vehicle?.status ?: VehicleStatus.AVAILABLE,
                             description = description.trim()
                         )
                     )
@@ -340,7 +312,7 @@ fun VehicleDetailsDialog(
     onDismiss: () -> Unit,
     onStatusChange: (VehicleStatus) -> Unit
 ) {
-    val sdf = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+    val sdf = remember { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()) }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Detalles del Vehículo") },
@@ -652,14 +624,14 @@ fun MaintenanceDetailsDialog(
     vehicle: Vehicle?,
     onDismiss: () -> Unit
 ) {
-    val sdf = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+    val sdf = remember { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()) }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Detalles del Mantenimiento") },
         text = {
             Column(modifier = Modifier.fillMaxWidth()) {
                 Text(text = "Tipo: ${maintenance.type.label}", style = MaterialTheme.typography.titleMedium)
-                Text(text = "Vehículo: ${vehicle?.brand} ${vehicle?.model} (${vehicle?.plate?.let { Validators.formatPlate(it) } ?: "N/A"})")
+                Text(text = "Vehículo: ${vehicle?.let { "${it.brand} ${it.model} (${Validators.formatPlate(it.plate)})" } ?: "Vehículo eliminado"}")
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(text = "Fecha Inicio: ${sdf.format(maintenance.date)}")
                 maintenance.completionDate?.let {
@@ -686,7 +658,7 @@ fun GeneralMaintenanceHistoryDialog(
     onDismiss: () -> Unit,
     onMaintenanceClick: (Maintenance) -> Unit
 ) {
-    val sdf = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+    val sdf = remember { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()) }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Historial General de Mantenimiento") },
@@ -694,16 +666,19 @@ fun GeneralMaintenanceHistoryDialog(
             if (maintenances.isEmpty()) {
                 Text("No hay registros de mantenimiento.")
             } else {
+                val sortedMaintenances = remember(maintenances) {
+                    maintenances.sortedByDescending { it.date }
+                }
                 LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 400.dp)) {
-                    items(maintenances.sortedByDescending { it.date }, key = { it.id }) { maintenance ->
+                    items(sortedMaintenances, key = { it.id }) { maintenance ->
                         val vehicle = vehicles.find { it.id == maintenance.vehicleId }
                         Card(
                             modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
                             onClick = { onMaintenanceClick(maintenance) }
                         ) {
                             ListItem(
-                                headlineContent = { Text("${maintenance.type.label} - ${vehicle?.brand} ${vehicle?.model}") },
-                                supportingContent = { 
+                                headlineContent = { Text("${maintenance.type.label} - ${vehicle?.let { "${it.brand} ${it.model}" } ?: "Vehículo eliminado"}") },
+                                supportingContent = {
                                     Text("Fecha: ${sdf.format(maintenance.date)} | Estado: ${maintenance.status.label}")
                                 },
                                 trailingContent = {
@@ -893,7 +868,7 @@ fun DriverDetailsDialog(
     onDismiss: () -> Unit,
     onStatusChange: (DriverStatus) -> Unit
 ) {
-    val sdf = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+    val sdf = remember { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()) }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Detalles del Conductor") },
@@ -963,20 +938,20 @@ fun AssignmentFormDialog(
     var attempted by remember { mutableStateOf(false) }
 
     val selectedVehicle = vehicles.find { it.id == selectedVehicleId }
-    
+
     val mileageV = if (selectedVehicle != null)
         Validators.validateAssignmentInitialMileage(initialMileage, selectedVehicle.mileage)
     else
         Validators.validateMileage(initialMileage)
-    
+
     val departureV = Validators.validateDepartureDate(departureDate, isEdit)
     val datesV = Validators.validateAssignmentDates(departureDate, plannedReturnDate)
-    
+
     val finalMileageV = if (isEdit && status == AssignmentStatus.COMPLETED) {
         Validators.validateFinalMileage(finalMileage, assignment?.initialMileage ?: 0L)
     } else ValidationResult.Valid
 
-    val isValid = !cannotProceed && 
+    val isValid = !cannotProceed &&
             listOf(mileageV, departureV, datesV, finalMileageV).all { it.isValid } &&
             selectedVehicleId.isNotBlank() && selectedDriverId.isNotBlank() &&
             initialMileage.isNotBlank() && departureDate != null && plannedReturnDate != null
@@ -1046,7 +1021,7 @@ fun AssignmentFormDialog(
                             Text("Información de Asignación", style = MaterialTheme.typography.labelMedium)
                             Text("ID Vehículo: ${assignment?.vehicleId}", style = MaterialTheme.typography.bodySmall)
                             Text("ID Conductor: ${assignment?.driverId}", style = MaterialTheme.typography.bodySmall)
-                            
+
                             Spacer(modifier = Modifier.height(16.dp))
                             ExposedDropdownMenuBox(expanded = expandedStatus, onExpandedChange = { expandedStatus = !expandedStatus }) {
                                 OutlinedTextField(
@@ -1111,14 +1086,14 @@ fun AssignmentFormDialog(
                         if (isEdit && status == AssignmentStatus.COMPLETED) {
                             Spacer(modifier = Modifier.height(24.dp))
                             Text("Información de Retorno", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
-                            
+
                             DatePickerField(
                                 label = "Fecha de retorno real",
                                 selectedDate = returnDate,
                                 onDateSelected = { returnDate = it },
                                 minDate = departureDate
                             )
-                            
+
                             OutlinedTextField(
                                 value = finalMileage,
                                 onValueChange = { finalMileage = it.filter { c -> c.isDigit() } },
@@ -1129,7 +1104,7 @@ fun AssignmentFormDialog(
                                 } else null,
                                 modifier = Modifier.fillMaxWidth()
                             )
-                            
+
                             OutlinedTextField(
                                 value = returnObservations,
                                 onValueChange = { returnObservations = it },
@@ -1166,30 +1141,4 @@ fun AssignmentFormDialog(
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } }
     )
-}
-
-@Composable
-fun PhotoPlaceholder(label: String, icon: androidx.compose.ui.graphics.vector.ImageVector, uri: String? = null, onPick: () -> Unit = {}) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Box(
-            modifier = Modifier
-                .size(80.dp)
-                .clip(RoundedCornerShape(8.dp))
-                .background(MaterialTheme.colorScheme.surfaceVariant)
-                .clickable { onPick() },
-            contentAlignment = Alignment.Center
-        ) {
-            if (uri != null) {
-                coil.compose.AsyncImage(
-                    model = uri,
-                    contentDescription = null,
-                    contentScale = androidx.compose.ui.layout.ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize()
-                )
-            } else {
-                Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-        }
-        Text(label, style = MaterialTheme.typography.labelSmall)
-    }
 }

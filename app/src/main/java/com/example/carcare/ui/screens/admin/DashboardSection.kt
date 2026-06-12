@@ -331,8 +331,7 @@ private fun ActivityRow(a: Assignment, vehicles: List<Vehicle>, drivers: List<Dr
     val sdf = remember { SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()) }
     Card(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
         ListItem(
-            headlineContent = { Text("${v?.brand} ${v?.model} (${v?.plate?.let { Validators.formatPlate(it) }})") },
-            supportingContent = {
+            headlineContent = { Text(v?.let { "${it.brand} ${it.model} (${Validators.formatPlate(it.plate)})" } ?: "Vehículo eliminado") },            supportingContent = {
                 Text(
                     "Conductor: ${d?.fullName}\n" +
                             if (out) "Salida: ${sdf.format(a.departureDate)}" else "Entregado: ${a.returnDate?.let { sdf.format(it) }}"
