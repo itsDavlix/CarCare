@@ -21,6 +21,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.animation.core.tween
+import java.util.Date
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -303,10 +304,22 @@ fun AdminScreen(
                 assignmentToEdit = null
             },
             onSave = { assignmentData ->
-                if (assignmentToEdit == null) {
-                    assignmentViewModel.addAssignment(assignmentData) { vehicleViewModel.loadVehicles() }
-                } else {
-                    assignmentViewModel.updateAssignment(assignmentData) { vehicleViewModel.loadVehicles() }
+                val original = assignmentToEdit
+                when {
+                    original == null ->
+                        assignmentViewModel.addAssignment(assignmentData) { vehicleViewModel.loadVehicles() }
+                    assignmentData.status == AssignmentStatus.COMPLETED && original.status != AssignmentStatus.COMPLETED ->
+                        // Completar pasa por el endpoint transaccional: registra retorno,
+                        // actualiza km del vehículo y lo libera, todo en una operación.
+                        assignmentViewModel.completeAssignment(
+                            assignmentId = original.id,
+                            returnDate = assignmentData.returnDate ?: Date(),
+                            finalMileage = assignmentData.finalMileage ?: assignmentData.initialMileage,
+                            observations = assignmentData.returnObservations,
+                            nextStatus = VehicleStatus.AVAILABLE
+                        ) { vehicleViewModel.loadVehicles() }
+                    else ->
+                        assignmentViewModel.updateAssignment(assignmentData) { vehicleViewModel.loadVehicles() }
                 }
                 showAssignmentForm = false
                 assignmentToEdit = null
