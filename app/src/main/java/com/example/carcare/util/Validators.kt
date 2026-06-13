@@ -393,6 +393,17 @@ object Validators {
         return ValidationResult.Valid
     }
 
+    // ===================================================================
+    //  Cuenta / contraseña
+    // ===================================================================
+
+    /** Misma regla que el backend (mínimo 6) + confirmación que coincide. */
+    fun validatePassword(password: String, confirm: String): ValidationResult {
+        if (password.length < 6) return ValidationResult.invalid("La contraseña debe tener al menos 6 caracteres")
+        if (password != confirm) return ValidationResult.invalid("Las contraseñas no coinciden")
+        return ValidationResult.Valid
+    }
+
     fun reasonableMileageDelta(departureDate: Date?, referenceDate: Date = Date()): Long {
         if (departureDate == null) return 10_000
         val millis = referenceDate.time - departureDate.time

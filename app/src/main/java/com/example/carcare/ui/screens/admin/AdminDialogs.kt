@@ -7,7 +7,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -17,6 +20,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import com.example.carcare.model.Vehicle
 import com.example.carcare.model.VehicleStatus
@@ -867,14 +873,15 @@ fun DriverFormDialog(
 fun DriverDetailsDialog(
     driver: Driver,
     onDismiss: () -> Unit,
-    onStatusChange: (DriverStatus) -> Unit
+    onStatusChange: (DriverStatus) -> Unit,
+    onChangePassword: () -> Unit
 ) {
     val sdf = remember { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()) }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Detalles del Conductor") },
         text = {
-            Column {
+            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(
                         modifier = Modifier.size(64.dp).clip(CircleShape)
@@ -898,6 +905,22 @@ fun DriverDetailsDialog(
                 KeyValueRow("Edad", "${driver.age} años")
                 KeyValueRow("Teléfono", driver.phone, mono = true)
                 KeyValueRow("Licencia vence", sdf.format(driver.licenseExpiryDate))
+
+                Spacer(modifier = Modifier.height(16.dp))
+                DialogSectionLabel("Acceso")
+                KeyValueRow("Usuario", driver.idCardNumber, mono = true)
+                Text(
+                    text = "La contraseña inicial es la cédula. El conductor puede cambiarla desde la app.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedButton(onClick = onChangePassword) {
+                    Icon(Icons.Default.Key, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Cambiar contraseña")
+                }
+
                 Spacer(modifier = Modifier.height(16.dp))
                 DialogSectionLabel("Cambiar estado")
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
@@ -912,6 +935,102 @@ fun DriverDetailsDialog(
             }
         },
         confirmButton = { TextButton(onClick = onDismiss) { Text("Cerrar") } }
+    )
+}
+
+/**
+ * Credenciales iniciales del conductor recién creado. Usuario y contraseña = la cédula;
+ * el conductor debería cambiar la contraseña en su primer ingreso.
+ */
+@Composable
+fun DriverCredentialsDialog(driver: Driver, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        icon = { Icon(Icons.Default.Key, contentDescription = null) },
+        title = { Text("Conductor creado") },
+        text = {
+            Column {
+                Text(
+                    text = "Se generó la cuenta de acceso. Compartile estas credenciales al conductor; " +
+                            "debería cambiar la contraseña en su primer ingreso.",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                KeyValueRow("Usuario", driver.idCardNumber, mono = true)
+                KeyValueRow("Contraseña", driver.idCardNumber, mono = true)
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text("Entendido") } }
+    )
+}
+
+/** Diálogo para que el admin fije una nueva contraseña del conductor. */
+@Composable
+fun ChangePasswordDialog(
+    driver: Driver,
+    onDismiss: () -> Unit,
+    onConfirm: (String) -> Unit
+) {
+    var password by remember { mutableStateOf("") }
+    var confirm by remember { mutableStateOf("") }
+    var visible by remember { mutableStateOf(false) }
+    var attempted by remember { mutableStateOf(false) }
+
+    val validation = Validators.validatePassword(password, confirm)
+    val transformation = if (visible) VisualTransformation.None else PasswordVisualTransformation()
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Cambiar contraseña") },
+        text = {
+            Column {
+                Text(
+                    text = "Conductor: ${driver.fullName}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                OutlinedTextField(
+                    value = password,
+                    onValueChange = { password = it },
+                    label = { Text("Nueva contraseña") },
+                    singleLine = true,
+                    visualTransformation = transformation,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                    isError = attempted && !validation.isValid,
+                    trailingIcon = {
+                        IconButton(onClick = { visible = !visible }) {
+                            Icon(
+                                if (visible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                contentDescription = if (visible) "Ocultar" else "Mostrar"
+                            )
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = confirm,
+                    onValueChange = { confirm = it },
+                    label = { Text("Confirmar contraseña") },
+                    singleLine = true,
+                    visualTransformation = transformation,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                    isError = attempted && !validation.isValid,
+                    supportingText = if (attempted && !validation.isValid) {
+                        { Text(validation.errorMessage ?: "") }
+                    } else null,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = {
+                attempted = true
+                if (validation.isValid) onConfirm(password)
+            }) { Text("Guardar") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } }
     )
 }
 
