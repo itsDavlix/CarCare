@@ -29,6 +29,7 @@ import com.example.carcare.model.DriverStatus
 import com.example.carcare.model.Assignment as AssignmentModel
 import com.example.carcare.model.AssignmentStatus
 import com.example.carcare.ui.components.DatePickerField
+import com.example.carcare.ui.components.StatusBadge
 import com.example.carcare.util.ValidationResult
 import com.example.carcare.util.Validators
 import java.text.SimpleDateFormat
@@ -99,7 +100,7 @@ fun VehicleFormDialog(
         text = {
             LazyColumn(modifier = Modifier.fillMaxWidth()) {
                 item {
-                    Text("Fotos y Documentación", style = MaterialTheme.typography.labelMedium)
+                    DialogSectionLabel("Fotos y documentación")
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -225,7 +226,7 @@ fun VehicleFormDialog(
                     )
 
                     Spacer(modifier = Modifier.height(16.dp))
-                    Text("Identificación del Motor/Chasis", style = MaterialTheme.typography.labelMedium)
+                    DialogSectionLabel("Identificación del motor/chasis")
                     OutlinedTextField(
                         value = chassisNumber, onValueChange = { chassisNumber = it.uppercase() },
                         label = { Text("Número de Chasis") },
@@ -246,7 +247,7 @@ fun VehicleFormDialog(
                     )
 
                     Spacer(modifier = Modifier.height(16.dp))
-                    Text("Seguro", style = MaterialTheme.typography.labelMedium)
+                    DialogSectionLabel("Seguro")
                     OutlinedTextField(
                         value = insurancePolicy, onValueChange = { insurancePolicy = it.uppercase() },
                         label = { Text("Número de Póliza de Seguro") },
@@ -319,24 +320,27 @@ fun VehicleDetailsDialog(
         text = {
             LazyColumn {
                 item {
-                    Text("Marca/Modelo: ${vehicle.brand} ${vehicle.model}", style = MaterialTheme.typography.titleMedium)
-                    Text("Placa: ${Validators.formatPlate(vehicle.plate)}")
-                    Text("Año: ${vehicle.year}")
-                    Text("Color: ${vehicle.color.ifBlank { "N/A" }}")
-                    Text("Combustible: ${vehicle.fuelType.label}")
-                    Text("Kilometraje: ${vehicle.mileage} km")
+                    Text("${vehicle.brand} ${vehicle.model}", style = MaterialTheme.typography.headlineSmall)
+                    Spacer(modifier = Modifier.height(2.dp))
+                    StatusBadge(status = vehicle.status)
+                    Spacer(modifier = Modifier.height(12.dp))
+                    KeyValueRow("Placa", Validators.formatPlate(vehicle.plate), mono = true)
+                    KeyValueRow("Año", "${vehicle.year}", mono = true)
+                    KeyValueRow("Color", vehicle.color.ifBlank { "N/A" })
+                    KeyValueRow("Combustible", vehicle.fuelType.label)
+                    KeyValueRow("Kilometraje", "${vehicle.mileage} km", mono = true)
+                    Spacer(modifier = Modifier.height(12.dp))
+                    DialogSectionLabel("Identificación")
+                    KeyValueRow("Chasis", vehicle.chassisNumber.ifBlank { "N/A" }, mono = true)
+                    KeyValueRow("Motor", vehicle.engineNumber.ifBlank { "N/A" }, mono = true)
+                    Spacer(modifier = Modifier.height(12.dp))
+                    DialogSectionLabel("Documentación")
+                    KeyValueRow("Póliza", vehicle.insurancePolicy.ifBlank { "N/A" }, mono = true)
+                    KeyValueRow("Venc. Seguro", vehicle.insuranceExpiryDate?.let { sdf.format(it) } ?: "N/A")
                     Spacer(modifier = Modifier.height(8.dp))
-                    Text("Identificación", style = MaterialTheme.typography.titleSmall)
-                    Text("Chasis: ${vehicle.chassisNumber.ifBlank { "N/A" }}")
-                    Text("Motor: ${vehicle.engineNumber.ifBlank { "N/A" }}")
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text("Documentación", style = MaterialTheme.typography.titleSmall)
-                    Text("Póliza: ${vehicle.insurancePolicy.ifBlank { "N/A" }}")
-                    Text("Venc. Seguro: ${vehicle.insuranceExpiryDate?.let { sdf.format(it) } ?: "N/A"}")
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text("Notas: ${vehicle.description.ifBlank { "Sin observaciones" }}")
+                    KeyValueRow("Notas", vehicle.description.ifBlank { "Sin observaciones" })
                     Spacer(modifier = Modifier.height(16.dp))
-                    Text("Fotos", style = MaterialTheme.typography.titleSmall)
+                    DialogSectionLabel("Fotos")
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -364,7 +368,7 @@ fun VehicleDetailsDialog(
                         }
                     }
                     Spacer(modifier = Modifier.height(16.dp))
-                    Text("Cambiar Estado:", style = MaterialTheme.typography.titleSmall)
+                    DialogSectionLabel("Cambiar estado")
                     FlowRow(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                         VehicleStatus.entries.forEach { status ->
                             FilterChip(
@@ -375,7 +379,7 @@ fun VehicleDetailsDialog(
                         }
                     }
                     Spacer(modifier = Modifier.height(16.dp))
-                    Text("Historial de Mantenimiento:", style = MaterialTheme.typography.titleSmall)
+                    DialogSectionLabel("Historial de mantenimiento")
                 }
                 if (maintenanceHistory.isEmpty()) {
                     item { Text("No hay registros de mantenimiento.", style = MaterialTheme.typography.bodySmall) }
@@ -391,7 +395,7 @@ fun VehicleDetailsDialog(
                 }
                 item {
                     Spacer(modifier = Modifier.height(16.dp))
-                    Text("Historial de Asignaciones:", style = MaterialTheme.typography.titleSmall)
+                    DialogSectionLabel("Historial de asignaciones")
                 }
                 if (assignmentHistory.isEmpty()) {
                     item { Text("No hay registros de asignación.", style = MaterialTheme.typography.bodySmall) }
@@ -630,21 +634,18 @@ fun MaintenanceDetailsDialog(
         title = { Text("Detalles del Mantenimiento") },
         text = {
             Column(modifier = Modifier.fillMaxWidth()) {
-                Text(text = "Tipo: ${maintenance.type.label}", style = MaterialTheme.typography.titleMedium)
-                Text(text = "Vehículo: ${vehicle?.let { "${it.brand} ${it.model} (${Validators.formatPlate(it.plate)})" } ?: "Vehículo eliminado"}")
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(text = "Fecha Inicio: ${sdf.format(maintenance.date)}")
-                maintenance.completionDate?.let {
-                    Text(text = "Fecha Finalización: ${sdf.format(it)}")
-                }
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(text = "Responsable: ${maintenance.responsible}")
-                Text(text = "Kilometraje: ${maintenance.currentMileage} km")
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(text = "Descripción:", style = MaterialTheme.typography.labelMedium)
-                Text(text = maintenance.description)
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(text = "Estado: ${maintenance.status.label}", fontWeight = FontWeight.Bold)
+                Text(text = maintenance.type.label, style = MaterialTheme.typography.headlineSmall)
+                Spacer(modifier = Modifier.height(2.dp))
+                StatusBadge(status = maintenance.status)
+                Spacer(modifier = Modifier.height(12.dp))
+                KeyValueRow("Vehículo", vehicle?.let { "${it.brand} ${it.model} (${Validators.formatPlate(it.plate)})" } ?: "Vehículo eliminado")
+                KeyValueRow("Inicio", sdf.format(maintenance.date))
+                maintenance.completionDate?.let { KeyValueRow("Finalización", sdf.format(it)) }
+                KeyValueRow("Responsable", maintenance.responsible)
+                KeyValueRow("Kilometraje", "${maintenance.currentMileage} km", mono = true)
+                Spacer(modifier = Modifier.height(12.dp))
+                DialogSectionLabel("Descripción")
+                Text(text = maintenance.description, style = MaterialTheme.typography.bodyMedium)
             }
         },
         confirmButton = { TextButton(onClick = onDismiss) { Text("Cerrar") } }
@@ -748,7 +749,7 @@ fun DriverFormDialog(
         text = {
             LazyColumn(modifier = Modifier.fillMaxWidth()) {
                 item {
-                    Text("Fotos", style = MaterialTheme.typography.labelMedium)
+                    DialogSectionLabel("Fotos")
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
                         PhotoPlaceholder(
                             label = "Foto Perfil",
@@ -875,19 +876,30 @@ fun DriverDetailsDialog(
         text = {
             Column {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(modifier = Modifier.size(64.dp).clip(CircleShape).background(Color.LightGray))
+                    Box(
+                        modifier = Modifier.size(64.dp).clip(CircleShape)
+                            .background(driver.status.statusColor.copy(alpha = 0.14f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            Icons.Default.Person, contentDescription = null,
+                            tint = driver.status.statusColor, modifier = Modifier.size(32.dp)
+                        )
+                    }
                     Spacer(modifier = Modifier.width(16.dp))
                     Column {
-                        Text(text = driver.fullName, style = MaterialTheme.typography.titleLarge)
-                        Text(text = "Cédula: ${driver.idCardNumber}")
+                        Text(text = driver.fullName, style = MaterialTheme.typography.headlineSmall)
+                        Spacer(modifier = Modifier.height(2.dp))
+                        StatusBadge(status = driver.status)
                     }
                 }
                 Spacer(modifier = Modifier.height(16.dp))
-                Text("Edad: ${driver.age} años")
-                Text("Teléfono: ${driver.phone}")
-                Text("Vencimiento: ${sdf.format(driver.licenseExpiryDate)}")
+                KeyValueRow("Cédula", driver.idCardNumber, mono = true)
+                KeyValueRow("Edad", "${driver.age} años")
+                KeyValueRow("Teléfono", driver.phone, mono = true)
+                KeyValueRow("Licencia vence", sdf.format(driver.licenseExpiryDate))
                 Spacer(modifier = Modifier.height(16.dp))
-                Text("Cambiar Estado:", style = MaterialTheme.typography.titleSmall)
+                DialogSectionLabel("Cambiar estado")
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
                     DriverStatus.entries.forEach { status ->
                         FilterChip(
@@ -1018,7 +1030,7 @@ fun AssignmentFormDialog(
                                 }
                             }
                         } else {
-                            Text("Información de Asignación", style = MaterialTheme.typography.labelMedium)
+                            DialogSectionLabel("Información de asignación")
                             Text("ID Vehículo: ${assignment?.vehicleId}", style = MaterialTheme.typography.bodySmall)
                             Text("ID Conductor: ${assignment?.driverId}", style = MaterialTheme.typography.bodySmall)
 
@@ -1085,7 +1097,7 @@ fun AssignmentFormDialog(
 
                         if (isEdit && status == AssignmentStatus.COMPLETED) {
                             Spacer(modifier = Modifier.height(24.dp))
-                            Text("Información de Retorno", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+                            DialogSectionLabel("Información de retorno")
 
                             DatePickerField(
                                 label = "Fecha de retorno real",

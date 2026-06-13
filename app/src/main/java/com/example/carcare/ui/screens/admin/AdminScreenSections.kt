@@ -1,33 +1,22 @@
 package com.example.carcare.ui.screens.admin
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.FactCheck
-import androidx.compose.material.icons.automirrored.filled.Login
-import androidx.compose.material.icons.automirrored.filled.Logout
-import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.automirrored.filled.Assignment
 import androidx.compose.material.icons.filled.Build
-import androidx.compose.material.icons.filled.Dashboard
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DirectionsCar
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.PostAdd
-import androidx.compose.material.icons.filled.Schedule
-import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.carcare.model.Assignment
@@ -36,9 +25,12 @@ import com.example.carcare.model.Driver
 import com.example.carcare.model.Maintenance
 import com.example.carcare.model.MaintenanceStatus
 import com.example.carcare.model.Vehicle
-import com.example.carcare.model.VehicleStatus
-import com.example.carcare.model.MaintenanceType
+import com.example.carcare.ui.components.EmptyState
+import com.example.carcare.ui.components.LeadingTile
 import com.example.carcare.ui.components.StatusBadge
+import com.example.carcare.ui.components.pressScale
+import com.example.carcare.ui.theme.instrumentSmall
+import com.example.carcare.ui.theme.statusColor
 import com.example.carcare.util.Validators
 import java.text.SimpleDateFormat
 import java.util.*
@@ -50,15 +42,24 @@ fun VehicleListSection(
     onEdit: (Vehicle) -> Unit,
     onDelete: (Vehicle) -> Unit
 ) {
-    LazyColumn(modifier = Modifier.fillMaxSize()) {
-        items(vehicles, key = { it.id }) { vehicle ->
-            Box(Modifier.animateItem()) {
-                VehicleItem(
-                    vehicle = vehicle,
-                    onClick = { onVehicleClick(vehicle) },
-                    onEdit = { onEdit(vehicle) },
-                    onDelete = { onDelete(vehicle) }
-                )
+    if (vehicles.isEmpty()) {
+        EmptyState(
+            icon = Icons.Default.DirectionsCar,
+            title = "Sin vehículos",
+            subtitle = "Agregá el primer vehículo de la flota con el botón +.",
+            modifier = Modifier.fillMaxSize()
+        )
+    } else {
+        LazyColumn(modifier = Modifier.fillMaxSize()) {
+            items(vehicles, key = { it.id }) { vehicle ->
+                Box(Modifier.animateItem()) {
+                    VehicleItem(
+                        vehicle = vehicle,
+                        onClick = { onVehicleClick(vehicle) },
+                        onEdit = { onEdit(vehicle) },
+                        onDelete = { onDelete(vehicle) }
+                    )
+                }
             }
         }
     }
@@ -73,9 +74,12 @@ fun MaintenanceListSection(
     onStatusChange: (Maintenance, MaintenanceStatus) -> Unit
 ) {
     if (maintenances.isEmpty()) {
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text("No hay mantenimientos registrados.")
-        }
+        EmptyState(
+            icon = Icons.Default.Build,
+            title = "Taller al día",
+            subtitle = "No hay mantenimientos pendientes. Registrá uno con el botón +.",
+            modifier = Modifier.fillMaxSize()
+        )
     } else {
         LazyColumn(modifier = Modifier.fillMaxSize()) {
             items(maintenances, key = { it.id }) { maintenance ->
@@ -104,44 +108,57 @@ fun MaintenanceItem(
 ) {
     val sdf = remember { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()) }
     val plateLabel = vehicle?.plate?.let { Validators.formatPlate(it) } ?: "N/A"
-    Card(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-                Column {
-                    Text(text = maintenance.type.label, style = MaterialTheme.typography.titleMedium)
-                    Text(text = "Vehículo: ${vehicle?.let { "${it.brand} ${it.model} ($plateLabel)" } ?: "Vehículo eliminado"}")
-                    Text(text = "Inicio: ${sdf.format(maintenance.date)}")
-                    if (maintenance.completionDate != null) {
-                        Text(text = "Finalizado: ${sdf.format(maintenance.completionDate)}", style = MaterialTheme.typography.bodySmall)
-                    }
+    Card(modifier = Modifier.fillMaxWidth().padding(vertical = 5.dp)) {
+        Column(modifier = Modifier.padding(14.dp)) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                LeadingTile(icon = Icons.Default.Build, tint = maintenance.status.statusColor)
+                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(text = maintenance.type.label, style = MaterialTheme.typography.titleMedium, maxLines = 1)
+                    Text(
+                        text = vehicle?.let { "${it.brand} ${it.model} · $plateLabel" } ?: "Vehículo eliminado",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = "Inicio: ${sdf.format(maintenance.date)}" +
+                                (maintenance.completionDate?.let { " · Fin: ${sdf.format(it)}" } ?: ""),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
-                Row {
-                    IconButton(onClick = onEdit) { Icon(Icons.Default.Edit, contentDescription = null) }
-                    IconButton(onClick = onDelete) { Icon(Icons.Default.Delete, contentDescription = null) }
-                }
+                RowActions(onEdit = onEdit, onDelete = onDelete)
             }
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(10.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Estado: ", style = MaterialTheme.typography.bodySmall)
                 MaintenanceStatus.entries.forEach { status ->
                     FilterChip(
                         selected = maintenance.status == status,
                         onClick = { onStatusChange(status) },
-                        label = { Text(status.label, style = MaterialTheme.typography.labelSmall) },
-                        modifier = Modifier.padding(horizontal = 2.dp)
+                        label = { Text(status.label, style = MaterialTheme.typography.labelMedium) },
+                        modifier = Modifier.padding(end = 6.dp)
                     )
                 }
             }
             if (maintenance.nextDate != null || maintenance.nextMileage != null) {
-                Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(8.dp))
                 val nextDateStr = maintenance.nextDate?.let { sdf.format(it) } ?: "N/A"
                 val nextKmStr = maintenance.nextMileage?.let { "$it km" } ?: "N/A"
-                Text(
-                    text = "Próximo: $nextDateStr o $nextKmStr",
-                    color = Color(0xFFD32F2F),
-                    style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.Bold
-                )
+                Surface(
+                    color = MaterialTheme.colorScheme.error.copy(alpha = 0.10f),
+                    contentColor = MaterialTheme.colorScheme.error,
+                    shape = MaterialTheme.shapes.small
+                ) {
+                    Text(
+                        text = "Próximo: $nextDateStr o $nextKmStr",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.padding(horizontal = 9.dp, vertical = 5.dp)
+                    )
+                }
             }
         }
     }
@@ -155,9 +172,12 @@ fun DriverListSection(
     onDelete: (Driver) -> Unit
 ) {
     if (drivers.isEmpty()) {
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text("No hay conductores registrados.")
-        }
+        EmptyState(
+            icon = Icons.Default.Person,
+            title = "Sin conductores",
+            subtitle = "Agregá conductores para poder asignarles vehículos.",
+            modifier = Modifier.fillMaxSize()
+        )
     } else {
         LazyColumn(modifier = Modifier.fillMaxSize()) {
             items(drivers, key = { it.id }) { driver ->
@@ -174,6 +194,7 @@ fun DriverListSection(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DriverItem(
     driver: Driver,
@@ -181,36 +202,38 @@ fun DriverItem(
     onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
+    val interaction = remember { MutableInteractionSource() }
     Card(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+        modifier = Modifier.fillMaxWidth().padding(vertical = 5.dp).pressScale(interaction),
         onClick = onClick,
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        interactionSource = interaction,
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Row(
-            modifier = Modifier.padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
+            modifier = Modifier.padding(14.dp),
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
-                modifier = Modifier.size(48.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primaryContainer),
+                modifier = Modifier.size(52.dp).clip(CircleShape)
+                    .background(driver.status.statusColor.copy(alpha = 0.14f)),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(Icons.Default.Person, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimaryContainer)
+                Icon(
+                    Icons.Default.Person, contentDescription = null,
+                    tint = driver.status.statusColor, modifier = Modifier.size(26.dp)
+                )
             }
-            Spacer(modifier = Modifier.width(12.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(text = driver.fullName, style = MaterialTheme.typography.titleMedium)
-                Text(text = "ID: ${driver.idCardNumber}", style = MaterialTheme.typography.bodySmall)
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                Text(text = driver.fullName, style = MaterialTheme.typography.titleMedium, maxLines = 1)
+                Text(
+                    text = driver.idCardNumber,
+                    style = instrumentSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
                 StatusBadge(status = driver.status)
             }
-            Row {
-                IconButton(onClick = onEdit) {
-                    Icon(Icons.Default.Edit, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                }
-                IconButton(onClick = onDelete) {
-                    Icon(Icons.Default.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error)
-                }
-            }
+            com.example.carcare.ui.screens.admin.RowActions(onEdit = onEdit, onDelete = onDelete)
         }
     }
 }
@@ -224,9 +247,12 @@ fun AssignmentListSection(
     onDelete: (Assignment) -> Unit
 ) {
     if (assignments.isEmpty()) {
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text("No hay asignaciones activas.")
-        }
+        EmptyState(
+            icon = Icons.AutoMirrored.Filled.Assignment,
+            title = "Sin asignaciones",
+            subtitle = "Asigná un vehículo disponible a un conductor con el botón +.",
+            modifier = Modifier.fillMaxSize()
+        )
     } else {
         LazyColumn(modifier = Modifier.fillMaxSize()) {
             items(assignments, key = { it.id }) { assignment ->
@@ -257,70 +283,59 @@ fun AssignmentItem(
     val sdf = remember { SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()) }
     val sdfDate = remember { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()) }
     val plateLabel = vehicle?.plate?.let { Validators.formatPlate(it) } ?: "N/A"
-    Card(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(text = "Vehículo: ${vehicle?.let { "${it.brand} ${it.model} ($plateLabel)" } ?: "Vehículo eliminado"}", style = MaterialTheme.typography.titleMedium)
-                    Text(text = "Conductor: ${driver?.fullName}")
-                    Text(text = "Salida: ${sdf.format(assignment.departureDate)}")
-                    Text(text = "Retorno planeado: ${sdfDate.format(assignment.plannedReturnDate)}")
-                    Text(text = "Km Inicial: ${assignment.initialMileage}")
+    Card(modifier = Modifier.fillMaxWidth().padding(vertical = 5.dp)) {
+        Column(modifier = Modifier.padding(14.dp)) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                LeadingTile(icon = Icons.Default.DirectionsCar, tint = assignment.status.statusColor)
+                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(
+                        text = vehicle?.let { "${it.brand} ${it.model} · $plateLabel" } ?: "Vehículo eliminado",
+                        style = MaterialTheme.typography.titleMedium,
+                        maxLines = 1
+                    )
+                    Text(
+                        text = "Conductor: ${driver?.fullName ?: "—"}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                     StatusBadge(status = assignment.status)
                 }
-                Row {
-                    IconButton(onClick = onEdit) {
-                        Icon(Icons.Default.Edit, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                    }
-                    IconButton(onClick = onDelete) {
-                        Icon(Icons.Default.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error)
-                    }
-                }
+                RowActions(onEdit = onEdit, onDelete = onDelete)
             }
+            Spacer(modifier = Modifier.height(10.dp))
+            DetailLine("Salida", sdf.format(assignment.departureDate))
+            DetailLine("Retorno planeado", sdfDate.format(assignment.plannedReturnDate))
+            DetailLine("Km inicial", "${assignment.initialMileage}", mono = true)
             if (assignment.status == AssignmentStatus.COMPLETED) {
                 HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-                Text(text = "Entregado: ${assignment.returnDate?.let { sdf.format(it) } ?: "N/A"}", style = MaterialTheme.typography.bodySmall)
-                Text(text = "Km Final: ${assignment.finalMileage}", style = MaterialTheme.typography.bodySmall)
-                Text(text = "Obs: ${assignment.returnObservations}", style = MaterialTheme.typography.bodySmall)
+                DetailLine("Entregado", assignment.returnDate?.let { sdf.format(it) } ?: "N/A")
+                DetailLine("Km final", "${assignment.finalMileage}", mono = true)
+                if (assignment.returnObservations.isNotBlank()) {
+                    DetailLine("Obs.", assignment.returnObservations)
+                }
             }
         }
     }
 }
 
+/** Par etiqueta/valor alineado, con el valor opcionalmente en monospace (km, números). */
 @Composable
-fun VehicleStatusDistributionChart(vehicles: List<Vehicle>) {
-    val total = vehicles.size.coerceAtLeast(1)
-    val distribution = remember(vehicles) {
-        VehicleStatus.entries.map { status ->
-            status to vehicles.count { it.status == status }
-        }.filter { it.second > 0 }
-    }
-
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        distribution.forEach { (status, count) ->
-            val fraction = count.toFloat() / total
-            val color = when (status) {
-                VehicleStatus.AVAILABLE -> Color(0xFF4CAF50)
-                VehicleStatus.IN_USE -> Color(0xFF2196F3)
-                VehicleStatus.MAINTENANCE -> Color(0xFFFF9800)
-                VehicleStatus.OUT_OF_SERVICE -> Color(0xFFF44336)
-                VehicleStatus.ASSIGNED -> Color(0xFF9C27B0)
-                VehicleStatus.PENDING_REVIEW -> Color(0xFF795548)
-                VehicleStatus.INACTIVE -> Color(0xFF9E9E9E)
-            }
-            Column {
-                Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-                    Text(status.label, style = MaterialTheme.typography.labelSmall)
-                    Text("$count (${(fraction * 100).toInt()}%)", style = MaterialTheme.typography.labelSmall)
-                }
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth(fraction)
-                        .height(8.dp)
-                        .clip(RoundedCornerShape(4.dp))
-                        .background(color)
-                )
-            }
-        }
+private fun DetailLine(label: String, value: String, mono: Boolean = false) {
+    Row(modifier = Modifier.fillMaxWidth().padding(vertical = 1.dp)) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.width(124.dp)
+        )
+        Text(
+            text = value,
+            style = if (mono) instrumentSmall else MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurface
+        )
     }
 }
