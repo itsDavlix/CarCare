@@ -4,6 +4,7 @@ import com.example.carcare.data.network.ApiClient
 import com.example.carcare.data.network.dto.CambioEstadoDto
 import com.example.carcare.data.network.dto.ConductorRequestDto
 import com.example.carcare.data.network.dto.ConductorResponseDto
+import com.example.carcare.data.network.dto.RestablecerPasswordDto
 import com.example.carcare.data.network.formatApiDate
 import com.example.carcare.data.network.parseApiDate
 import com.example.carcare.model.Driver
@@ -32,6 +33,11 @@ class DriverRepository : CrudRepository<Driver> {
 
     suspend fun changeStatus(id: String, status: DriverStatus): Driver =
         api.cambiarEstado(id.toLong(), CambioEstadoDto(status.name)).toDomain()
+
+    /** Restablece la contraseña de acceso del conductor (acción de admin). */
+    suspend fun resetPassword(id: String, newPassword: String) {
+        api.restablecerPassword(id.toLong(), RestablecerPasswordDto(newPassword))
+    }
 }
 
 // ---------- Mappers DTO <-> dominio ----------
