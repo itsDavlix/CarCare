@@ -70,6 +70,7 @@ fun CarCareTheme(
     MaterialTheme(
         colorScheme = colorScheme,
         typography = Typography,
+        shapes = CarCareShapes,
         content = content
     )
 }
