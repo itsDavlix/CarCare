@@ -3,6 +3,7 @@ package com.example.carcare.data.network.api
 import com.example.carcare.data.network.dto.CambioEstadoDto
 import com.example.carcare.data.network.dto.ConductorRequestDto
 import com.example.carcare.data.network.dto.ConductorResponseDto
+import com.example.carcare.data.network.dto.RestablecerPasswordDto
 import retrofit2.Response
 import retrofit2.http.*
 
@@ -28,4 +29,10 @@ interface ConductorApiService {
         @Path("id") id: Long,
         @Body dto: CambioEstadoDto
     ): ConductorResponseDto
+
+    @PATCH("api/conductores/{id}/password")
+    suspend fun restablecerPassword(
+        @Path("id") id: Long,
+        @Body dto: RestablecerPasswordDto
+    ): Response<Unit>
 }

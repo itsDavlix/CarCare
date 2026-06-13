@@ -67,6 +67,8 @@ fun AdminScreen(
     var driverToEdit by remember { mutableStateOf<Driver?>(null) }
     var driverToShowDetails by remember { mutableStateOf<Driver?>(null) }
     var driverToDelete by remember { mutableStateOf<Driver?>(null) }
+    var newDriverCredentials by remember { mutableStateOf<Driver?>(null) }
+    var driverToChangePassword by remember { mutableStateOf<Driver?>(null) }
 
     var showAssignmentForm by remember { mutableStateOf(false) }
     var assignmentToEdit by remember { mutableStateOf<com.example.carcare.model.Assignment?>(null) }
@@ -269,8 +271,12 @@ fun AdminScreen(
             existingDrivers = driverViewModel.drivers,
             onDismiss = { showDriverForm = false },
             onSave = { driver ->
-                if (driverToEdit == null) driverViewModel.addDriver(driver)
-                else driverViewModel.updateDriver(driver)
+                if (driverToEdit == null) {
+                    // Al crear, el backend genera la cuenta de acceso → mostramos sus credenciales.
+                    driverViewModel.addDriver(driver) { newDriverCredentials = driver }
+                } else {
+                    driverViewModel.updateDriver(driver)
+                }
                 showDriverForm = false
             }
         )
@@ -350,6 +356,35 @@ fun AdminScreen(
             onStatusChange = { newStatus ->
                 driverViewModel.updateStatus(driverToShowDetails!!.id, newStatus)
                 driverToShowDetails = driverToShowDetails!!.copy(status = newStatus)
+            },
+            onChangePassword = { driverToChangePassword = driverToShowDetails }
+        )
+    }
+
+    newDriverCredentials?.let { created ->
+        DriverCredentialsDialog(
+            driver = created,
+            onDismiss = { newDriverCredentials = null }
+        )
+    }
+
+    driverToChangePassword?.let { target ->
+        ChangePasswordDialog(
+            driver = target,
+            onDismiss = { driverToChangePassword = null },
+            onConfirm = { newPassword ->
+                driverViewModel.resetPassword(
+                    driverId = target.id,
+                    newPassword = newPassword,
+                    onSuccess = {
+                        driverToChangePassword = null
+                        scope.launch { snackbarHostState.showSnackbar("Contraseña actualizada") }
+                    },
+                    onError = { msg ->
+                        driverToChangePassword = null
+                        scope.launch { snackbarHostState.showSnackbar(msg) }
+                    }
+                )
             }
         )
     }
