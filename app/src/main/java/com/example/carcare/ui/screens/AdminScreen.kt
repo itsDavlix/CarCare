@@ -30,7 +30,8 @@ fun AdminScreen(
     vehicleViewModel: VehicleViewModel,
     maintenanceViewModel: MaintenanceViewModel,
     driverViewModel: DriverViewModel,
-    assignmentViewModel: AssignmentViewModel
+    assignmentViewModel: AssignmentViewModel,
+    notificacionViewModel: NotificacionViewModel
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -46,8 +47,11 @@ fun AdminScreen(
             "conductores" -> driverViewModel.reloadSilently()
             "mantenimientos" -> maintenanceViewModel.reloadSilently()
             "asignaciones" -> assignmentViewModel.reloadSilently()
+            "notificaciones" -> notificacionViewModel.reload()
         }
     }
+
+    LaunchedEffect(Unit) { notificacionViewModel.loadForAdmin() }
 
     var selectedTab by remember { mutableIntStateOf(0) }
     val tabs = listOf("Panel", "Vehículos", "Taller", "Conduct.", "Asign.")
@@ -149,7 +153,10 @@ fun AdminScreen(
                             vehicles = vehicleViewModel.vehicles,
                             drivers = driverViewModel.drivers,
                             maintenances = maintenanceViewModel.maintenances,
-                            assignments = assignmentViewModel.assignments
+                            assignments = assignmentViewModel.assignments,
+                            notifications = notificacionViewModel.items,
+                            onMarkAllRead = { notificacionViewModel.markAllRead() },
+                            onNotificationClick = { notificacionViewModel.markRead(it.id) }
                         )
                         1 -> {
                             SearchBar(
