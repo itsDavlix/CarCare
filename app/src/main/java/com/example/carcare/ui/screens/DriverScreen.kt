@@ -32,6 +32,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.example.carcare.model.*
 import com.example.carcare.ui.components.CarCareTopBar
+import com.example.carcare.ui.components.NotificationItem
 import com.example.carcare.ui.components.StatusBadge
 import com.example.carcare.ui.components.SseRefreshEffect
 import com.example.carcare.ui.theme.statusColor
@@ -39,6 +40,7 @@ import com.example.carcare.ui.viewmodel.AssignmentViewModel
 import com.example.carcare.ui.viewmodel.AuthViewModel
 import com.example.carcare.ui.viewmodel.DriverViewModel
 import com.example.carcare.ui.viewmodel.MaintenanceViewModel
+import com.example.carcare.ui.viewmodel.NotificacionViewModel
 import com.example.carcare.ui.viewmodel.VehicleViewModel
 import com.example.carcare.util.ValidationResult
 import com.example.carcare.util.Validators
@@ -57,7 +59,8 @@ fun DriverScreen(
     driverViewModel: DriverViewModel,
     assignmentViewModel: AssignmentViewModel,
     maintenanceViewModel: MaintenanceViewModel,
-    authViewModel: AuthViewModel
+    authViewModel: AuthViewModel,
+    notificacionViewModel: NotificacionViewModel
 ) {
     val driver = driverViewModel.drivers.find {
         Validators.normalizeIdCard(it.idCardNumber) == Validators.normalizeIdCard(driverIdCard)
@@ -79,7 +82,13 @@ fun DriverScreen(
             "conductores" -> driverViewModel.reloadSilently()
             "mantenimientos" -> maintenanceViewModel.reloadSilently()
             "asignaciones" -> assignmentViewModel.reloadSilently()
+            "notificaciones" -> notificacionViewModel.reload()
         }
+    }
+
+    // Carga el feed del conductor en cuanto sabemos su id (a partir de su cédula).
+    LaunchedEffect(driver?.id) {
+        driver?.let { notificacionViewModel.loadForConductor(it.id.toLong()) }
     }
 
     val isLoading = driverViewModel.isLoading || vehicleViewModel.isLoading ||
@@ -152,6 +161,8 @@ fun DriverScreen(
                         vehicleViewModel = vehicleViewModel,
                         assignmentViewModel = assignmentViewModel,
                         maintenanceViewModel = maintenanceViewModel,
+                        notifications = notificacionViewModel.items,
+                        onNotificationClick = { notificacionViewModel.markRead(it.id) },
                         onReport = { showReportDialog = true }
                     )
                 }
@@ -209,10 +220,12 @@ private fun DriverHomeSection(
     vehicleViewModel: VehicleViewModel,
     assignmentViewModel: AssignmentViewModel,
     maintenanceViewModel: MaintenanceViewModel,
+    notifications: List<Notificacion>,
+    onNotificationClick: (Notificacion) -> Unit,
     onReport: () -> Unit
 ) {
     Column(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         when {
@@ -284,6 +297,25 @@ private fun DriverHomeSection(
                     }
                 } else {
                     Text("No tenés un vehículo asignado actualmente.")
+                }
+
+                Spacer(modifier = Modifier.height(28.dp))
+                Text(
+                    "Novedades",
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.align(Alignment.Start)
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                if (notifications.isEmpty()) {
+                    Text(
+                        "Sin novedades.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                } else {
+                    notifications.take(5).forEach { n ->
+                        NotificationItem(notification = n, onClick = { onNotificationClick(n) })
+                    }
                 }
             }
         }

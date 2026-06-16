@@ -5,6 +5,7 @@ import com.example.carcare.data.network.api.AsignacionApiService
 import com.example.carcare.data.network.api.AuthApiService
 import com.example.carcare.data.network.api.ConductorApiService
 import com.example.carcare.data.network.api.MantenimientoApiService
+import com.example.carcare.data.network.api.NotificacionApiService
 import com.example.carcare.data.network.api.VehiculoApiService
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
@@ -72,6 +73,7 @@ object ApiClient {
     val mantenimientoApi: MantenimientoApiService by lazy { retrofit.create(MantenimientoApiService::class.java) }
     val asignacionApi: AsignacionApiService by lazy { retrofit.create(AsignacionApiService::class.java) }
     val authApi: AuthApiService by lazy { retrofit.create(AuthApiService::class.java) }
+    val notificacionApi: NotificacionApiService by lazy { retrofit.create(NotificacionApiService::class.java) }
 
     /**
      * Despierta el dyno de Render de forma anticipada (fire-and-forget).
