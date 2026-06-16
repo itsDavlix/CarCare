@@ -1,29 +1,48 @@
 package com.example.carcare.ui.screens
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.Build
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.example.carcare.model.*
 import com.example.carcare.ui.components.CarCareTopBar
 import com.example.carcare.ui.components.StatusBadge
 import com.example.carcare.ui.components.SseRefreshEffect
+import com.example.carcare.ui.theme.statusColor
 import com.example.carcare.ui.viewmodel.AssignmentViewModel
+import com.example.carcare.ui.viewmodel.AuthViewModel
 import com.example.carcare.ui.viewmodel.DriverViewModel
 import com.example.carcare.ui.viewmodel.MaintenanceViewModel
 import com.example.carcare.ui.viewmodel.VehicleViewModel
 import com.example.carcare.util.ValidationResult
 import com.example.carcare.util.Validators
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -37,7 +56,8 @@ fun DriverScreen(
     vehicleViewModel: VehicleViewModel,
     driverViewModel: DriverViewModel,
     assignmentViewModel: AssignmentViewModel,
-    maintenanceViewModel: MaintenanceViewModel
+    maintenanceViewModel: MaintenanceViewModel,
+    authViewModel: AuthViewModel
 ) {
     val driver = driverViewModel.drivers.find {
         Validators.normalizeIdCard(it.idCardNumber) == Validators.normalizeIdCard(driverIdCard)
@@ -65,94 +85,75 @@ fun DriverScreen(
     val isLoading = driverViewModel.isLoading || vehicleViewModel.isLoading ||
             assignmentViewModel.isLoading || maintenanceViewModel.isLoading
 
+    var selectedTab by remember { mutableIntStateOf(0) }
     var showReportDialog by remember { mutableStateOf(false) }
+    var showChangePassword by remember { mutableStateOf(false) }
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             CarCareTopBar(
-                onAvatarClick = onBack,
+                onAvatarClick = { selectedTab = 1 },
                 avatarLetter = driver?.firstName?.trim()?.firstOrNull()?.uppercase() ?: "C",
                 subtitle = "Mi panel · Conductor"
             )
+        },
+        bottomBar = {
+            NavigationBar {
+                NavigationBarItem(
+                    selected = selectedTab == 0,
+                    onClick = { selectedTab = 0 },
+                    icon = { Icon(Icons.Default.Home, contentDescription = null) },
+                    label = { Text("Inicio") }
+                )
+                NavigationBarItem(
+                    selected = selectedTab == 1,
+                    onClick = { selectedTab = 1 },
+                    icon = { Icon(Icons.Default.Person, contentDescription = null) },
+                    label = { Text("Perfil") }
+                )
+            }
         }
     ) { padding ->
         Column(
             modifier = Modifier
                 .padding(padding)
                 .padding(16.dp)
-                .fillMaxSize(),
-            horizontalAlignment = Alignment.CenterHorizontally
+                .fillMaxSize()
         ) {
-            when {
-                // Cargando todavía y aún no apareció el conductor → estado de carga
-                isLoading && driver == null -> {
-                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Text("Cargando tus datos…", style = MaterialTheme.typography.bodyMedium)
-                }
-
-                // Terminó de cargar y no existe ningún conductor con esa cédula
-                driver == null && driverViewModel.drivers.isEmpty() -> {
-                    val loadError = driverViewModel.errorMessage
-                        ?: vehicleViewModel.errorMessage
-                        ?: assignmentViewModel.errorMessage
-                        ?: maintenanceViewModel.errorMessage
-                    Text(
-                        loadError ?: "No pudimos cargar los datos. Revisá tu conexión e intentá de nuevo.",
-                        style = MaterialTheme.typography.bodyLarge,
-                        textAlign = TextAlign.Center
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Button(onClick = {
-                        driverViewModel.loadDrivers()
-                        vehicleViewModel.loadVehicles()
-                        assignmentViewModel.loadAssignments()
-                        maintenanceViewModel.loadMaintenances()
-                    }) {
-                        Text("Reintentar")
-                    }
-                }
-                driver == null -> {
-                    Text(
-                        "No encontramos un conductor con la cédula $driverIdCard.",
-                        style = MaterialTheme.typography.bodyLarge,
-                        textAlign = TextAlign.Center
-                    )
-                }
-
-                else -> {
-                    // Indicador delgado si algo aún está cargando (ej. asignaciones)
-                    if (isLoading) {
-                        LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-                        Spacer(modifier = Modifier.height(8.dp))
-                    }
-
-                    Text(
-                        text = "Hola, ${driver.firstName}",
-                        style = MaterialTheme.typography.headlineMedium
-                    )
-                    Spacer(modifier = Modifier.height(24.dp))
-
-                    Text("Tu vehículo asignado", style = MaterialTheme.typography.titleLarge)
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    if (assignedVehicle != null && activeAssignment != null) {
-                        AssignedVehicleCard(
-                            vehicle = assignedVehicle,
-                            assignment = activeAssignment
+            AnimatedContent(
+                targetState = selectedTab,
+                transitionSpec = { fadeIn(tween(170)) togetherWith fadeOut(tween(90)) },
+                label = "driverTab"
+            ) { tab ->
+                when (tab) {
+                    1 -> if (driver != null) {
+                        DriverProfileSection(
+                            driver = driver,
+                            assignedVehicle = assignedVehicle,
+                            onChangePassword = { showChangePassword = true },
+                            onLogout = onBack
                         )
-                        Spacer(modifier = Modifier.height(24.dp))
-                        Button(
-                            onClick = { showReportDialog = true },
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Icon(Icons.Default.Build, contentDescription = null)
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Reportar a mantenimiento")
-                        }
                     } else {
-                        Text("No tenés un vehículo asignado actualmente.")
+                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Text("Cargando tu perfil…", style = MaterialTheme.typography.bodyMedium)
+                        }
                     }
+
+                    else -> DriverHomeSection(
+                        driver = driver,
+                        driverIdCard = driverIdCard,
+                        assignedVehicle = assignedVehicle,
+                        activeAssignment = activeAssignment,
+                        isLoading = isLoading,
+                        driverViewModel = driverViewModel,
+                        vehicleViewModel = vehicleViewModel,
+                        assignmentViewModel = assignmentViewModel,
+                        maintenanceViewModel = maintenanceViewModel,
+                        onReport = { showReportDialog = true }
+                    )
                 }
             }
         }
@@ -174,6 +175,263 @@ fun DriverScreen(
             }
         )
     }
+
+    if (showChangePassword && driver != null) {
+        ChangeOwnPasswordDialog(
+            onDismiss = { showChangePassword = false },
+            onConfirm = { actual, nueva ->
+                authViewModel.changePassword(
+                    cedula = driver.idCardNumber,
+                    actual = actual,
+                    nueva = nueva,
+                    onSuccess = {
+                        showChangePassword = false
+                        scope.launch { snackbarHostState.showSnackbar("Contraseña actualizada") }
+                    },
+                    onError = { msg ->
+                        showChangePassword = false
+                        scope.launch { snackbarHostState.showSnackbar(msg) }
+                    }
+                )
+            }
+        )
+    }
+}
+
+@Composable
+private fun DriverHomeSection(
+    driver: Driver?,
+    driverIdCard: String,
+    assignedVehicle: Vehicle?,
+    activeAssignment: Assignment?,
+    isLoading: Boolean,
+    driverViewModel: DriverViewModel,
+    vehicleViewModel: VehicleViewModel,
+    assignmentViewModel: AssignmentViewModel,
+    maintenanceViewModel: MaintenanceViewModel,
+    onReport: () -> Unit
+) {
+    Column(
+        modifier = Modifier.fillMaxSize(),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        when {
+            // Cargando todavía y aún no apareció el conductor → estado de carga
+            isLoading && driver == null -> {
+                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                Spacer(modifier = Modifier.height(16.dp))
+                Text("Cargando tus datos…", style = MaterialTheme.typography.bodyMedium)
+            }
+
+            // Terminó de cargar y no existe ningún conductor con esa cédula
+            driver == null && driverViewModel.drivers.isEmpty() -> {
+                val loadError = driverViewModel.errorMessage
+                    ?: vehicleViewModel.errorMessage
+                    ?: assignmentViewModel.errorMessage
+                    ?: maintenanceViewModel.errorMessage
+                Text(
+                    loadError ?: "No pudimos cargar los datos. Revisá tu conexión e intentá de nuevo.",
+                    style = MaterialTheme.typography.bodyLarge,
+                    textAlign = TextAlign.Center
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Button(onClick = {
+                    driverViewModel.loadDrivers()
+                    vehicleViewModel.loadVehicles()
+                    assignmentViewModel.loadAssignments()
+                    maintenanceViewModel.loadMaintenances()
+                }) {
+                    Text("Reintentar")
+                }
+            }
+            driver == null -> {
+                Text(
+                    "No encontramos un conductor con la cédula $driverIdCard.",
+                    style = MaterialTheme.typography.bodyLarge,
+                    textAlign = TextAlign.Center
+                )
+            }
+
+            else -> {
+                // Indicador delgado si algo aún está cargando (ej. asignaciones)
+                if (isLoading) {
+                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+
+                Text(
+                    text = "Hola, ${driver.firstName}",
+                    style = MaterialTheme.typography.headlineMedium
+                )
+                Spacer(modifier = Modifier.height(24.dp))
+
+                Text("Tu vehículo asignado", style = MaterialTheme.typography.titleLarge)
+                Spacer(modifier = Modifier.height(16.dp))
+
+                if (assignedVehicle != null && activeAssignment != null) {
+                    AssignedVehicleCard(
+                        vehicle = assignedVehicle,
+                        assignment = activeAssignment
+                    )
+                    Spacer(modifier = Modifier.height(24.dp))
+                    Button(
+                        onClick = onReport,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(Icons.Default.Build, contentDescription = null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Reportar a mantenimiento")
+                    }
+                } else {
+                    Text("No tenés un vehículo asignado actualmente.")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DriverProfileSection(
+    driver: Driver,
+    assignedVehicle: Vehicle?,
+    onChangePassword: () -> Unit,
+    onLogout: () -> Unit
+) {
+    val sdf = remember { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()) }
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                modifier = Modifier
+                    .size(64.dp)
+                    .clip(CircleShape)
+                    .background(driver.status.statusColor.copy(alpha = 0.14f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    Icons.Default.Person, contentDescription = null,
+                    tint = driver.status.statusColor, modifier = Modifier.size(32.dp)
+                )
+            }
+            Spacer(modifier = Modifier.width(16.dp))
+            Column {
+                Text(driver.fullName, style = MaterialTheme.typography.headlineSmall)
+                Spacer(modifier = Modifier.height(2.dp))
+                StatusBadge(status = driver.status)
+            }
+        }
+        Spacer(modifier = Modifier.height(20.dp))
+        ProfileRow("Cédula", driver.idCardNumber)
+        ProfileRow("Teléfono", driver.phone)
+        ProfileRow("Edad", "${driver.age} años")
+        ProfileRow("Licencia vence", sdf.format(driver.licenseExpiryDate))
+        ProfileRow(
+            "Vehículo asignado",
+            assignedVehicle?.let { "${it.brand} ${it.model} (${Validators.formatPlate(it.plate)})" } ?: "Ninguno"
+        )
+        Spacer(modifier = Modifier.height(24.dp))
+        OutlinedButton(onClick = onChangePassword, modifier = Modifier.fillMaxWidth()) {
+            Icon(Icons.Default.Lock, contentDescription = null, modifier = Modifier.size(18.dp))
+            Spacer(modifier = Modifier.width(8.dp))
+            Text("Cambiar contraseña")
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+        TextButton(onClick = onLogout, modifier = Modifier.fillMaxWidth()) {
+            Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = null, modifier = Modifier.size(18.dp))
+            Spacer(modifier = Modifier.width(8.dp))
+            Text("Cerrar sesión")
+        }
+    }
+}
+
+@Composable
+private fun ProfileRow(label: String, value: String) {
+    Row(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+        Text(
+            label,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.width(140.dp)
+        )
+        Text(value, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+    }
+}
+
+@Composable
+private fun ChangeOwnPasswordDialog(
+    onDismiss: () -> Unit,
+    onConfirm: (actual: String, nueva: String) -> Unit
+) {
+    var actual by remember { mutableStateOf("") }
+    var nueva by remember { mutableStateOf("") }
+    var confirm by remember { mutableStateOf("") }
+    var visible by remember { mutableStateOf(false) }
+    var attempted by remember { mutableStateOf(false) }
+
+    val validation = Validators.validatePassword(nueva, confirm)
+    val transform = if (visible) VisualTransformation.None else PasswordVisualTransformation()
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Cambiar contraseña") },
+        text = {
+            Column {
+                OutlinedTextField(
+                    value = actual,
+                    onValueChange = { actual = it },
+                    label = { Text("Contraseña actual") },
+                    singleLine = true,
+                    visualTransformation = transform,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                    isError = attempted && actual.isBlank(),
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = nueva,
+                    onValueChange = { nueva = it },
+                    label = { Text("Nueva contraseña") },
+                    singleLine = true,
+                    visualTransformation = transform,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                    isError = attempted && !validation.isValid,
+                    trailingIcon = {
+                        IconButton(onClick = { visible = !visible }) {
+                            Icon(
+                                if (visible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                contentDescription = if (visible) "Ocultar" else "Mostrar"
+                            )
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = confirm,
+                    onValueChange = { confirm = it },
+                    label = { Text("Confirmar contraseña") },
+                    singleLine = true,
+                    visualTransformation = transform,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                    isError = attempted && !validation.isValid,
+                    supportingText = if (attempted && !validation.isValid) {
+                        { Text(validation.errorMessage ?: "") }
+                    } else null,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = {
+                attempted = true
+                if (actual.isNotBlank() && validation.isValid) onConfirm(actual, nueva)
+            }) { Text("Guardar") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } }
+    )
 }
 
 @Composable
