@@ -104,6 +104,24 @@ class AuthViewModel(
         }
     }
 
+    /** Cambio de contraseña self-service (perfil del conductor); no toca el estado del login. */
+    fun changePassword(
+        cedula: String,
+        actual: String,
+        nueva: String,
+        onSuccess: () -> Unit,
+        onError: (String) -> Unit
+    ) {
+        viewModelScope.launch {
+            try {
+                repository.changePassword(cedula, actual, nueva)
+                onSuccess()
+            } catch (e: Exception) {
+                onError(e.toUserMessage())
+            }
+        }
+    }
+
     /** Al cerrar sesión: limpia credenciales sensibles, conserva la cédula tecleada. */
     fun onLoggedOut() {
         repository.logout()

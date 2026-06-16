@@ -117,7 +117,8 @@ fun CarCareNavHost() {
                 vehicleViewModel = vehicleViewModel,
                 driverViewModel = driverViewModel,
                 assignmentViewModel = assignmentViewModel,
-                maintenanceViewModel = maintenanceViewModel
+                maintenanceViewModel = maintenanceViewModel,
+                authViewModel = authViewModel
             )
         }
     }

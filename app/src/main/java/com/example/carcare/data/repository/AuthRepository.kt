@@ -3,6 +3,7 @@ package com.example.carcare.data.repository
 import com.example.carcare.data.AuthSession
 import com.example.carcare.data.network.ApiClient
 import com.example.carcare.data.network.api.AuthApiService
+import com.example.carcare.data.network.dto.CambioPasswordDto
 import com.example.carcare.data.network.dto.LoginRequestDto
 import com.example.carcare.data.network.dto.LoginResponseDto
 import com.example.carcare.model.Role
@@ -27,6 +28,11 @@ class AuthRepository(
             conductorId = response.conductorId
         )
         return response
+    }
+
+    /** Cambio de contraseña self-service del conductor (requiere la contraseña actual). */
+    suspend fun changePassword(cedula: String, actual: String, nueva: String) {
+        api.cambiarPassword(CambioPasswordDto(cedula = cedula, passwordActual = actual, passwordNueva = nueva))
     }
 
     fun logout() = AuthSession.clear()
