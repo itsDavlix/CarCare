@@ -7,6 +7,7 @@ data class NotificacionResponseDto(
     val mensaje: String,
     val audiencia: String,
     val conductorId: Long? = null,
+    val entidadId: Long? = null,
     val leida: Boolean = false,
     val fechaCreacion: String? = null
 )

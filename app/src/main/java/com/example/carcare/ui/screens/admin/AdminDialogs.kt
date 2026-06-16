@@ -317,7 +317,8 @@ fun VehicleDetailsDialog(
     maintenanceHistory: List<Maintenance>,
     assignmentHistory: List<AssignmentModel>,
     onDismiss: () -> Unit,
-    onStatusChange: (VehicleStatus) -> Unit
+    onStatusChange: (VehicleStatus) -> Unit,
+    onEdit: () -> Unit
 ) {
     val sdf = remember { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()) }
     AlertDialog(
@@ -419,7 +420,8 @@ fun VehicleDetailsDialog(
                 }
             }
         },
-        confirmButton = { TextButton(onClick = onDismiss) { Text("Cerrar") } }
+        confirmButton = { TextButton(onClick = onEdit) { Text("Editar") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cerrar") } }
     )
 }
 
@@ -632,7 +634,8 @@ fun MaintenanceFormDialog(
 fun MaintenanceDetailsDialog(
     maintenance: Maintenance,
     vehicle: Vehicle?,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    onEdit: () -> Unit
 ) {
     val sdf = remember { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()) }
     AlertDialog(
@@ -654,7 +657,8 @@ fun MaintenanceDetailsDialog(
                 Text(text = maintenance.description, style = MaterialTheme.typography.bodyMedium)
             }
         },
-        confirmButton = { TextButton(onClick = onDismiss) { Text("Cerrar") } }
+        confirmButton = { TextButton(onClick = onEdit) { Text("Editar") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cerrar") } }
     )
 }
 
@@ -874,7 +878,8 @@ fun DriverDetailsDialog(
     driver: Driver,
     onDismiss: () -> Unit,
     onStatusChange: (DriverStatus) -> Unit,
-    onChangePassword: () -> Unit
+    onChangePassword: () -> Unit,
+    onEdit: () -> Unit
 ) {
     val sdf = remember { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()) }
     AlertDialog(
@@ -934,7 +939,8 @@ fun DriverDetailsDialog(
                 }
             }
         },
-        confirmButton = { TextButton(onClick = onDismiss) { Text("Cerrar") } }
+        confirmButton = { TextButton(onClick = onEdit) { Text("Editar") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cerrar") } }
     )
 }
 
@@ -1271,5 +1277,46 @@ fun AssignmentFormDialog(
             ) { Text(if (!isEdit) "Asignar" else "Guardar Cambios") }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } }
+    )
+}
+
+@Composable
+fun AssignmentDetailsDialog(
+    assignment: AssignmentModel,
+    vehicle: Vehicle?,
+    driver: Driver?,
+    onDismiss: () -> Unit,
+    onEdit: () -> Unit
+) {
+    val sdf = remember { SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()) }
+    val sdfDate = remember { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Detalles de la Asignación") },
+        text = {
+            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                StatusBadge(status = assignment.status)
+                Spacer(modifier = Modifier.height(12.dp))
+                KeyValueRow(
+                    "Vehículo",
+                    vehicle?.let { "${it.brand} ${it.model} (${Validators.formatPlate(it.plate)})" } ?: "Vehículo eliminado"
+                )
+                KeyValueRow("Conductor", driver?.fullName ?: "—")
+                KeyValueRow("Salida", sdf.format(assignment.departureDate))
+                KeyValueRow("Retorno planeado", sdfDate.format(assignment.plannedReturnDate))
+                KeyValueRow("Km inicial", "${assignment.initialMileage}", mono = true)
+                if (assignment.status == AssignmentStatus.COMPLETED) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    DialogSectionLabel("Retorno")
+                    KeyValueRow("Entregado", assignment.returnDate?.let { sdf.format(it) } ?: "N/A")
+                    KeyValueRow("Km final", assignment.finalMileage?.toString() ?: "N/A", mono = true)
+                    if (assignment.returnObservations.isNotBlank()) {
+                        KeyValueRow("Observaciones", assignment.returnObservations)
+                    }
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = onEdit) { Text("Editar") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cerrar") } }
     )
 }

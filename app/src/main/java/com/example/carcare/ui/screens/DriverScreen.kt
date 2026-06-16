@@ -32,6 +32,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.example.carcare.model.*
 import com.example.carcare.ui.components.CarCareTopBar
+import com.example.carcare.ui.components.ChangeOwnPasswordDialog
 import com.example.carcare.ui.components.NotificationItem
 import com.example.carcare.ui.components.StatusBadge
 import com.example.carcare.ui.components.SseRefreshEffect
@@ -390,80 +391,6 @@ private fun ProfileRow(label: String, value: String) {
         )
         Text(value, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
     }
-}
-
-@Composable
-private fun ChangeOwnPasswordDialog(
-    onDismiss: () -> Unit,
-    onConfirm: (actual: String, nueva: String) -> Unit
-) {
-    var actual by remember { mutableStateOf("") }
-    var nueva by remember { mutableStateOf("") }
-    var confirm by remember { mutableStateOf("") }
-    var visible by remember { mutableStateOf(false) }
-    var attempted by remember { mutableStateOf(false) }
-
-    val validation = Validators.validatePassword(nueva, confirm)
-    val transform = if (visible) VisualTransformation.None else PasswordVisualTransformation()
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Cambiar contraseña") },
-        text = {
-            Column {
-                OutlinedTextField(
-                    value = actual,
-                    onValueChange = { actual = it },
-                    label = { Text("Contraseña actual") },
-                    singleLine = true,
-                    visualTransformation = transform,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                    isError = attempted && actual.isBlank(),
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = nueva,
-                    onValueChange = { nueva = it },
-                    label = { Text("Nueva contraseña") },
-                    singleLine = true,
-                    visualTransformation = transform,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                    isError = attempted && !validation.isValid,
-                    trailingIcon = {
-                        IconButton(onClick = { visible = !visible }) {
-                            Icon(
-                                if (visible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                                contentDescription = if (visible) "Ocultar" else "Mostrar"
-                            )
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = confirm,
-                    onValueChange = { confirm = it },
-                    label = { Text("Confirmar contraseña") },
-                    singleLine = true,
-                    visualTransformation = transform,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                    isError = attempted && !validation.isValid,
-                    supportingText = if (attempted && !validation.isValid) {
-                        { Text(validation.errorMessage ?: "") }
-                    } else null,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = {
-                attempted = true
-                if (actual.isNotBlank() && validation.isValid) onConfirm(actual, nueva)
-            }) { Text("Guardar") }
-        },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } }
-    )
 }
 
 @Composable
