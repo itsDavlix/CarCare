@@ -39,7 +39,6 @@ import java.util.*
 fun VehicleListSection(
     vehicles: List<Vehicle>,
     onVehicleClick: (Vehicle) -> Unit,
-    onEdit: (Vehicle) -> Unit,
     onDelete: (Vehicle) -> Unit
 ) {
     if (vehicles.isEmpty()) {
@@ -56,7 +55,6 @@ fun VehicleListSection(
                     VehicleItem(
                         vehicle = vehicle,
                         onClick = { onVehicleClick(vehicle) },
-                        onEdit = { onEdit(vehicle) },
                         onDelete = { onDelete(vehicle) }
                     )
                 }
@@ -69,7 +67,7 @@ fun VehicleListSection(
 fun MaintenanceListSection(
     maintenances: List<Maintenance>,
     vehicles: List<Vehicle>,
-    onEdit: (Maintenance) -> Unit,
+    onClick: (Maintenance) -> Unit,
     onDelete: (Maintenance) -> Unit,
     onStatusChange: (Maintenance, MaintenanceStatus) -> Unit
 ) {
@@ -88,7 +86,7 @@ fun MaintenanceListSection(
                     MaintenanceItem(
                         maintenance = maintenance,
                         vehicle = vehicle,
-                        onEdit = { onEdit(maintenance) },
+                        onClick = { onClick(maintenance) },
                         onDelete = { onDelete(maintenance) },
                         onStatusChange = { onStatusChange(maintenance, it) }
                     )
@@ -98,17 +96,23 @@ fun MaintenanceListSection(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MaintenanceItem(
     maintenance: Maintenance,
     vehicle: Vehicle?,
-    onEdit: () -> Unit,
+    onClick: () -> Unit,
     onDelete: () -> Unit,
     onStatusChange: (MaintenanceStatus) -> Unit
 ) {
     val sdf = remember { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()) }
     val plateLabel = vehicle?.plate?.let { Validators.formatPlate(it) } ?: "N/A"
-    Card(modifier = Modifier.fillMaxWidth().padding(vertical = 5.dp)) {
+    val interaction = remember { MutableInteractionSource() }
+    Card(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 5.dp).pressScale(interaction),
+        onClick = onClick,
+        interactionSource = interaction
+    ) {
         Column(modifier = Modifier.padding(14.dp)) {
             Row(
                 horizontalArrangement = Arrangement.spacedBy(14.dp),
@@ -130,7 +134,7 @@ fun MaintenanceItem(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-                RowActions(onEdit = onEdit, onDelete = onDelete)
+                RowActions(onDelete = onDelete)
             }
             Spacer(modifier = Modifier.height(10.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -168,7 +172,6 @@ fun MaintenanceItem(
 fun DriverListSection(
     drivers: List<Driver>,
     onDriverClick: (Driver) -> Unit,
-    onEdit: (Driver) -> Unit,
     onDelete: (Driver) -> Unit
 ) {
     if (drivers.isEmpty()) {
@@ -185,7 +188,6 @@ fun DriverListSection(
                     DriverItem(
                         driver = driver,
                         onClick = { onDriverClick(driver) },
-                        onEdit = { onEdit(driver) },
                         onDelete = { onDelete(driver) }
                     )
                 }
@@ -199,7 +201,6 @@ fun DriverListSection(
 fun DriverItem(
     driver: Driver,
     onClick: () -> Unit,
-    onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
     val interaction = remember { MutableInteractionSource() }
@@ -233,7 +234,7 @@ fun DriverItem(
                 )
                 StatusBadge(status = driver.status)
             }
-            com.example.carcare.ui.screens.admin.RowActions(onEdit = onEdit, onDelete = onDelete)
+            RowActions(onDelete = onDelete)
         }
     }
 }
@@ -243,7 +244,7 @@ fun AssignmentListSection(
     assignments: List<Assignment>,
     vehicles: List<Vehicle>,
     drivers: List<Driver>,
-    onEdit: (Assignment) -> Unit,
+    onClick: (Assignment) -> Unit,
     onDelete: (Assignment) -> Unit
 ) {
     if (assignments.isEmpty()) {
@@ -263,7 +264,7 @@ fun AssignmentListSection(
                         assignment = assignment,
                         vehicle = vehicle,
                         driver = driver,
-                        onEdit = { onEdit(assignment) },
+                        onClick = { onClick(assignment) },
                         onDelete = { onDelete(assignment) }
                     )
                 }
@@ -272,18 +273,24 @@ fun AssignmentListSection(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AssignmentItem(
     assignment: Assignment,
     vehicle: Vehicle?,
     driver: Driver?,
-    onEdit: () -> Unit,
+    onClick: () -> Unit,
     onDelete: () -> Unit
 ) {
     val sdf = remember { SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()) }
     val sdfDate = remember { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()) }
     val plateLabel = vehicle?.plate?.let { Validators.formatPlate(it) } ?: "N/A"
-    Card(modifier = Modifier.fillMaxWidth().padding(vertical = 5.dp)) {
+    val interaction = remember { MutableInteractionSource() }
+    Card(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 5.dp).pressScale(interaction),
+        onClick = onClick,
+        interactionSource = interaction
+    ) {
         Column(modifier = Modifier.padding(14.dp)) {
             Row(
                 horizontalArrangement = Arrangement.spacedBy(14.dp),
@@ -304,7 +311,7 @@ fun AssignmentItem(
                     )
                     StatusBadge(status = assignment.status)
                 }
-                RowActions(onEdit = onEdit, onDelete = onDelete)
+                RowActions(onDelete = onDelete)
             }
             Spacer(modifier = Modifier.height(10.dp))
             DetailLine("Salida", sdf.format(assignment.departureDate))

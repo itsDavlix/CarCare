@@ -35,7 +35,8 @@ private fun NotificacionResponseDto.toDomain(): Notificacion = Notificacion(
     type = runCatching { NotificationType.valueOf(tipo) }.getOrDefault(NotificationType.OTRO),
     message = mensaje,
     read = leida,
-    timestamp = fechaCreacion?.let { parseIso(it) } ?: Date()
+    timestamp = fechaCreacion?.let { parseIso(it) } ?: Date(),
+    entityId = entidadId?.toString()
 )
 
 /** El backend manda LocalDateTime ISO ("2026-06-16T15:30:00..."). Formatter local = thread-safe. */

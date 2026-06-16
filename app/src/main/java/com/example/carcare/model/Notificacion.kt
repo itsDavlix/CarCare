@@ -11,5 +11,7 @@ data class Notificacion(
     val type: NotificationType,
     val message: String,
     val read: Boolean,
-    val timestamp: Date
+    val timestamp: Date,
+    /** Id de la entidad referida (para abrir su detalle al tocar la notificación). */
+    val entityId: String? = null
 ) : Identifiable
