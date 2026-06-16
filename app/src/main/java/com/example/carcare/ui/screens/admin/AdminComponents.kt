@@ -84,18 +84,13 @@ fun KeyValueRow(label: String, value: String, mono: Boolean = false) {
 }
 
 /**
- * Fila de acciones compacta (editar / eliminar) usada por todas las tarjetas de lista.
- * Editar en tono neutro; eliminar en error: el rojo solo aparece en la acción destructiva.
+ * Acción de borrar de las tarjetas de lista. La edición ya no vive acá: se hace
+ * desde el detalle (se toca la tarjeta → detalle → "Editar").
  */
 @Composable
-fun RowActions(onEdit: () -> Unit, onDelete: () -> Unit) {
-    Row {
-        IconButton(onClick = onEdit) {
-            Icon(Icons.Default.Edit, contentDescription = "Editar", tint = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-        IconButton(onClick = onDelete) {
-            Icon(Icons.Default.Delete, contentDescription = "Eliminar", tint = MaterialTheme.colorScheme.error)
-        }
+fun RowActions(onDelete: () -> Unit) {
+    IconButton(onClick = onDelete) {
+        Icon(Icons.Default.Delete, contentDescription = "Eliminar", tint = MaterialTheme.colorScheme.error)
     }
 }
 
@@ -104,7 +99,6 @@ fun RowActions(onEdit: () -> Unit, onDelete: () -> Unit) {
 fun VehicleItem(
     vehicle: Vehicle,
     onClick: () -> Unit,
-    onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
     val interaction = remember { MutableInteractionSource() }
@@ -149,7 +143,7 @@ fun VehicleItem(
                 )
                 StatusBadge(status = vehicle.status)
             }
-            RowActions(onEdit = onEdit, onDelete = onDelete)
+            RowActions(onDelete = onDelete)
         }
     }
 }

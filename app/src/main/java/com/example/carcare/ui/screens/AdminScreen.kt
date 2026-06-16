@@ -30,7 +30,9 @@ fun AdminScreen(
     vehicleViewModel: VehicleViewModel,
     maintenanceViewModel: MaintenanceViewModel,
     driverViewModel: DriverViewModel,
-    assignmentViewModel: AssignmentViewModel
+    assignmentViewModel: AssignmentViewModel,
+    notificacionViewModel: NotificacionViewModel,
+    authViewModel: AuthViewModel
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -46,10 +48,14 @@ fun AdminScreen(
             "conductores" -> driverViewModel.reloadSilently()
             "mantenimientos" -> maintenanceViewModel.reloadSilently()
             "asignaciones" -> assignmentViewModel.reloadSilently()
+            "notificaciones" -> notificacionViewModel.reload()
         }
     }
 
+    LaunchedEffect(Unit) { notificacionViewModel.loadForAdmin() }
+
     var selectedTab by remember { mutableIntStateOf(0) }
+    var showProfile by remember { mutableStateOf(false) }
     val tabs = listOf("Panel", "Vehículos", "Taller", "Conduct.", "Asign.")
 
     var showVehicleForm by remember { mutableStateOf(false) }
@@ -73,10 +79,11 @@ fun AdminScreen(
     var showAssignmentForm by remember { mutableStateOf(false) }
     var assignmentToEdit by remember { mutableStateOf<com.example.carcare.model.Assignment?>(null) }
     var assignmentToDelete by remember { mutableStateOf<com.example.carcare.model.Assignment?>(null) }
+    var assignmentToShowDetails by remember { mutableStateOf<com.example.carcare.model.Assignment?>(null) }
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
-        topBar = { CarCareTopBar(onAvatarClick = onBack) },
+        topBar = { CarCareTopBar(onAvatarClick = { showProfile = true }) },
         bottomBar = {
             NavigationBar {
                 tabs.forEachIndexed { index, title ->
@@ -149,7 +156,24 @@ fun AdminScreen(
                             vehicles = vehicleViewModel.vehicles,
                             drivers = driverViewModel.drivers,
                             maintenances = maintenanceViewModel.maintenances,
-                            assignments = assignmentViewModel.assignments
+                            assignments = assignmentViewModel.assignments,
+                            notifications = notificacionViewModel.items,
+                            onMarkAllRead = { notificacionViewModel.markAllRead() },
+                            onNotificationClick = { n ->
+                                // Deep-link: abrir el detalle de la entidad referida por la notificación.
+                                when (n.type) {
+                                    NotificationType.VEHICULO ->
+                                        vehicleViewModel.vehicles.firstOrNull { it.id == n.entityId }?.let { vehicleToShowDetails = it }
+                                    NotificationType.CONDUCTOR, NotificationType.SEGURIDAD ->
+                                        driverViewModel.drivers.firstOrNull { it.id == n.entityId }?.let { driverToShowDetails = it }
+                                    NotificationType.MANTENIMIENTO ->
+                                        maintenanceViewModel.maintenances.firstOrNull { it.id == n.entityId }?.let { maintenanceToShowDetails = it }
+                                    NotificationType.ASIGNACION ->
+                                        assignmentViewModel.assignments.firstOrNull { it.id == n.entityId }?.let { assignmentToShowDetails = it }
+                                    NotificationType.OTRO -> {}
+                                }
+                                notificacionViewModel.markRead(n.id)
+                            }
                         )
                         1 -> {
                             SearchBar(
@@ -160,7 +184,6 @@ fun AdminScreen(
                             VehicleListSection(
                                 vehicles = vehicleViewModel.filteredVehicles,
                                 onVehicleClick = { vehicleToShowDetails = it },
-                                onEdit = { vehicleToEdit = it; showVehicleForm = true },
                                 onDelete = { vehicleToDelete = it }
                             )
                         }
@@ -192,7 +215,7 @@ fun AdminScreen(
                             MaintenanceListSection(
                                 maintenances = pendingMaintenances,
                                 vehicles = vehicleViewModel.vehicles,
-                                onEdit = { maintenanceToEdit = it; showMaintenanceForm = true },
+                                onClick = { maintenanceToShowDetails = it },
                                 onDelete = { maintenanceToDelete = it },
                                 onStatusChange = { m, s ->
                                     maintenanceViewModel.updateStatus(m.id, s)
@@ -211,7 +234,6 @@ fun AdminScreen(
                             DriverListSection(
                                 drivers = driverViewModel.filteredDrivers,
                                 onDriverClick = { driverToShowDetails = it },
-                                onEdit = { driverToEdit = it; showDriverForm = true },
                                 onDelete = { driverToDelete = it }
                             )
                         }
@@ -225,7 +247,7 @@ fun AdminScreen(
                                 assignments = assignmentViewModel.getFilteredAssignments(vehicleViewModel.vehicles, driverViewModel.drivers),
                                 vehicles = vehicleViewModel.vehicles,
                                 drivers = driverViewModel.drivers,
-                                onEdit = { assignmentToEdit = it; showAssignmentForm = true },
+                                onClick = { assignmentToShowDetails = it },
                                 onDelete = { assignmentToDelete = it }
                             )
                         }
@@ -345,6 +367,11 @@ fun AdminScreen(
             onStatusChange = { newStatus ->
                 vehicleViewModel.changeStatus(vehicleToShowDetails!!.id, newStatus)
                 vehicleToShowDetails = vehicleToShowDetails!!.copy(status = newStatus)
+            },
+            onEdit = {
+                vehicleToEdit = vehicleToShowDetails
+                vehicleToShowDetails = null
+                showVehicleForm = true
             }
         )
     }
@@ -357,7 +384,12 @@ fun AdminScreen(
                 driverViewModel.updateStatus(driverToShowDetails!!.id, newStatus)
                 driverToShowDetails = driverToShowDetails!!.copy(status = newStatus)
             },
-            onChangePassword = { driverToChangePassword = driverToShowDetails }
+            onChangePassword = { driverToChangePassword = driverToShowDetails },
+            onEdit = {
+                driverToEdit = driverToShowDetails
+                driverToShowDetails = null
+                showDriverForm = true
+            }
         )
     }
 
@@ -413,7 +445,26 @@ fun AdminScreen(
         MaintenanceDetailsDialog(
             maintenance = maintenanceToShowDetails!!,
             vehicle = vehicleViewModel.vehicles.find { it.id == maintenanceToShowDetails!!.vehicleId },
-            onDismiss = { maintenanceToShowDetails = null }
+            onDismiss = { maintenanceToShowDetails = null },
+            onEdit = {
+                maintenanceToEdit = maintenanceToShowDetails
+                maintenanceToShowDetails = null
+                showMaintenanceForm = true
+            }
+        )
+    }
+
+    if (assignmentToShowDetails != null) {
+        AssignmentDetailsDialog(
+            assignment = assignmentToShowDetails!!,
+            vehicle = vehicleViewModel.vehicles.find { it.id == assignmentToShowDetails!!.vehicleId },
+            driver = driverViewModel.drivers.find { it.id == assignmentToShowDetails!!.driverId },
+            onDismiss = { assignmentToShowDetails = null },
+            onEdit = {
+                assignmentToEdit = assignmentToShowDetails
+                assignmentToShowDetails = null
+                showAssignmentForm = true
+            }
         )
     }
 
@@ -465,6 +516,23 @@ fun AdminScreen(
                 scope.launch { snackbarHostState.showSnackbar("Asignación eliminada") }
             },
             onDismiss = { assignmentToDelete = null }
+        )
+    }
+
+    // Perfil del admin: se abre desde el avatar. Overlay full-screen sobre el panel.
+    if (showProfile) {
+        AdminProfileScreen(
+            onBack = { showProfile = false },
+            onLogout = onBack,
+            onChangePassword = { actual, nueva, onSuccess, onError ->
+                authViewModel.changePassword(
+                    cedula = com.example.carcare.data.AuthSession.cedula.orEmpty(),
+                    actual = actual,
+                    nueva = nueva,
+                    onSuccess = onSuccess,
+                    onError = onError
+                )
+            }
         )
     }
 }

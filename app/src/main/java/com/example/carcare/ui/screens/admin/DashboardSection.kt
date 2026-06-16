@@ -31,6 +31,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.carcare.model.*
+import com.example.carcare.ui.components.NotificationItem
 import com.example.carcare.ui.theme.*
 import com.example.carcare.util.Validators
 import java.text.SimpleDateFormat
@@ -198,7 +199,10 @@ fun DashboardSection(
     vehicles: List<Vehicle>,
     drivers: List<Driver>,
     maintenances: List<Maintenance>,
-    assignments: List<Assignment>
+    assignments: List<Assignment>,
+    notifications: List<Notificacion>,
+    onMarkAllRead: () -> Unit,
+    onNotificationClick: (Notificacion) -> Unit
 ) {
     val now = remember { Date() }
     val soon = remember { Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, 7) }.time }
@@ -274,6 +278,10 @@ fun DashboardSection(
         }
 
         item {
+            NotificationPanel(notifications, onMarkAllRead, onNotificationClick)
+        }
+
+        item {
             SectionTitle("Estadísticas")
             val statGroups = remember(vehicles, drivers, maintenances, assignments) {
                 buildDashboardStats(vehicles, drivers, maintenances, assignments)
@@ -322,6 +330,49 @@ private fun SectionTitle(text: String) {
         text.uppercase(), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold,
         color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 18.dp, bottom = 8.dp, start = 4.dp)
     )
+}
+
+/** Panel de notificaciones del admin: actividad reciente con chip de no-leídas. */
+@Composable
+private fun NotificationPanel(
+    notifications: List<Notificacion>,
+    onMarkAllRead: () -> Unit,
+    onClick: (Notificacion) -> Unit
+) {
+    val unread = notifications.count { !it.read }
+    SectionTitle("Notificaciones")
+    Card(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp)) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text("Actividad reciente", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                if (unread > 0) {
+                    Spacer(Modifier.width(8.dp))
+                    Box(
+                        Modifier.clip(RoundedCornerShape(8.dp)).background(Amber.copy(alpha = 0.18f))
+                            .padding(horizontal = 8.dp, vertical = 2.dp)
+                    ) {
+                        Text("$unread", color = AmberDeep, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                    }
+                }
+                Spacer(Modifier.weight(1f))
+                if (unread > 0) TextButton(onClick = onMarkAllRead) { Text("Marcar leídas") }
+            }
+            if (notifications.isEmpty()) {
+                Text(
+                    "Sin novedades.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(vertical = 8.dp)
+                )
+            } else {
+                val recientes = notifications.take(5)
+                recientes.forEachIndexed { i, n ->
+                    NotificationItem(notification = n, onClick = { onClick(n) })
+                    if (i < recientes.lastIndex) HorizontalDivider()
+                }
+            }
+        }
+    }
 }
 
 @Composable

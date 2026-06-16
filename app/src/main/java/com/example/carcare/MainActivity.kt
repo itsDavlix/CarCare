@@ -24,6 +24,7 @@ import com.example.carcare.ui.viewmodel.AssignmentViewModel
 import com.example.carcare.ui.viewmodel.AuthViewModel
 import com.example.carcare.ui.viewmodel.DriverViewModel
 import com.example.carcare.ui.viewmodel.MaintenanceViewModel
+import com.example.carcare.ui.viewmodel.NotificacionViewModel
 import com.example.carcare.ui.viewmodel.VehicleViewModel
 
 class MainActivity : ComponentActivity() {
@@ -60,6 +61,7 @@ fun CarCareNavHost() {
     val maintenanceViewModel: MaintenanceViewModel = viewModel()
     val assignmentViewModel: AssignmentViewModel = viewModel()
     val authViewModel: AuthViewModel = viewModel()
+    val notificacionViewModel: NotificacionViewModel = viewModel()
 
     // Cerrar sesión: limpia el token y vuelve al login (sin repetir la intro).
     val logout: () -> Unit = {
@@ -99,7 +101,9 @@ fun CarCareNavHost() {
                 vehicleViewModel = vehicleViewModel,
                 maintenanceViewModel = maintenanceViewModel,
                 driverViewModel = driverViewModel,
-                assignmentViewModel = assignmentViewModel
+                assignmentViewModel = assignmentViewModel,
+                notificacionViewModel = notificacionViewModel,
+                authViewModel = authViewModel
             )
         }
 
@@ -117,7 +121,9 @@ fun CarCareNavHost() {
                 vehicleViewModel = vehicleViewModel,
                 driverViewModel = driverViewModel,
                 assignmentViewModel = assignmentViewModel,
-                maintenanceViewModel = maintenanceViewModel
+                maintenanceViewModel = maintenanceViewModel,
+                authViewModel = authViewModel,
+                notificacionViewModel = notificacionViewModel
             )
         }
     }
