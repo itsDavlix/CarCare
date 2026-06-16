@@ -1,5 +1,6 @@
 package com.example.carcare.data.network
 
+import com.example.carcare.BuildConfig
 import com.example.carcare.data.AuthSession
 import com.example.carcare.data.network.api.AsignacionApiService
 import com.example.carcare.data.network.api.AuthApiService
@@ -33,8 +34,10 @@ object ApiClient {
         .add(KotlinJsonAdapterFactory())
         .build()
 
+    // Sin logging en release: evita el overhead por request y no expone datos en producción.
     private val loggingInterceptor = HttpLoggingInterceptor().apply {
-        level = HttpLoggingInterceptor.Level.BASIC
+        level = if (BuildConfig.DEBUG) HttpLoggingInterceptor.Level.BASIC
+        else HttpLoggingInterceptor.Level.NONE
     }
 
     /**

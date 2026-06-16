@@ -314,7 +314,7 @@ private fun DriverHomeSection(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 } else {
-                    notifications.take(5).forEach { n ->
+                    notifications.take(4).forEach { n ->
                         NotificationItem(notification = n, onClick = { onNotificationClick(n) })
                     }
                 }

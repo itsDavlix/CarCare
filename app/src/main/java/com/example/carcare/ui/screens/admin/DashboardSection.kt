@@ -31,6 +31,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.carcare.model.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import com.example.carcare.ui.components.NotificationItem
 import com.example.carcare.ui.theme.*
 import com.example.carcare.util.Validators
@@ -365,10 +367,16 @@ private fun NotificationPanel(
                     modifier = Modifier.padding(vertical = 8.dp)
                 )
             } else {
-                val recientes = notifications.take(5)
-                recientes.forEachIndexed { i, n ->
-                    NotificationItem(notification = n, onClick = { onClick(n) })
-                    if (i < recientes.lastIndex) HorizontalDivider()
+                // Muestra ~4 y deja bajar para ver el resto, sin acaparar la pantalla.
+                Column(
+                    modifier = Modifier
+                        .heightIn(max = 264.dp)
+                        .verticalScroll(rememberScrollState())
+                ) {
+                    notifications.forEachIndexed { i, n ->
+                        NotificationItem(notification = n, onClick = { onClick(n) })
+                        if (i < notifications.lastIndex) HorizontalDivider()
+                    }
                 }
             }
         }
