@@ -1,7 +1,6 @@
 package com.example.carcare.data.network
 
 import android.util.Log
-import com.example.carcare.data.AuthSession
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -15,7 +14,6 @@ import okhttp3.Response
 import okhttp3.sse.EventSource
 import okhttp3.sse.EventSourceListener
 import okhttp3.sse.EventSources
-import java.util.concurrent.TimeUnit
 
 /**
  * Cliente SSE (Server-Sent Events). Escucha /api/events y avisa que entidad
@@ -30,14 +28,10 @@ object SseClient {
     private val EVENTS_URL = ApiClient.BASE_URL + "api/events"
     private const val RECONNECT_DELAY_MS = 3_000L
 
-    private val client: OkHttpClient = OkHttpClient.Builder()
-        .connectTimeout(60, TimeUnit.SECONDS)
-        .readTimeout(0, TimeUnit.MILLISECONDS) // sin timeout: stream persistente
-        .build()
-
     /** Abre la conexion. Llama [Connection.cancel] para cerrarla (en onDispose). */
     fun connect(onEntity: (String) -> Unit): Connection {
-        val conn = Connection(client, EVENTS_URL, onEntity)
+        // Reusa el OkHttpClient de ApiClient (mismo pool/dispatcher + JWT por interceptor).
+        val conn = Connection(ApiClient.sseHttpClient, EVENTS_URL, onEntity)
         conn.start()
         return conn
     }
@@ -54,11 +48,8 @@ object SseClient {
 
         private fun openStream() {
             if (!scope.isActive) return
-            // Manda el JWT igual que el authInterceptor de ApiClient: hoy /api/events es
-            // público (fase 1), pero al pasar a fase 2 el stream seguirá funcionando.
-            val request = Request.Builder().url(url).apply {
-                AuthSession.token?.let { header("Authorization", "Bearer $it") }
-            }.build()
+            // El JWT lo agrega el authInterceptor heredado de ApiClient.httpClient.
+            val request = Request.Builder().url(url).build()
             eventSource = EventSources.createFactory(client).newEventSource(request, listener)
         }
 
