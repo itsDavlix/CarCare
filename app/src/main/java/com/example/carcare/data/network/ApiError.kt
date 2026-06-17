@@ -1,7 +1,7 @@
 package com.example.carcare.data.network
 
+import com.squareup.moshi.JsonClass
 import com.squareup.moshi.Moshi
-import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import retrofit2.HttpException
 import java.io.IOException
 
@@ -10,6 +10,7 @@ import java.io.IOException
  * Moshi ignora las claves que no esten aca (timestamp, path), y todo es
  * nullable: si el JSON viene incompleto, no rompe.
  */
+@JsonClass(generateAdapter = true)
 data class ApiErrorResponse(
     val status: Int? = null,
     val error: String? = null,
@@ -18,7 +19,7 @@ data class ApiErrorResponse(
 
 // Moshi propio para el cuerpo de error (reflexion, como el resto del proyecto).
 private val errorMoshi: Moshi by lazy {
-    Moshi.Builder().add(KotlinJsonAdapterFactory()).build()
+    Moshi.Builder().build()
 }
 private val errorAdapter by lazy { errorMoshi.adapter(ApiErrorResponse::class.java) }
 
