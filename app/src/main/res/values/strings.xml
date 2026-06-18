@@ -1,3 +1,30 @@
 <resources>
     <string name="app_name">CarCare</string>
+
+    <!-- Acciones comunes (reutilizables en toda la app) -->
+    <string name="action_save">Guardar</string>
+    <string name="action_cancel">Cancelar</string>
+    <string name="action_show">Mostrar</string>
+    <string name="action_hide">Ocultar</string>
+
+    <!-- Login -->
+    <string name="auth_subtitle">Iniciá sesión para continuar</string>
+    <string name="auth_cedula">Cédula</string>
+    <string name="auth_password">Contraseña</string>
+    <string name="auth_password_show">Mostrar contraseña</string>
+    <string name="auth_password_hide">Ocultar contraseña</string>
+    <string name="auth_login">Iniciar sesión</string>
+    <string name="auth_tagline">Gestión de flota vehicular</string>
+
+    <!-- Contraseñas (compartido entre el cambio self-service y el forzado) -->
+    <string name="pw_current">Contraseña actual</string>
+    <string name="pw_new">Nueva contraseña</string>
+    <string name="pw_confirm">Confirmar contraseña</string>
+    <string name="change_pw_title">Cambiar contraseña</string>
+
+    <!-- Cambio de contraseña forzado (primer ingreso) -->
+    <string name="force_pw_title">Cambia tu contraseña</string>
+    <string name="force_pw_subtitle">Por seguridad debes reemplazar la contraseña inicial antes de continuar.</string>
+    <string name="force_pw_save">Guardar y continuar</string>
+    <string name="force_pw_logout">Cancelar y cerrar sesión</string>
 </resources>

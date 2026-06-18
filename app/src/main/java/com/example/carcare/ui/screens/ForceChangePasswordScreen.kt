@@ -31,9 +31,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
+import com.example.carcare.R
 import com.example.carcare.ui.viewmodel.AuthViewModel
 import com.example.carcare.util.Validators
 
@@ -79,13 +81,13 @@ fun ForceChangePasswordScreen(
             )
             Spacer(Modifier.height(12.dp))
             Text(
-                "Cambia tu contraseña",
+                stringResource(R.string.force_pw_title),
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold
             )
             Spacer(Modifier.height(8.dp))
             Text(
-                "Por seguridad debes reemplazar la contraseña inicial antes de continuar.",
+                stringResource(R.string.force_pw_subtitle),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -94,7 +96,7 @@ fun ForceChangePasswordScreen(
             OutlinedTextField(
                 value = actual,
                 onValueChange = { actual = it; error = null },
-                label = { Text("Contraseña actual") },
+                label = { Text(stringResource(R.string.pw_current)) },
                 singleLine = true,
                 visualTransformation = transform,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
@@ -106,7 +108,7 @@ fun ForceChangePasswordScreen(
             OutlinedTextField(
                 value = nueva,
                 onValueChange = { nueva = it; error = null },
-                label = { Text("Nueva contraseña") },
+                label = { Text(stringResource(R.string.pw_new)) },
                 singleLine = true,
                 visualTransformation = transform,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
@@ -116,7 +118,7 @@ fun ForceChangePasswordScreen(
                     IconButton(onClick = { visible = !visible }) {
                         Icon(
                             if (visible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                            contentDescription = if (visible) "Ocultar" else "Mostrar"
+                            contentDescription = if (visible) stringResource(R.string.action_hide) else stringResource(R.string.action_show)
                         )
                     }
                 },
@@ -126,7 +128,7 @@ fun ForceChangePasswordScreen(
             OutlinedTextField(
                 value = confirm,
                 onValueChange = { confirm = it; error = null },
-                label = { Text("Confirmar contraseña") },
+                label = { Text(stringResource(R.string.pw_confirm)) },
                 singleLine = true,
                 visualTransformation = transform,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
@@ -168,12 +170,12 @@ fun ForceChangePasswordScreen(
                         color = MaterialTheme.colorScheme.onPrimary
                     )
                 } else {
-                    Text("Guardar y continuar")
+                    Text(stringResource(R.string.force_pw_save))
                 }
             }
             Spacer(Modifier.height(4.dp))
             TextButton(onClick = onLogout, enabled = !submitting) {
-                Text("Cancelar y cerrar sesión")
+                Text(stringResource(R.string.force_pw_logout))
             }
         }
     }

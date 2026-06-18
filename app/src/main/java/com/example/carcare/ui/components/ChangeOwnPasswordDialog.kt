@@ -20,10 +20,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
+import com.example.carcare.R
 import com.example.carcare.util.Validators
 
 /**
@@ -46,13 +48,13 @@ fun ChangeOwnPasswordDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Cambiar contraseña") },
+        title = { Text(stringResource(R.string.change_pw_title)) },
         text = {
             Column {
                 OutlinedTextField(
                     value = actual,
                     onValueChange = { actual = it },
-                    label = { Text("Contraseña actual") },
+                    label = { Text(stringResource(R.string.pw_current)) },
                     singleLine = true,
                     visualTransformation = transform,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
@@ -63,7 +65,7 @@ fun ChangeOwnPasswordDialog(
                 OutlinedTextField(
                     value = nueva,
                     onValueChange = { nueva = it },
-                    label = { Text("Nueva contraseña") },
+                    label = { Text(stringResource(R.string.pw_new)) },
                     singleLine = true,
                     visualTransformation = transform,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
@@ -72,7 +74,7 @@ fun ChangeOwnPasswordDialog(
                         IconButton(onClick = { visible = !visible }) {
                             Icon(
                                 if (visible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                                contentDescription = if (visible) "Ocultar" else "Mostrar"
+                                contentDescription = if (visible) stringResource(R.string.action_hide) else stringResource(R.string.action_show)
                             )
                         }
                     },
@@ -82,7 +84,7 @@ fun ChangeOwnPasswordDialog(
                 OutlinedTextField(
                     value = confirm,
                     onValueChange = { confirm = it },
-                    label = { Text("Confirmar contraseña") },
+                    label = { Text(stringResource(R.string.pw_confirm)) },
                     singleLine = true,
                     visualTransformation = transform,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
@@ -98,8 +100,8 @@ fun ChangeOwnPasswordDialog(
             TextButton(onClick = {
                 attempted = true
                 if (actual.isNotBlank() && validation.isValid) onConfirm(actual, nueva)
-            }) { Text("Guardar") }
+            }) { Text(stringResource(R.string.action_save)) }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } }
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } }
     )
 }
