@@ -71,6 +71,12 @@ object SseClient {
             }
 
             override fun onFailure(es: EventSource, t: Throwable?, response: Response?) {
+                // Token vencido/invalido: el interceptor de ApiClient ya cerró la sesión y
+                // avisó a la UI; no reconectar (evita el loop de reintentos cada 3s).
+                if (response?.code == 401) {
+                    cancel()
+                    return
+                }
                 reconnect(t?.message ?: "fallo de conexion")
             }
         }

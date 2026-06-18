@@ -1,6 +1,7 @@
 package com.example.carcare
 
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -9,6 +10,9 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -16,6 +20,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.carcare.data.AuthSession
+import com.example.carcare.data.SessionEvents
 import com.example.carcare.data.SessionStore
 import com.example.carcare.data.network.ApiClient
 import com.example.carcare.model.Role
@@ -95,6 +100,21 @@ fun CarCareNavHost() {
             else -> Routes.driver(s.cedula)
         }
         navController.navigate(dest) { popUpTo(Routes.AUTH) { inclusive = false } }
+    }
+
+    // Sesión expirada (401): el interceptor ya limpió la sesión; acá avisamos y
+    // volvemos al login descartando el back stack.
+    val context = LocalContext.current
+    val sessionExpired by SessionEvents.expired.collectAsState()
+    LaunchedEffect(sessionExpired) {
+        if (sessionExpired) {
+            authViewModel.onLoggedOut()
+            navController.navigate(Routes.AUTH) {
+                popUpTo(Routes.AUTH) { inclusive = true }
+            }
+            Toast.makeText(context, "Tu sesión expiró. Iniciá sesión de nuevo.", Toast.LENGTH_LONG).show()
+            SessionEvents.reset()
+        }
     }
 
     NavHost(navController = navController, startDestination = Routes.AUTH) {

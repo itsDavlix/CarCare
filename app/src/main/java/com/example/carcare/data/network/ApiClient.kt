@@ -2,6 +2,7 @@ package com.example.carcare.data.network
 
 import com.example.carcare.BuildConfig
 import com.example.carcare.data.AuthSession
+import com.example.carcare.data.SessionEvents
 import com.example.carcare.data.network.api.AsignacionApiService
 import com.example.carcare.data.network.api.AuthApiService
 import com.example.carcare.data.network.api.ConductorApiService
@@ -54,11 +55,26 @@ object ApiClient {
         chain.proceed(request)
     }
 
+    /**
+     * Si una request que llevaba token recibe 401 (token vencido/inválido), la sesión ya
+     * no vale: se limpia (también el respaldo de DataStore) y se avisa a la UI para volver
+     * al login. El 403 (autenticado pero sin permiso) NO desloguea.
+     */
+    private val sessionExpiryInterceptor = Interceptor { chain ->
+        val response = chain.proceed(chain.request())
+        if (response.code == 401 && chain.request().header("Authorization") != null) {
+            AuthSession.clear()
+            SessionEvents.signalExpired()
+        }
+        response
+    }
+
     private val httpClient: OkHttpClient = OkHttpClient.Builder()
         .connectTimeout(60, TimeUnit.SECONDS)
         .readTimeout(60, TimeUnit.SECONDS)
         .writeTimeout(60, TimeUnit.SECONDS)
         .addInterceptor(authInterceptor)
+        .addInterceptor(sessionExpiryInterceptor)
         .addInterceptor(loggingInterceptor)
         .build()
 
