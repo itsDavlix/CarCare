@@ -8,6 +8,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -15,6 +16,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.carcare.data.AuthSession
+import com.example.carcare.data.SessionStore
 import com.example.carcare.data.network.ApiClient
 import com.example.carcare.model.Role
 import com.example.carcare.ui.screens.AdminScreen
@@ -33,6 +35,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        SessionStore.init(applicationContext)  // respaldo de sesión para el auto-login
         ApiClient.warmUp()   // despierta el servidor cuanto antes (cold start de Render)
         setContent {
             CarCareTheme {
@@ -78,6 +81,20 @@ fun CarCareNavHost() {
             Role.ADMIN -> navController.navigate(Routes.ADMIN)
             Role.DRIVER -> navController.navigate(Routes.driver(cedula))
         }
+    }
+
+    // Auto-login: si hay una sesión válida respaldada en disco, restaurarla y saltar
+    // el login. Si está vencida o no hay, se queda en AUTH (login normal).
+    LaunchedEffect(Unit) {
+        val s = SessionStore.load() ?: return@LaunchedEffect
+        val role = if (s.role == "ADMIN") Role.ADMIN else Role.DRIVER
+        AuthSession.restore(s.token, role, s.nombre, s.cedula, s.conductorId, s.debeCambiarPassword)
+        val dest = when {
+            s.debeCambiarPassword -> Routes.FORCE_PW
+            role == Role.ADMIN -> Routes.ADMIN
+            else -> Routes.driver(s.cedula)
+        }
+        navController.navigate(dest) { popUpTo(Routes.AUTH) { inclusive = false } }
     }
 
     NavHost(navController = navController, startDestination = Routes.AUTH) {
