@@ -103,6 +103,8 @@ import com.example.carcare.ui.theme.Amber
 import com.example.carcare.ui.theme.Ink
 import com.example.carcare.ui.theme.Line
 import com.example.carcare.ui.theme.Muted
+import androidx.compose.ui.res.stringResource
+import com.example.carcare.R
 import com.example.carcare.ui.theme.NeedleRed
 import com.example.carcare.ui.theme.Paper
 import com.example.carcare.ui.theme.Petrol100
@@ -393,7 +395,7 @@ fun AuthScreen(
                         color = Ink
                     )
                     Text(
-                        text = "Iniciá sesión para continuar",
+                        text = stringResource(R.string.auth_subtitle),
                         style = MaterialTheme.typography.bodySmall,
                         color = Muted
                     )
@@ -429,7 +431,7 @@ fun AuthScreen(
                         OutlinedTextField(
                             value = viewModel.cedula,
                             onValueChange = viewModel::onCedulaChange,
-                            label = { Text("Cédula") },
+                            label = { Text(stringResource(R.string.auth_cedula)) },
                             placeholder = { Text("001-150385-0001A") },
                             leadingIcon = {
                                 Icon(Icons.Default.Badge, contentDescription = null, tint = cedulaIconTint)
@@ -463,7 +465,7 @@ fun AuthScreen(
                         OutlinedTextField(
                             value = viewModel.password,
                             onValueChange = viewModel::onPasswordChange,
-                            label = { Text("Contraseña") },
+                            label = { Text(stringResource(R.string.auth_password)) },
                             leadingIcon = {
                                 Icon(Icons.Default.Lock, contentDescription = null, tint = passwordIconTint)
                             },
@@ -475,8 +477,8 @@ fun AuthScreen(
                                             Icons.Default.VisibilityOff
                                         } else Icons.Default.Visibility,
                                         contentDescription = if (viewModel.showPassword) {
-                                            "Ocultar contraseña"
-                                        } else "Mostrar contraseña"
+                                            stringResource(R.string.auth_password_hide)
+                                        } else stringResource(R.string.auth_password_show)
                                     )
                                 }
                             },
@@ -570,7 +572,7 @@ fun AuthScreen(
                                     }
                                 } else {
                                     Text(
-                                        text = "Iniciar sesión",
+                                        text = stringResource(R.string.auth_login),
                                         fontSize = 16.sp,
                                         fontWeight = FontWeight.Medium,
                                         color = Color.White
@@ -687,7 +689,7 @@ fun AuthScreen(
 
         // ── TAGLINE: acompaña al bloque y se desvanece apenas arranca la partida ──
         Text(
-            text = "Gestión de flota vehicular",
+            text = stringResource(R.string.auth_tagline),
             fontSize = 13.sp,
             color = Petrol100,
             modifier = Modifier
