@@ -18,5 +18,6 @@ data class LoginResponseDto(
     val rol: String,             // "ADMIN" | "CONDUCTOR"
     val nombre: String? = null,
     val cedula: String,          // normalizada (13 dígitos + letra)
-    val conductorId: Long? = null
+    val conductorId: Long? = null,
+    val debeCambiarPassword: Boolean = false  // true → la app fuerza el cambio en el 1er ingreso
 )
