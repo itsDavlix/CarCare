@@ -12,6 +12,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
@@ -88,18 +91,21 @@ fun CarCareNavHost() {
         }
     }
 
-    // Auto-login: si hay una sesión válida respaldada en disco, restaurarla y saltar
-    // el login. Si está vencida o no hay, se queda en AUTH (login normal).
+    // Auto-login: si hay una sesión válida en disco, restaurarla y PRECARGAR los datos,
+    // pero NO navegar de una: se le pasa el destino a AuthScreen para que primero corra
+    // la intro y recién entre (con la misma transición que un login real). Si no hay
+    // sesión válida, autoLoginDest queda null y se ve el login normal.
+    var autoLoginDest by remember { mutableStateOf<Pair<Role, String>?>(null) }
     LaunchedEffect(Unit) {
         val s = SessionStore.load() ?: return@LaunchedEffect
         val role = if (s.role == "ADMIN") Role.ADMIN else Role.DRIVER
         AuthSession.restore(s.token, role, s.nombre, s.cedula, s.conductorId, s.debeCambiarPassword)
-        val dest = when {
-            s.debeCambiarPassword -> Routes.FORCE_PW
-            role == Role.ADMIN -> Routes.ADMIN
-            else -> Routes.driver(s.cedula)
-        }
-        navController.navigate(dest) { popUpTo(Routes.AUTH) { inclusive = false } }
+        // Cargar mientras corre la animación para que los datos estén listos al entrar.
+        vehicleViewModel.load()
+        driverViewModel.load()
+        maintenanceViewModel.load()
+        assignmentViewModel.load()
+        autoLoginDest = role to s.cedula
     }
 
     // Sesión expirada (401): el interceptor ya limpió la sesión; acá avisamos y
@@ -130,6 +136,7 @@ fun CarCareNavHost() {
         ) {
             AuthScreen(
                 viewModel = authViewModel,
+                autoLogin = autoLoginDest,
                 onLoggedIn = { role, cedula ->
                     // Si la clave es la inicial, primero el cambio obligatorio.
                     if (AuthSession.debeCambiarPassword) {
