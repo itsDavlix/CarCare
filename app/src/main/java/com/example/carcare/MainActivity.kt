@@ -14,11 +14,13 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.example.carcare.data.AuthSession
 import com.example.carcare.data.network.ApiClient
 import com.example.carcare.model.Role
 import com.example.carcare.ui.screens.AdminScreen
 import com.example.carcare.ui.screens.AuthScreen
 import com.example.carcare.ui.screens.DriverScreen
+import com.example.carcare.ui.screens.ForceChangePasswordScreen
 import com.example.carcare.ui.theme.CarCareTheme
 import com.example.carcare.ui.viewmodel.AssignmentViewModel
 import com.example.carcare.ui.viewmodel.AuthViewModel
@@ -43,6 +45,7 @@ class MainActivity : ComponentActivity() {
 /** Rutas de navegación de la app. */
 private object Routes {
     const val AUTH = "auth"
+    const val FORCE_PW = "force-password"
     const val ADMIN = "admin"
     const val DRIVER = "driver/{driverIdCard}"
     fun driver(idCard: String) = "driver/$idCard"
@@ -69,6 +72,14 @@ fun CarCareNavHost() {
         navController.popBackStack(Routes.AUTH, inclusive = false)
     }
 
+    // Navega al panel según el rol (lo usan el login normal y el post-cambio forzado).
+    val goToPanel: (Role, String) -> Unit = { role, cedula ->
+        when (role) {
+            Role.ADMIN -> navController.navigate(Routes.ADMIN)
+            Role.DRIVER -> navController.navigate(Routes.driver(cedula))
+        }
+    }
+
     NavHost(navController = navController, startDestination = Routes.AUTH) {
 
         // El match cut: al salir hacia el panel, AUTH se queda visible (fadeOut a 0.99,
@@ -83,11 +94,35 @@ fun CarCareNavHost() {
             AuthScreen(
                 viewModel = authViewModel,
                 onLoggedIn = { role, cedula ->
-                    when (role) {
-                        Role.ADMIN -> navController.navigate(Routes.ADMIN)
-                        Role.DRIVER -> navController.navigate(Routes.driver(cedula))
+                    // Si la clave es la inicial, primero el cambio obligatorio.
+                    if (AuthSession.debeCambiarPassword) {
+                        navController.navigate(Routes.FORCE_PW)
+                    } else {
+                        goToPanel(role, cedula)
                     }
                 }
+            )
+        }
+
+        composable(
+            route = Routes.FORCE_PW,
+            enterTransition = { fadeIn(animationSpec = tween(300)) }
+        ) {
+            ForceChangePasswordScreen(
+                authViewModel = authViewModel,
+                cedula = AuthSession.cedula.orEmpty(),
+                onChanged = {
+                    val role = AuthSession.role ?: Role.DRIVER
+                    val cedula = AuthSession.cedula.orEmpty()
+                    AuthSession.markPasswordChanged()
+                    navController.navigate(
+                        when (role) {
+                            Role.ADMIN -> Routes.ADMIN
+                            Role.DRIVER -> Routes.driver(cedula)
+                        }
+                    ) { popUpTo(Routes.FORCE_PW) { inclusive = true } }
+                },
+                onLogout = logout
             )
         }
 

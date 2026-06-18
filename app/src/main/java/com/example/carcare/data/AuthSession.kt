@@ -35,14 +35,32 @@ object AuthSession {
     var conductorId: Long? = null
         private set
 
+    /** true → la clave es la inicial (puesta por otro); la app fuerza cambiarla antes de entrar. */
+    @Volatile
+    var debeCambiarPassword: Boolean = false
+        private set
+
     val isLoggedIn: Boolean get() = token != null
 
-    fun start(token: String, role: Role, nombre: String?, cedula: String, conductorId: Long?) {
+    fun start(
+        token: String,
+        role: Role,
+        nombre: String?,
+        cedula: String,
+        conductorId: Long?,
+        debeCambiarPassword: Boolean = false
+    ) {
         this.token = token
         this.role = role
         this.nombre = nombre
         this.cedula = cedula
         this.conductorId = conductorId
+        this.debeCambiarPassword = debeCambiarPassword
+    }
+
+    /** Tras cambiar la clave inicial con éxito: ya no hay que forzar nada. */
+    fun markPasswordChanged() {
+        debeCambiarPassword = false
     }
 
     fun clear() {
@@ -51,5 +69,6 @@ object AuthSession {
         nombre = null
         cedula = null
         conductorId = null
+        debeCambiarPassword = false
     }
 }

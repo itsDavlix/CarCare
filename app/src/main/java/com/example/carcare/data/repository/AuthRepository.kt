@@ -25,7 +25,8 @@ class AuthRepository(
             role = role,
             nombre = response.nombre,
             cedula = response.cedula,
-            conductorId = response.conductorId
+            conductorId = response.conductorId,
+            debeCambiarPassword = response.debeCambiarPassword
         )
         return response
     }
