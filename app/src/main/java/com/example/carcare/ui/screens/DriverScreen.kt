@@ -31,6 +31,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.example.carcare.model.*
+import com.example.carcare.ui.components.AutoLoginSettings
 import com.example.carcare.ui.components.CarCareTopBar
 import com.example.carcare.ui.components.ChangeOwnPasswordDialog
 import com.example.carcare.ui.components.NotificationItem
@@ -380,6 +381,14 @@ private fun DriverProfileSection(
             Spacer(modifier = Modifier.width(8.dp))
             Text("Cambiar contraseña")
         }
+
+        Spacer(modifier = Modifier.height(20.dp))
+        HorizontalDivider()
+        Spacer(modifier = Modifier.height(16.dp))
+        AutoLoginSettings()
+        Spacer(modifier = Modifier.height(16.dp))
+        HorizontalDivider()
+
         Spacer(modifier = Modifier.height(8.dp))
         TextButton(onClick = onLogout, modifier = Modifier.fillMaxWidth()) {
             Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = null, modifier = Modifier.size(18.dp))

@@ -23,6 +23,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.carcare.data.AuthSession
+import com.example.carcare.ui.components.AutoLoginSettings
 import com.example.carcare.ui.components.ChangeOwnPasswordDialog
 import kotlinx.coroutines.launch
 
@@ -107,6 +108,14 @@ fun AdminProfileScreen(
                 Spacer(modifier = Modifier.width(8.dp))
                 Text("Cambiar contraseña")
             }
+
+            Spacer(modifier = Modifier.height(20.dp))
+            HorizontalDivider()
+            Spacer(modifier = Modifier.height(16.dp))
+            AutoLoginSettings()
+            Spacer(modifier = Modifier.height(16.dp))
+            HorizontalDivider()
+
             Spacer(modifier = Modifier.height(8.dp))
             TextButton(onClick = onLogout, modifier = Modifier.fillMaxWidth()) {
                 Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = null, modifier = Modifier.size(18.dp))
