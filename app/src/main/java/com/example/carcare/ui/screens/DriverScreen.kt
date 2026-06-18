@@ -87,6 +87,15 @@ fun DriverScreen(
         }
     }
 
+    // Carga inicial al entrar al panel: ya hay token (la precarga del arranque —sin
+    // sesión— se omite con la API cerrada, así que se carga aquí).
+    LaunchedEffect(Unit) {
+        driverViewModel.load()
+        vehicleViewModel.load()
+        assignmentViewModel.load()
+        maintenanceViewModel.load()
+    }
+
     // Carga el feed del conductor en cuanto sabemos su id (a partir de su cédula).
     LaunchedEffect(driver?.id) {
         driver?.let { notificacionViewModel.loadForConductor(it.id.toLong()) }

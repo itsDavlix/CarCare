@@ -52,7 +52,15 @@ fun AdminScreen(
         }
     }
 
-    LaunchedEffect(Unit) { notificacionViewModel.loadForAdmin() }
+    // Carga inicial al entrar al panel: ya hay token (la API está cerrada, así que la
+    // precarga del arranque —sin sesión— se omite y se hace aquí).
+    LaunchedEffect(Unit) {
+        vehicleViewModel.load()
+        driverViewModel.load()
+        maintenanceViewModel.load()
+        assignmentViewModel.load()
+        notificacionViewModel.loadForAdmin()
+    }
 
     var selectedTab by remember { mutableIntStateOf(0) }
     var showProfile by remember { mutableStateOf(false) }
