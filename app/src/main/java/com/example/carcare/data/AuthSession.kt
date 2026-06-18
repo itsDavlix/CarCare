@@ -35,14 +35,58 @@ object AuthSession {
     var conductorId: Long? = null
         private set
 
+    /** true → la clave es la inicial (puesta por otro); la app fuerza cambiarla antes de entrar. */
+    @Volatile
+    var debeCambiarPassword: Boolean = false
+        private set
+
     val isLoggedIn: Boolean get() = token != null
 
-    fun start(token: String, role: Role, nombre: String?, cedula: String, conductorId: Long?) {
+    /** Login real: setea la sesión EN MEMORIA y la respalda en disco (auto-login). */
+    fun start(
+        token: String,
+        role: Role,
+        nombre: String?,
+        cedula: String,
+        conductorId: Long?,
+        debeCambiarPassword: Boolean = false
+    ) {
+        setFields(token, role, nombre, cedula, conductorId, debeCambiarPassword)
+        SessionStore.persist(token, role.name, nombre, cedula, conductorId, debeCambiarPassword)
+    }
+
+    /** Auto-login: restaura la sesión desde disco SIN volver a persistirla. */
+    fun restore(
+        token: String,
+        role: Role,
+        nombre: String?,
+        cedula: String,
+        conductorId: Long?,
+        debeCambiarPassword: Boolean
+    ) {
+        setFields(token, role, nombre, cedula, conductorId, debeCambiarPassword)
+    }
+
+    private fun setFields(
+        token: String,
+        role: Role,
+        nombre: String?,
+        cedula: String,
+        conductorId: Long?,
+        debeCambiarPassword: Boolean
+    ) {
         this.token = token
         this.role = role
         this.nombre = nombre
         this.cedula = cedula
         this.conductorId = conductorId
+        this.debeCambiarPassword = debeCambiarPassword
+    }
+
+    /** Tras cambiar la clave inicial con éxito: ya no hay que forzar nada. */
+    fun markPasswordChanged() {
+        debeCambiarPassword = false
+        SessionStore.updateDebeCambiarPassword(false)
     }
 
     fun clear() {
@@ -51,5 +95,7 @@ object AuthSession {
         nombre = null
         cedula = null
         conductorId = null
+        debeCambiarPassword = false
+        SessionStore.clear()
     }
 }
