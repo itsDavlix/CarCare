@@ -187,12 +187,11 @@ fun DriverScreen(
             driver = driver,
             maintenanceHistory = maintenanceViewModel.getHistoryForVehicle(assignedVehicle.id),
             onDismiss = { showReportDialog = false },
-            onSubmit = { maintenance, reportedKm ->
-                maintenanceViewModel.addMaintenance(maintenance)
-                if (reportedKm > assignedVehicle.mileage) {
-                    vehicleViewModel.updateMileage(assignedVehicle.id, reportedKm)
-                }
-                vehicleViewModel.changeStatus(assignedVehicle.id, VehicleStatus.PENDING_REVIEW)
+            onSubmit = { maintenance, _ ->
+                // Una sola operación atómica en el backend: crea el mantenimiento, deja el
+                // vehículo EN REVISIÓN y actualiza su km (todo a partir del mantenimiento).
+                // Antes eran 3 llamadas sueltas y la de km daba 403 al conductor (Fase 2).
+                maintenanceViewModel.reportar(maintenance)
                 showReportDialog = false
             }
         )

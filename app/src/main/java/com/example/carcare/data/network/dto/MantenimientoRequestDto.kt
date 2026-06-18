@@ -13,5 +13,7 @@ data class MantenimientoRequestDto(
     val responsable: String,
     val fechaProxima: String? = null,
     val kilometrajeProximo: Long? = null,
-    val estado: String? = null
+    val estado: String? = null,
+    // Reporte del conductor: el backend pone el vehículo EN REVISIÓN + actualiza km (atómico).
+    val ponerVehiculoEnRevision: Boolean? = null
 )
