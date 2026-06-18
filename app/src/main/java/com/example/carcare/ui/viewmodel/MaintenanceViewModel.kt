@@ -27,6 +27,13 @@ class MaintenanceViewModel :
 
     fun addMaintenance(maintenance: Maintenance) = create(maintenance)
 
+    /**
+     * Reporte del conductor: una sola operación atómica en el backend (crea el
+     * mantenimiento + deja el vehículo EN REVISIÓN + actualiza su km).
+     */
+    fun reportar(maintenance: Maintenance, onSuccess: () -> Unit = {}) =
+        createWith(onSuccess) { repository.reportar(maintenance) }
+
     fun updateMaintenance(updatedMaintenance: Maintenance) =
         optimisticReplace(updatedMaintenance) { repository.update(updatedMaintenance) }
 

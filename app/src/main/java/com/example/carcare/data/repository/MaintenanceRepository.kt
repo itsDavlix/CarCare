@@ -24,6 +24,14 @@ class MaintenanceRepository : CrudRepository<Maintenance> {
     override suspend fun create(maintenance: Maintenance): Maintenance =
         api.crear(maintenance.toRequestDto()).toDomain()
 
+    /**
+     * Reporte del conductor: crea el mantenimiento y, en la MISMA operación, el backend
+     * pone el vehículo EN REVISIÓN y actualiza su km. Reemplaza las 3 llamadas sueltas
+     * (alta + km + estado), una de las cuales (km) era ADMIN-only → daba 403 al conductor.
+     */
+    suspend fun reportar(maintenance: Maintenance): Maintenance =
+        api.crear(maintenance.toRequestDto(enRevision = true)).toDomain()
+
     suspend fun update(maintenance: Maintenance): Maintenance =
         api.actualizar(maintenance.id.toLong(), maintenance.toRequestDto()).toDomain()
 
@@ -52,7 +60,7 @@ private fun MantenimientoResponseDto.toDomain(): Maintenance = Maintenance(
     status = runCatching { MaintenanceStatus.valueOf(estado) }.getOrDefault(MaintenanceStatus.PENDING)
 )
 
-private fun Maintenance.toRequestDto(): MantenimientoRequestDto = MantenimientoRequestDto(
+private fun Maintenance.toRequestDto(enRevision: Boolean = false): MantenimientoRequestDto = MantenimientoRequestDto(
     vehiculoId = vehicleId.toLong(),
     tipo = type.name,
     fecha = formatApiDate(date),
@@ -62,5 +70,6 @@ private fun Maintenance.toRequestDto(): MantenimientoRequestDto = MantenimientoR
     responsable = responsible,
     fechaProxima = formatApiDate(nextDate),
     kilometrajeProximo = nextMileage,
-    estado = status.name
+    estado = status.name,
+    ponerVehiculoEnRevision = if (enRevision) true else null
 )
