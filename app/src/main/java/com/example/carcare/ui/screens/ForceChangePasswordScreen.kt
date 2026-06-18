@@ -59,7 +59,7 @@ fun ForceChangePasswordScreen(
     var submitting by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
 
-    val validation = Validators.validatePassword(nueva, confirm)
+    val validation = Validators.validatePassword(nueva, confirm, current = actual)
     val transform = if (visible) VisualTransformation.None else PasswordVisualTransformation()
 
     // No se sale sin cambiar: el back cierra sesión y vuelve al login.

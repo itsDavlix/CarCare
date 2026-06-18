@@ -91,10 +91,17 @@ abstract class BaseListViewModel<T : Identifiable, R : CrudRepository<T>>(
     }
 
     /** Crea en el backend y agrega la entidad devuelta (con su id real). Sin recargar todo. */
-    protected fun create(item: T, onSuccess: () -> Unit = {}) {
+    protected fun create(item: T, onSuccess: () -> Unit = {}) =
+        createWith(onSuccess) { repository.create(item) }
+
+    /**
+     * Como [create] pero con una llamada de red propia (p. ej. el "reportar" del conductor,
+     * que crea el mantenimiento y deja el vehículo en revisión en una sola operación).
+     */
+    protected fun createWith(onSuccess: () -> Unit = {}, networkCall: suspend () -> T) {
         viewModelScope.launch {
             try {
-                items = items + repository.create(item)
+                items = items + networkCall()
                 onSuccess()
             } catch (e: Exception) {
                 fail("create", e)
