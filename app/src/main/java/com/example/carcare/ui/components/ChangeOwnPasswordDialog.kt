@@ -43,7 +43,7 @@ fun ChangeOwnPasswordDialog(
     var visible by remember { mutableStateOf(false) }
     var attempted by remember { mutableStateOf(false) }
 
-    val validation = Validators.validatePassword(nueva, confirm)
+    val validation = Validators.validatePassword(nueva, confirm, current = actual)
     val transform = if (visible) VisualTransformation.None else PasswordVisualTransformation()
 
     AlertDialog(

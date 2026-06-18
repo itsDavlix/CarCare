@@ -397,17 +397,13 @@ object Validators {
     //  Cuenta / contraseña
     // ===================================================================
 
-    /** Misma regla que el backend (mínimo 6) + confirmación que coincide. */
-    fun validatePassword(password: String, confirm: String): ValidationResult {
+    /** Misma regla que el backend: mínimo 6, confirmación que coincide y distinta de la actual. */
+    fun validatePassword(password: String, confirm: String, current: String? = null): ValidationResult {
         if (password.length < 6) return ValidationResult.invalid("La contraseña debe tener al menos 6 caracteres")
         if (password != confirm) return ValidationResult.invalid("Las contraseñas no coinciden")
+        if (!current.isNullOrEmpty() && password == current) {
+            return ValidationResult.invalid("La nueva contraseña debe ser distinta de la actual")
+        }
         return ValidationResult.Valid
-    }
-
-    fun reasonableMileageDelta(departureDate: Date?, referenceDate: Date = Date()): Long {
-        if (departureDate == null) return 10_000
-        val millis = referenceDate.time - departureDate.time
-        val days = (millis / (1000L * 60 * 60 * 24)).coerceAtLeast(1)
-        return maxOf(10_000L, days * 1_000L)
     }
 }
