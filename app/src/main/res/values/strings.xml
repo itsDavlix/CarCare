@@ -27,4 +27,13 @@
     <string name="force_pw_subtitle">Por seguridad debes reemplazar la contraseña inicial antes de continuar.</string>
     <string name="force_pw_save">Guardar y continuar</string>
     <string name="force_pw_logout">Cancelar y cerrar sesión</string>
+
+    <!-- Ajuste de auto-login (perfil) -->
+    <string name="settings_autologin">Mantener sesión iniciada</string>
+    <string name="settings_autologin_desc">Entrás sin escribir la contraseña hasta que caduque o cierres sesión.</string>
+    <string name="settings_autologin_expires">Caduca tras:</string>
+    <plurals name="settings_days">
+        <item quantity="one">%1$d día</item>
+        <item quantity="other">%1$d días</item>
+    </plurals>
 </resources>
