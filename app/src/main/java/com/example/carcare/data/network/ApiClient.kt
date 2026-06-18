@@ -9,7 +9,6 @@ import com.example.carcare.data.network.api.MantenimientoApiService
 import com.example.carcare.data.network.api.NotificacionApiService
 import com.example.carcare.data.network.api.VehiculoApiService
 import com.squareup.moshi.Moshi
-import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import okhttp3.Call
 import okhttp3.Callback
 import okhttp3.Interceptor
@@ -30,9 +29,7 @@ object ApiClient {
 
     const val BASE_URL = "https://api-carcare.onrender.com/"
 
-    private val moshi: Moshi = Moshi.Builder()
-        .add(KotlinJsonAdapterFactory())
-        .build()
+    private val moshi: Moshi = Moshi.Builder().build()
 
     // Sin logging en release: evita el overhead por request y no expone datos en producción.
     private val loggingInterceptor = HttpLoggingInterceptor().apply {
@@ -64,6 +61,15 @@ object ApiClient {
         .addInterceptor(authInterceptor)
         .addInterceptor(loggingInterceptor)
         .build()
+
+    /**
+     * Cliente para el stream SSE: reusa el pool de conexiones, el dispatcher y los
+     * interceptores (incluido el JWT) de httpClient — evita un segundo cliente y reusa
+     * la conexión ya caliente al mismo host. readTimeout 0 = stream persistente.
+     */
+    val sseHttpClient: OkHttpClient by lazy {
+        httpClient.newBuilder().readTimeout(0, TimeUnit.MILLISECONDS).build()
+    }
 
     private val retrofit: Retrofit = Retrofit.Builder()
         .baseUrl(BASE_URL)

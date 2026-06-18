@@ -1,8 +1,11 @@
 package com.example.carcare.data.network.dto
 
+import com.squareup.moshi.JsonClass
+
 /**
  * Cuerpo de POST/PUT. (lo asigna el backend). Mapea a VehiculoRequestDTO del servidor.
  */
+@JsonClass(generateAdapter = true)
 data class VehiculoRequestDto(
     val marca: String,
     val modelo: String,

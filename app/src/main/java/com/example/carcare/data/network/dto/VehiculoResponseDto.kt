@@ -1,9 +1,12 @@
 package com.example.carcare.data.network.dto
 
+import com.squareup.moshi.JsonClass
+
 /**
  * Respuesta del backend para un vehiculo. Mapea 1:1 con VehiculoResponseDTO del servidor.
  * Las fechas vienen como String ISO "YYYY-MM-DD". La conversion a Date se hace en el mapper.
  */
+@JsonClass(generateAdapter = true)
 data class VehiculoResponseDto(
     val id: Long,
     val marca: String,

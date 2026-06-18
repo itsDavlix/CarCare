@@ -1,5 +1,8 @@
 package com.example.carcare.data.network.dto
 
+import com.squareup.moshi.JsonClass
+
+@JsonClass(generateAdapter = true)
 data class MantenimientoResponseDto(
     val id: Long,
     // Null si el vehículo fue eliminado (FK ON DELETE SET NULL conserva el historial)
