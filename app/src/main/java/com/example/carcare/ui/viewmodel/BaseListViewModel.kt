@@ -6,6 +6,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.carcare.data.AuthSession
 import com.example.carcare.data.network.toUserMessage
 import com.example.carcare.data.repository.CrudRepository
 import com.example.carcare.model.Identifiable
@@ -52,8 +53,15 @@ abstract class BaseListViewModel<T : Identifiable, R : CrudRepository<T>>(
         errorMessage = null
     }
 
-    /** Carga completa desde la API. Solo en el arranque o en un refresco manual. */
+    /**
+     * Carga completa desde la API. Solo en el arranque o en un refresco manual.
+     *
+     * Con la API cerrada (Fase 2) un GET sin token da 403: como estos ViewModels se
+     * crean ANTES del login (en el arranque), se omite la carga mientras no haya sesión.
+     * Los paneles vuelven a llamar a [load] al entrar, ya con el token puesto.
+     */
     fun load() {
+        if (!AuthSession.isLoggedIn) return
         viewModelScope.launch {
             isLoading = true
             errorMessage = null
@@ -72,6 +80,7 @@ abstract class BaseListViewModel<T : Identifiable, R : CrudRepository<T>>(
      * Para refrescos por evento SSE (cambios hechos en otro dispositivo).
      */
     fun reloadSilently() {
+        if (!AuthSession.isLoggedIn) return
         viewModelScope.launch {
             try {
                 items = repository.getAll()
