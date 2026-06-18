@@ -164,6 +164,7 @@ private fun ramp(v: Float, from: Float, to: Float) = ((v - from) / (to - from)).
 @Composable
 fun AuthScreen(
     viewModel: AuthViewModel,
+    autoLogin: Pair<Role, String>? = null,
     onLoggedIn: (Role, String) -> Unit
 ) {
     val played = viewModel.introPlayed
@@ -257,6 +258,15 @@ fun AuthScreen(
             settle.animateTo(1f, tween(650, easing = EaseOutQuint))
             viewModel.markIntroPlayed()
             // Al terminar de asentarse, el efecto unificado baja la aguja a ralentí.
+        }
+    }
+
+    // Auto-login: con la sesión ya restaurada, ESPERAMOS a que termine la intro y recién
+    // disparamos la misma transición que un login real (sin pedir credenciales). Así la
+    // animación se ve completa y, mientras corre, los datos ya se están cargando.
+    LaunchedEffect(autoLogin, viewModel.introPlayed) {
+        if (autoLogin != null && viewModel.introPlayed && pendingLogin == null) {
+            pendingLogin = autoLogin
         }
     }
 
