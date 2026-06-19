@@ -8,8 +8,10 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.example.carcare.model.*
+import com.example.carcare.util.CsvExporter
 import com.example.carcare.ui.components.CarCareTopBar
 import com.example.carcare.ui.components.DeleteConfirmationDialog
 import com.example.carcare.ui.components.SseRefreshEffect
@@ -65,6 +67,7 @@ fun AdminScreen(
     var selectedTab by remember { mutableIntStateOf(0) }
     var showProfile by remember { mutableStateOf(false) }
     val tabs = listOf("Panel", "Vehículos", "Taller", "Conduct.", "Asign.")
+    val context = LocalContext.current
 
     var showVehicleForm by remember { mutableStateOf(false) }
     var vehicleToEdit by remember { mutableStateOf<Vehicle?>(null) }
@@ -118,10 +121,18 @@ fun AdminScreen(
                     vehicleToEdit = null
                     showVehicleForm = true
                 }) { Icon(Icons.Default.Add, contentDescription = "Agregar Vehículo") }
-                2 -> FloatingActionButton(onClick = {
-                    maintenanceToEdit = null
-                    showMaintenanceForm = true
-                }) { Icon(Icons.Default.PostAdd, contentDescription = "Registrar Mantenimiento") }
+                2 -> Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    SmallFloatingActionButton(onClick = {
+                        CsvExporter.exportMaintenances(
+                            context, maintenanceViewModel.maintenances, vehicleViewModel.vehicles
+                        )
+                    }) { Icon(Icons.Default.FileDownload, contentDescription = "Exportar CSV") }
+                    Spacer(Modifier.height(12.dp))
+                    FloatingActionButton(onClick = {
+                        maintenanceToEdit = null
+                        showMaintenanceForm = true
+                    }) { Icon(Icons.Default.PostAdd, contentDescription = "Registrar Mantenimiento") }
+                }
                 3 -> FloatingActionButton(onClick = {
                     driverToEdit = null
                     showDriverForm = true
