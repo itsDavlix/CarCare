@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import com.example.carcare.data.AuthSession
 import com.example.carcare.ui.components.AutoLoginSettings
 import com.example.carcare.ui.components.ChangeOwnPasswordDialog
+import com.example.carcare.ui.components.ThemeSettings
 import kotlinx.coroutines.launch
 
 /**
@@ -113,6 +114,8 @@ fun AdminProfileScreen(
             HorizontalDivider()
             Spacer(modifier = Modifier.height(16.dp))
             AutoLoginSettings()
+            Spacer(modifier = Modifier.height(20.dp))
+            ThemeSettings()
             Spacer(modifier = Modifier.height(16.dp))
             HorizontalDivider()
 

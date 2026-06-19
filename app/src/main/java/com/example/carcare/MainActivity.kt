@@ -5,6 +5,7 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -46,7 +47,14 @@ class MainActivity : ComponentActivity() {
         SessionStore.init(applicationContext)  // respaldo de sesión para el auto-login
         ApiClient.warmUp()   // despierta el servidor cuanto antes (cold start de Render)
         setContent {
-            CarCareTheme {
+            // Tema según la preferencia del usuario (Sistema/Claro/Oscuro), persistida.
+            val themeMode by SessionStore.themeModeFlow().collectAsState(initial = SessionStore.THEME_SYSTEM)
+            val dark = when (themeMode) {
+                SessionStore.THEME_LIGHT -> false
+                SessionStore.THEME_DARK -> true
+                else -> isSystemInDarkTheme()
+            }
+            CarCareTheme(darkTheme = dark) {
                 CarCareNavHost()
             }
         }
