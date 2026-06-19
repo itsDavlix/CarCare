@@ -45,6 +45,11 @@ object SessionStore {
     const val DEFAULT_DAYS = 7
     const val DEFAULT_ENABLED = true
 
+    /** Modo de tema elegido por el usuario (preferencia, sobrevive al logout). */
+    const val THEME_SYSTEM = "SYSTEM"
+    const val THEME_LIGHT = "LIGHT"
+    const val THEME_DARK = "DARK"
+
     // Claves de sesión (las borra clear()).
     private val kToken = stringPreferencesKey("token")
     private val kRole = stringPreferencesKey("role")
@@ -57,6 +62,7 @@ object SessionStore {
     // Claves de preferencia (NO las borra clear(): son ajustes del usuario, no la sesión).
     private val kAutoLoginEnabled = booleanPreferencesKey("autoLoginEnabled")
     private val kAutoLoginDays = intPreferencesKey("autoLoginDays")
+    private val kThemeMode = stringPreferencesKey("themeMode")
 
     fun init(context: Context) {
         appContext = context.applicationContext
@@ -145,6 +151,13 @@ object SessionStore {
     suspend fun setAutoLoginDays(days: Int) {
         if (!ready) return
         appContext.sessionDataStore.edit { it[kAutoLoginDays] = days.coerceAtLeast(1) }
+    }
+
+    fun themeModeFlow(): Flow<String> = prefsFlow { it[kThemeMode] ?: THEME_SYSTEM }
+
+    suspend fun setThemeMode(mode: String) {
+        if (!ready) return
+        appContext.sessionDataStore.edit { it[kThemeMode] = mode }
     }
 
     private fun <T> prefsFlow(read: (Preferences) -> T): Flow<T> =
