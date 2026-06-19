@@ -7,6 +7,7 @@ import com.example.carcare.model.NotificationType
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import java.util.TimeZone
 
 /** Conecta el modelo Notificacion con la API de notificaciones. */
 class NotificacionRepository {
@@ -39,6 +40,14 @@ private fun NotificacionResponseDto.toDomain(): Notificacion = Notificacion(
     entityId = entidadId?.toString()
 )
 
-/** El backend manda LocalDateTime ISO ("2026-06-16T15:30:00..."). Formatter local = thread-safe. */
+/**
+ * El backend manda LocalDateTime ISO en UTC ("2026-06-16T15:30:00..."). Se parsea como UTC
+ * para obtener el instante correcto; el display (SimpleDateFormat con la zona local) lo
+ * muestra en la hora local del dispositivo.
+ */
 private fun parseIso(value: String): Date? =
-    runCatching { SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.US).parse(value.take(19)) }.getOrNull()
+    runCatching {
+        SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.US)
+            .apply { timeZone = TimeZone.getTimeZone("UTC") }
+            .parse(value.take(19))
+    }.getOrNull()
