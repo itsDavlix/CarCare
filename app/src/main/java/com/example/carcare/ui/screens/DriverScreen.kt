@@ -31,9 +31,8 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.example.carcare.model.*
-import com.example.carcare.ui.components.AutoLoginSettings
 import com.example.carcare.ui.components.CarCareTopBar
-import com.example.carcare.ui.components.ThemeSettings
+import com.example.carcare.ui.components.ProfileSettingsSection
 import com.example.carcare.ui.components.ChangeOwnPasswordDialog
 import com.example.carcare.ui.components.NotificationItem
 import com.example.carcare.ui.components.StatusBadge
@@ -383,13 +382,7 @@ private fun DriverProfileSection(
         }
 
         Spacer(modifier = Modifier.height(20.dp))
-        HorizontalDivider()
-        Spacer(modifier = Modifier.height(16.dp))
-        AutoLoginSettings()
-        Spacer(modifier = Modifier.height(20.dp))
-        ThemeSettings()
-        Spacer(modifier = Modifier.height(16.dp))
-        HorizontalDivider()
+        ProfileSettingsSection()
 
         Spacer(modifier = Modifier.height(8.dp))
         TextButton(onClick = onLogout, modifier = Modifier.fillMaxWidth()) {
