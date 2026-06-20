@@ -14,8 +14,9 @@ import kotlinx.coroutines.launch
  * se refresca por el evento SSE "notificaciones". Los errores son silenciosos: el
  * feed nunca debe romper la pantalla.
  */
-class NotificacionViewModel(
-    private val repository: NotificacionRepository = NotificacionRepository()
+@dagger.hilt.android.lifecycle.HiltViewModel
+class NotificacionViewModel @javax.inject.Inject constructor(
+    private val repository: NotificacionRepository
 ) : ViewModel() {
 
     var items by mutableStateOf<List<Notificacion>>(emptyList())

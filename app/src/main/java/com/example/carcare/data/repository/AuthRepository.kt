@@ -8,9 +8,9 @@ import com.example.carcare.data.network.dto.LoginRequestDto
 import com.example.carcare.data.network.dto.LoginResponseDto
 import com.example.carcare.model.Role
 
-class AuthRepository(
+class AuthRepository @javax.inject.Inject constructor() {
+
     private val api: AuthApiService = ApiClient.authApi
-) {
 
     /**
      * Autentica contra el backend y deja la sesión iniciada en [AuthSession].

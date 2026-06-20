@@ -17,7 +17,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -40,6 +40,7 @@ import com.example.carcare.ui.viewmodel.MaintenanceViewModel
 import com.example.carcare.ui.viewmodel.NotificacionViewModel
 import com.example.carcare.ui.viewmodel.VehicleViewModel
 
+@dagger.hilt.android.AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -78,12 +79,12 @@ fun CarCareNavHost() {
     // (durante el splash) y se COMPARTEN entre el panel admin y el de conductor.
     // Como `init { load() }` dispara la carga al crearse, los datos empiezan a bajar
     // mientras se ve el splash y el login → al entrar al panel ya suelen estar listos.
-    val vehicleViewModel: VehicleViewModel = viewModel()
-    val driverViewModel: DriverViewModel = viewModel()
-    val maintenanceViewModel: MaintenanceViewModel = viewModel()
-    val assignmentViewModel: AssignmentViewModel = viewModel()
-    val authViewModel: AuthViewModel = viewModel()
-    val notificacionViewModel: NotificacionViewModel = viewModel()
+    val vehicleViewModel: VehicleViewModel = hiltViewModel()
+    val driverViewModel: DriverViewModel = hiltViewModel()
+    val maintenanceViewModel: MaintenanceViewModel = hiltViewModel()
+    val assignmentViewModel: AssignmentViewModel = hiltViewModel()
+    val authViewModel: AuthViewModel = hiltViewModel()
+    val notificacionViewModel: NotificacionViewModel = hiltViewModel()
 
     // Cerrar sesión: limpia el token y vuelve al login (sin repetir la intro).
     val logout: () -> Unit = {
