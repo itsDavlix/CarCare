@@ -9,8 +9,9 @@ import com.example.carcare.model.Driver
 import com.example.carcare.model.DriverStatus
 import kotlinx.coroutines.launch
 
-class DriverViewModel :
-    BaseListViewModel<Driver, DriverRepository>(DriverRepository(), "DriverVM") {
+@dagger.hilt.android.lifecycle.HiltViewModel
+class DriverViewModel @javax.inject.Inject constructor(repository: DriverRepository) :
+    BaseListViewModel<Driver, DriverRepository>(repository, "DriverVM") {
 
     val drivers: List<Driver> get() = items
 

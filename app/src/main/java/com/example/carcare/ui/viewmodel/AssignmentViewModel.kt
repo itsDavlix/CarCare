@@ -7,8 +7,9 @@ import com.example.carcare.model.Vehicle
 import com.example.carcare.model.VehicleStatus
 import java.util.Date
 
-class AssignmentViewModel :
-    BaseListViewModel<Assignment, AssignmentRepository>(AssignmentRepository(), "AssignmentVM") {
+@dagger.hilt.android.lifecycle.HiltViewModel
+class AssignmentViewModel @javax.inject.Inject constructor(repository: AssignmentRepository) :
+    BaseListViewModel<Assignment, AssignmentRepository>(repository, "AssignmentVM") {
 
     val assignments: List<Assignment> get() = items
 

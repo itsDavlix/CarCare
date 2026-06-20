@@ -5,8 +5,9 @@ import com.example.carcare.model.Maintenance
 import com.example.carcare.model.MaintenanceStatus
 import com.example.carcare.model.Vehicle
 
-class MaintenanceViewModel :
-    BaseListViewModel<Maintenance, MaintenanceRepository>(MaintenanceRepository(), "MaintenanceVM") {
+@dagger.hilt.android.lifecycle.HiltViewModel
+class MaintenanceViewModel @javax.inject.Inject constructor(repository: MaintenanceRepository) :
+    BaseListViewModel<Maintenance, MaintenanceRepository>(repository, "MaintenanceVM") {
 
     val maintenances: List<Maintenance> get() = items
 

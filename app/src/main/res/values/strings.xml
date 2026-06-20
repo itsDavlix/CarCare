@@ -33,6 +33,10 @@
     <string name="settings_autologin_desc">Entrás sin escribir la contraseña hasta que caduque o cierres sesión.</string>
     <string name="settings_autologin_expires">Caduca tras:</string>
     <string name="settings_days_custom">Personalizado (días)</string>
+    <string name="settings_theme">Tema</string>
+    <string name="settings_theme_system">Sistema</string>
+    <string name="settings_theme_light">Claro</string>
+    <string name="settings_theme_dark">Oscuro</string>
     <plurals name="settings_days">
         <item quantity="one">%1$d día</item>
         <item quantity="other">%1$d días</item>
