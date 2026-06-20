@@ -23,9 +23,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.carcare.data.AuthSession
-import com.example.carcare.ui.components.AutoLoginSettings
 import com.example.carcare.ui.components.ChangeOwnPasswordDialog
-import com.example.carcare.ui.components.ThemeSettings
+import com.example.carcare.ui.components.ProfileSettingsSection
 import kotlinx.coroutines.launch
 
 /**
@@ -111,13 +110,7 @@ fun AdminProfileScreen(
             }
 
             Spacer(modifier = Modifier.height(20.dp))
-            HorizontalDivider()
-            Spacer(modifier = Modifier.height(16.dp))
-            AutoLoginSettings()
-            Spacer(modifier = Modifier.height(20.dp))
-            ThemeSettings()
-            Spacer(modifier = Modifier.height(16.dp))
-            HorizontalDivider()
+            ProfileSettingsSection()
 
             Spacer(modifier = Modifier.height(8.dp))
             TextButton(onClick = onLogout, modifier = Modifier.fillMaxWidth()) {
