@@ -16,7 +16,7 @@ import java.util.Date
  * El backend coordina los efectos sobre el vehiculo (IN_USE al crear,
  * km+estado al completar, liberar al borrar). El cliente NO los replica.
  */
-class AssignmentRepository : CrudRepository<Assignment> {
+class AssignmentRepository @javax.inject.Inject constructor() : CrudRepository<Assignment> {
 
     private val api = ApiClient.asignacionApi
 

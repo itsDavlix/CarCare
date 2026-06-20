@@ -15,7 +15,7 @@ import com.example.carcare.model.VehicleStatus
  * Conecta el modelo de dominio Vehicle con la API.
  * Convierte id Long<->String y fechas Date<->String en el borde de red.
  */
-class VehicleRepository : CrudRepository<Vehicle> {
+class VehicleRepository @javax.inject.Inject constructor() : CrudRepository<Vehicle> {
 
     private val api = ApiClient.vehiculoApi
 

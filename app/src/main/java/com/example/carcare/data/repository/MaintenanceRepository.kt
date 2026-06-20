@@ -15,7 +15,7 @@ import java.util.Date
  * Conecta el modelo Maintenance con la API de mantenimientos.
  * Convierte id y vehicleId Long<->String y fechas Date<->String.
  */
-class MaintenanceRepository : CrudRepository<Maintenance> {
+class MaintenanceRepository @javax.inject.Inject constructor() : CrudRepository<Maintenance> {
 
     private val api = ApiClient.mantenimientoApi
 

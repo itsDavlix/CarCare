@@ -10,7 +10,7 @@ import java.util.Locale
 import java.util.TimeZone
 
 /** Conecta el modelo Notificacion con la API de notificaciones. */
-class NotificacionRepository {
+class NotificacionRepository @javax.inject.Inject constructor() {
 
     private val api = ApiClient.notificacionApi
 

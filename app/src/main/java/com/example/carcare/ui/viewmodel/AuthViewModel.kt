@@ -14,8 +14,9 @@ import com.example.carcare.util.Validators
 import kotlinx.coroutines.launch
 import retrofit2.HttpException
 
-class AuthViewModel(
-    private val repository: AuthRepository = AuthRepository()
+@dagger.hilt.android.lifecycle.HiltViewModel
+class AuthViewModel @javax.inject.Inject constructor(
+    private val repository: AuthRepository
 ) : ViewModel() {
 
     var cedula by mutableStateOf("")

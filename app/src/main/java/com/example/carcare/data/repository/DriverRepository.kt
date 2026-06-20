@@ -15,7 +15,7 @@ import java.util.Date
  * Conecta el modelo Driver con la API de conductores.
  * Convierte id Long<->String y fecha Date<->String en el borde de red.
  */
-class DriverRepository : CrudRepository<Driver> {
+class DriverRepository @javax.inject.Inject constructor() : CrudRepository<Driver> {
 
     private val api = ApiClient.conductorApi
 
