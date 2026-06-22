@@ -230,12 +230,12 @@ fun DriverItem(
         ) {
             Box(
                 modifier = Modifier.size(52.dp).clip(CircleShape)
-                    .background(driver.status.statusColor.copy(alpha = 0.14f)),
+                    .background(driver.effectiveStatus.statusColor.copy(alpha = 0.14f)),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     Icons.Default.Person, contentDescription = null,
-                    tint = driver.status.statusColor, modifier = Modifier.size(26.dp)
+                    tint = driver.effectiveStatus.statusColor, modifier = Modifier.size(26.dp)
                 )
             }
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
@@ -246,7 +246,21 @@ fun DriverItem(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-                    StatusBadge(status = driver.status)
+                    StatusBadge(status = driver.effectiveStatus)
+                    if (driver.isLicenseExpired) {
+                        Surface(
+                            color = MaterialTheme.colorScheme.errorContainer,
+                            contentColor = MaterialTheme.colorScheme.onErrorContainer,
+                            shape = MaterialTheme.shapes.small
+                        ) {
+                            Text(
+                                "Licencia vencida",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
                     if (driver.isAdmin) {
                         Surface(
                             color = MaterialTheme.colorScheme.tertiaryContainer,

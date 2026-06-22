@@ -952,19 +952,47 @@ fun DriverDetailsDialog(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(
                         modifier = Modifier.size(64.dp).clip(CircleShape)
-                            .background(driver.status.statusColor.copy(alpha = 0.14f)),
+                            .background(driver.effectiveStatus.statusColor.copy(alpha = 0.14f)),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             Icons.Default.Person, contentDescription = null,
-                            tint = driver.status.statusColor, modifier = Modifier.size(32.dp)
+                            tint = driver.effectiveStatus.statusColor, modifier = Modifier.size(32.dp)
                         )
                     }
                     Spacer(modifier = Modifier.width(16.dp))
                     Column {
                         Text(text = driver.fullName, style = MaterialTheme.typography.headlineSmall)
                         Spacer(modifier = Modifier.height(2.dp))
-                        StatusBadge(status = driver.status)
+                        StatusBadge(status = driver.effectiveStatus)
+                    }
+                }
+                if (driver.isLicenseExpired) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Surface(
+                        color = MaterialTheme.colorScheme.errorContainer,
+                        contentColor = MaterialTheme.colorScheme.onErrorContainer,
+                        shape = MaterialTheme.shapes.medium,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(12.dp)
+                        ) {
+                            Icon(Icons.Default.Warning, contentDescription = null)
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Column {
+                                Text(
+                                    "Licencia vencida",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    "El conductor no puede ser asignado hasta que renueve su licencia.",
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                            }
+                        }
                     }
                 }
                 Spacer(modifier = Modifier.height(16.dp))

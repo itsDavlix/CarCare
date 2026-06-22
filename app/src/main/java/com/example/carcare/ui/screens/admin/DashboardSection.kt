@@ -210,7 +210,7 @@ fun DashboardSection(
     val soon = remember { Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, 7) }.time }
 
     val statusCount = remember(vehicles) { vehicles.groupingBy { it.status }.eachCount() }
-    val activeDrivers = remember(drivers) { drivers.count { it.status == DriverStatus.ACTIVE } }
+    val activeDrivers = remember(drivers) { drivers.count { it.effectiveStatus == DriverStatus.ACTIVE } }
     val maintInProgress = remember(maintenances) { maintenances.count { it.status == MaintenanceStatus.IN_PROGRESS } }
     val activeAssignments = remember(assignments) { assignments.count { it.status == AssignmentStatus.ACTIVE } }
     val totalKm = remember(vehicles) { vehicles.sumOf { it.mileage } }
@@ -237,7 +237,7 @@ fun DashboardSection(
             if (m.nextMileage != null && v != null && v.mileage >= m.nextMileage) list.add(Triple("m-km-${m.id}", true, "Mant. vencido por KM · $label"))
         }
         drivers.filter { it.status == DriverStatus.ACTIVE }.forEach { d ->
-            if (d.licenseExpiryDate.before(now)) list.add(Triple("d-lic-${d.id}", true, "Licencia vencida · ${d.fullName}"))
+            if (d.isLicenseExpired) list.add(Triple("d-lic-${d.id}", true, "Licencia vencida · ${d.fullName}"))
             else if (d.licenseExpiryDate.before(soon)) list.add(Triple("d-lic-${d.id}", false, "Licencia por vencer · ${d.fullName}"))
         }
         list

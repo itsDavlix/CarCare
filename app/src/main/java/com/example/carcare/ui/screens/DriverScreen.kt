@@ -9,6 +9,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -27,6 +28,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -119,6 +121,70 @@ fun DriverScreen(
 
     val isLoading = driverViewModel.isLoading || vehicleViewModel.isLoading ||
             assignmentViewModel.isLoading || maintenanceViewModel.isLoading
+
+    // ── Pantalla de Bloqueo por Licencia Vencida ──
+    if (driver != null && driver.isLicenseExpired) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.error)
+                .padding(24.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Icon(
+                    imageVector = Icons.Default.Warning,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(84.dp)
+                )
+                Spacer(modifier = Modifier.height(24.dp))
+                Text(
+                    text = "LICENCIA VENCIDA",
+                    style = MaterialTheme.typography.headlineLarge,
+                    color = Color.White,
+                    fontWeight = FontWeight.ExtraBold,
+                    textAlign = TextAlign.Center
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = "Tu permiso para conducir ha expirado. Por seguridad y cumplimiento legal, tu acceso al panel de operaciones ha sido restringido.",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = Color.White,
+                    textAlign = TextAlign.Center
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "Venció el: ${SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(driver.licenseExpiryDate)}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color.White.copy(alpha = 0.9f),
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(48.dp))
+                Text(
+                    text = "Por favor, renová tu licencia y comunicate con el administrador de la flota para reactivar tu cuenta.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color.White,
+                    textAlign = TextAlign.Center
+                )
+                Spacer(modifier = Modifier.height(48.dp))
+                Button(
+                    onClick = onBack,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color.White,
+                        contentColor = MaterialTheme.colorScheme.error
+                    ),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = null)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Cerrar sesión", fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+        return // Detiene la ejecución del resto de la pantalla
+    }
 
     var selectedTab by remember { mutableIntStateOf(0) }
     var showReportDialog by remember { mutableStateOf(false) }
@@ -470,19 +536,47 @@ private fun DriverProfileSection(
                 modifier = Modifier
                     .size(64.dp)
                     .clip(CircleShape)
-                    .background(driver.status.statusColor.copy(alpha = 0.14f)),
+                    .background(driver.effectiveStatus.statusColor.copy(alpha = 0.14f)),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     Icons.Default.Person, contentDescription = null,
-                    tint = driver.status.statusColor, modifier = Modifier.size(32.dp)
+                    tint = driver.effectiveStatus.statusColor, modifier = Modifier.size(32.dp)
                 )
             }
             Spacer(modifier = Modifier.width(16.dp))
             Column {
                 Text(driver.fullName, style = MaterialTheme.typography.headlineSmall)
                 Spacer(modifier = Modifier.height(2.dp))
-                StatusBadge(status = driver.status)
+                StatusBadge(status = driver.effectiveStatus)
+            }
+        }
+        if (driver.isLicenseExpired) {
+            Spacer(modifier = Modifier.height(20.dp))
+            Surface(
+                color = MaterialTheme.colorScheme.errorContainer,
+                contentColor = MaterialTheme.colorScheme.onErrorContainer,
+                shape = MaterialTheme.shapes.medium,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(12.dp)
+                ) {
+                    Icon(Icons.Default.Warning, contentDescription = null)
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Column {
+                        Text(
+                            "Tu licencia está vencida",
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            "Comunicate con el administrador para regularizar tu situación.",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                }
             }
         }
         Spacer(modifier = Modifier.height(20.dp))
