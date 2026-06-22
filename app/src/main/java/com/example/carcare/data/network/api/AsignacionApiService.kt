@@ -1,8 +1,10 @@
 package com.example.carcare.data.network.api
 
+import com.example.carcare.data.network.dto.AceptarAsignacionDto
 import com.example.carcare.data.network.dto.AsignacionRequestDto
 import com.example.carcare.data.network.dto.AsignacionResponseDto
 import com.example.carcare.data.network.dto.CompletarAsignacionDto
+import com.example.carcare.data.network.dto.RechazarAsignacionDto
 import retrofit2.Response
 import retrofit2.http.*
 
@@ -28,6 +30,12 @@ interface AsignacionApiService {
 
     @PUT("api/asignaciones/{id}")
     suspend fun actualizar(@Path("id") id: Long, @Body dto: AsignacionRequestDto): AsignacionResponseDto
+
+    @PATCH("api/asignaciones/{id}/aceptar")
+    suspend fun aceptar(@Path("id") id: Long, @Body dto: AceptarAsignacionDto): AsignacionResponseDto
+
+    @PATCH("api/asignaciones/{id}/rechazar")
+    suspend fun rechazar(@Path("id") id: Long, @Body dto: RechazarAsignacionDto): AsignacionResponseDto
 
     @PATCH("api/asignaciones/{id}/completar")
     suspend fun completar(@Path("id") id: Long, @Body dto: CompletarAsignacionDto): AsignacionResponseDto

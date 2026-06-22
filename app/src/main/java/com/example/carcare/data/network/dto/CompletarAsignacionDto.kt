@@ -11,5 +11,7 @@ data class CompletarAsignacionDto(
     val fechaRetorno: String?,
     val kilometrajeFinal: Long,
     val observacionesRetorno: String? = null,
+    val nivelCombustibleFinal: String? = null,
+    val condicionOptimaFinal: Boolean? = null,
     val siguienteEstadoVehiculo: String? = null
 )

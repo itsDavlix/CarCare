@@ -14,11 +14,14 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.Build
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -74,7 +77,18 @@ fun DriverScreen(
         }
     }
 
+    // Asignación que el admin creó y el conductor todavía no aceptó (check-out pendiente).
+    val pendingAssignment = driver?.let { d ->
+        assignmentViewModel.assignments.find {
+            it.driverId == d.id && it.status == AssignmentStatus.PENDING_ACCEPTANCE
+        }
+    }
+
     val assignedVehicle = activeAssignment?.let { a ->
+        vehicleViewModel.vehicles.find { it.id == a.vehicleId }
+    }
+
+    val pendingVehicle = pendingAssignment?.let { a ->
         vehicleViewModel.vehicles.find { it.id == a.vehicleId }
     }
 
@@ -108,8 +122,12 @@ fun DriverScreen(
     var selectedTab by remember { mutableIntStateOf(0) }
     var showReportDialog by remember { mutableStateOf(false) }
     var showChangePassword by remember { mutableStateOf(false) }
+    var showAcceptDialog by remember { mutableStateOf(false) }
+    var showRejectDialog by remember { mutableStateOf(false) }
+    var showReturnDialog by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+    fun toast(msg: String) = scope.launch { snackbarHostState.showSnackbar(msg) }
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -167,6 +185,8 @@ fun DriverScreen(
                         driverIdCard = driverIdCard,
                         assignedVehicle = assignedVehicle,
                         activeAssignment = activeAssignment,
+                        pendingAssignment = pendingAssignment,
+                        pendingVehicle = pendingVehicle,
                         isLoading = isLoading,
                         driverViewModel = driverViewModel,
                         vehicleViewModel = vehicleViewModel,
@@ -174,7 +194,10 @@ fun DriverScreen(
                         maintenanceViewModel = maintenanceViewModel,
                         notifications = notificacionViewModel.items,
                         onNotificationClick = { notificacionViewModel.markRead(it.id) },
-                        onReport = { showReportDialog = true }
+                        onReport = { showReportDialog = true },
+                        onAccept = { showAcceptDialog = true },
+                        onReject = { showRejectDialog = true },
+                        onReturn = { showReturnDialog = true }
                     )
                 }
             }
@@ -193,6 +216,69 @@ fun DriverScreen(
                 // Antes eran 3 llamadas sueltas y la de km daba 403 al conductor (Fase 2).
                 maintenanceViewModel.reportar(maintenance)
                 showReportDialog = false
+            }
+        )
+    }
+
+    if (showAcceptDialog && pendingAssignment != null && pendingVehicle != null) {
+        AcceptAssignmentDialog(
+            vehicle = pendingVehicle,
+            assignment = pendingAssignment,
+            onDismiss = { showAcceptDialog = false },
+            onConfirm = { km, fuel, conditionOk, obs ->
+                assignmentViewModel.acceptAssignment(
+                    assignmentId = pendingAssignment.id,
+                    initialMileage = km,
+                    fuelLevel = fuel,
+                    conditionOk = conditionOk,
+                    observations = obs,
+                    onSuccess = {
+                        vehicleViewModel.reloadSilently()
+                        toast("Asignación aceptada. ¡Buen viaje!")
+                    }
+                )
+                showAcceptDialog = false
+            }
+        )
+    }
+
+    if (showRejectDialog && pendingAssignment != null && pendingVehicle != null) {
+        RejectAssignmentDialog(
+            vehicle = pendingVehicle,
+            onDismiss = { showRejectDialog = false },
+            onConfirm = { motivo ->
+                assignmentViewModel.rejectAssignment(
+                    assignmentId = pendingAssignment.id,
+                    reason = motivo,
+                    onSuccess = {
+                        vehicleViewModel.reloadSilently()
+                        toast("Asignación rechazada.")
+                    }
+                )
+                showRejectDialog = false
+            }
+        )
+    }
+
+    if (showReturnDialog && activeAssignment != null && assignedVehicle != null) {
+        ReturnVehicleDialog(
+            vehicle = assignedVehicle,
+            assignment = activeAssignment,
+            onDismiss = { showReturnDialog = false },
+            onConfirm = { km, fuel, conditionOk, obs ->
+                assignmentViewModel.deliverAssignment(
+                    assignmentId = activeAssignment.id,
+                    returnDate = Date(),
+                    finalMileage = km,
+                    observations = obs,
+                    fuelLevel = fuel,
+                    conditionOk = conditionOk,
+                    onSuccess = {
+                        vehicleViewModel.reloadSilently()
+                        toast("Vehículo entregado. ¡Gracias!")
+                    }
+                )
+                showReturnDialog = false
             }
         )
     }
@@ -225,6 +311,8 @@ private fun DriverHomeSection(
     driverIdCard: String,
     assignedVehicle: Vehicle?,
     activeAssignment: Assignment?,
+    pendingAssignment: Assignment?,
+    pendingVehicle: Vehicle?,
     isLoading: Boolean,
     driverViewModel: DriverViewModel,
     vehicleViewModel: VehicleViewModel,
@@ -232,7 +320,10 @@ private fun DriverHomeSection(
     maintenanceViewModel: MaintenanceViewModel,
     notifications: List<Notificacion>,
     onNotificationClick: (Notificacion) -> Unit,
-    onReport: () -> Unit
+    onReport: () -> Unit,
+    onAccept: () -> Unit,
+    onReject: () -> Unit,
+    onReturn: () -> Unit
 ) {
     Column(
         modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
@@ -288,25 +379,51 @@ private fun DriverHomeSection(
                 )
                 Spacer(modifier = Modifier.height(24.dp))
 
-                Text("Tu vehículo asignado", style = MaterialTheme.typography.titleLarge)
-                Spacer(modifier = Modifier.height(16.dp))
-
-                if (assignedVehicle != null && activeAssignment != null) {
-                    AssignedVehicleCard(
-                        vehicle = assignedVehicle,
-                        assignment = activeAssignment
-                    )
-                    Spacer(modifier = Modifier.height(24.dp))
-                    Button(
-                        onClick = onReport,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Icon(Icons.Default.Build, contentDescription = null)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Reportar a mantenimiento")
+                when {
+                    // 1) Hay una asignación esperando que la acepte (check-out)
+                    pendingAssignment != null && pendingVehicle != null -> {
+                        Text("Asignación por aceptar", style = MaterialTheme.typography.titleLarge)
+                        Spacer(modifier = Modifier.height(16.dp))
+                        PendingAssignmentCard(vehicle = pendingVehicle, assignment = pendingAssignment)
+                        Spacer(modifier = Modifier.height(20.dp))
+                        Button(onClick = onAccept, modifier = Modifier.fillMaxWidth()) {
+                            Icon(Icons.Default.CheckCircle, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Aceptar asignación")
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OutlinedButton(onClick = onReject, modifier = Modifier.fillMaxWidth()) {
+                            Icon(Icons.Default.Close, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Rechazar")
+                        }
                     }
-                } else {
-                    Text("No tenés un vehículo asignado actualmente.")
+
+                    // 2) Carrera en curso (ya aceptada)
+                    assignedVehicle != null && activeAssignment != null -> {
+                        Text("Tu carrera activa", style = MaterialTheme.typography.titleLarge)
+                        Spacer(modifier = Modifier.height(16.dp))
+                        AssignedVehicleCard(vehicle = assignedVehicle, assignment = activeAssignment)
+                        Spacer(modifier = Modifier.height(20.dp))
+                        Button(onClick = onReturn, modifier = Modifier.fillMaxWidth()) {
+                            Icon(Icons.Default.CheckCircle, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Entregar vehículo")
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OutlinedButton(onClick = onReport, modifier = Modifier.fillMaxWidth()) {
+                            Icon(Icons.Default.Build, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Reportar a mantenimiento")
+                        }
+                    }
+
+                    // 3) Sin nada asignado
+                    else -> {
+                        Text("Tu vehículo asignado", style = MaterialTheme.typography.titleLarge)
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text("No tenés un vehículo asignado actualmente.")
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(28.dp))
@@ -411,6 +528,10 @@ private fun AssignedVehicleCard(vehicle: Vehicle, assignment: Assignment) {
     val sdf = remember { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()) }
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp)) {
+            if (assignment.overdue) {
+                OverdueBanner(days = assignment.daysOverdue)
+                Spacer(modifier = Modifier.height(12.dp))
+            }
             Text(
                 text = "${vehicle.brand} ${vehicle.model}",
                 style = MaterialTheme.typography.titleLarge,
@@ -424,15 +545,332 @@ private fun AssignedVehicleCard(vehicle: Vehicle, assignment: Assignment) {
             HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
 
             Text(
-                text = "Asignación",
+                text = "Carrera",
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.Medium
             )
             Text(text = "Salida: ${sdf.format(assignment.departureDate)}")
-            Text(text = "Retorno planeado: ${sdf.format(assignment.plannedReturnDate)}")
+            Text(
+                text = "Retorno previsto: ${sdf.format(assignment.plannedReturnDate)}",
+                color = if (assignment.overdue) MaterialTheme.colorScheme.error
+                else MaterialTheme.colorScheme.onSurface
+            )
             Text(text = "Km inicial: ${assignment.initialMileage}")
+            assignment.fuelLevelInitial?.let {
+                Text(text = "Combustible al salir: ${it.label}")
+            }
         }
     }
+}
+
+/** Aviso crítico: la fecha prevista de retorno ya pasó. Visible de entrada, sin animación que lo oculte. */
+@Composable
+private fun OverdueBanner(days: Long) {
+    Surface(
+        color = MaterialTheme.colorScheme.errorContainer,
+        contentColor = MaterialTheme.colorScheme.onErrorContainer,
+        shape = MaterialTheme.shapes.medium,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(12.dp)
+        ) {
+            Icon(Icons.Default.Warning, contentDescription = null)
+            Spacer(modifier = Modifier.width(10.dp))
+            Column {
+                Text(
+                    "Devolución vencida",
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    if (days <= 1L) "Te pasaste 1 día. Entregá el vehículo cuanto antes."
+                    else "Te pasaste $days días. Entregá el vehículo cuanto antes.",
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun PendingAssignmentCard(vehicle: Vehicle, assignment: Assignment) {
+    val sdf = remember { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()) }
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = "${vehicle.brand} ${vehicle.model}",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Medium,
+                    modifier = Modifier.weight(1f)
+                )
+                StatusBadge(status = assignment.status)
+            }
+            Text(text = "Placa: ${Validators.formatPlate(vehicle.plate)}")
+            Text(text = "Kilometraje actual: ${vehicle.mileage} km")
+
+            HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
+
+            Text(text = "Salida: ${sdf.format(assignment.departureDate)}")
+            Text(text = "Retorno previsto: ${sdf.format(assignment.plannedReturnDate)}")
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                "Revisá el vehículo y registrá kilometraje y combustible al aceptar.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun FuelLevelDropdown(
+    selected: FuelLevel?,
+    onSelect: (FuelLevel) -> Unit,
+    isError: Boolean,
+    errorText: String?
+) {
+    var expanded by remember { mutableStateOf(false) }
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = { expanded = !expanded }
+    ) {
+        OutlinedTextField(
+            value = selected?.label ?: "",
+            onValueChange = {},
+            readOnly = true,
+            label = { Text("Nivel de combustible") },
+            placeholder = { Text("Elegí el nivel…") },
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+            isError = isError,
+            supportingText = if (isError && errorText != null) { { Text(errorText) } } else null,
+            modifier = Modifier
+                .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, true)
+                .fillMaxWidth()
+        )
+        ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            FuelLevel.entries.forEach { level ->
+                DropdownMenuItem(
+                    text = { Text(level.label) },
+                    onClick = { onSelect(level); expanded = false }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ConditionRow(checked: Boolean, onChange: (Boolean) -> Unit) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text("¿Está en condiciones óptimas?", style = MaterialTheme.typography.bodyLarge)
+            Text(
+                if (checked) "Sí, todo en orden" else "No, requiere atención",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        Switch(checked = checked, onCheckedChange = onChange)
+    }
+}
+
+@Composable
+private fun AcceptAssignmentDialog(
+    vehicle: Vehicle,
+    assignment: Assignment,
+    onDismiss: () -> Unit,
+    onConfirm: (km: Long, fuel: FuelLevel, conditionOk: Boolean, obs: String) -> Unit
+) {
+    val sdf = remember { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()) }
+    var kmText by remember { mutableStateOf(vehicle.mileage.toString()) }
+    var fuel by remember { mutableStateOf<FuelLevel?>(null) }
+    var conditionOk by remember { mutableStateOf(true) }
+    var obs by remember { mutableStateOf("") }
+    var attempted by remember { mutableStateOf(false) }
+
+    val kmV = Validators.validateAssignmentInitialMileage(kmText, vehicle.mileage)
+    val fuelV = if (fuel == null) ValidationResult.invalid("Elegí el nivel de combustible") else ValidationResult.Valid
+    val obsV = if (!conditionOk && obs.isBlank())
+        ValidationResult.invalid("Contá qué problema tiene el vehículo") else ValidationResult.Valid
+    val isValid = kmV.isValid && fuelV.isValid && obsV.isValid
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Aceptar asignación") },
+        text = {
+            Column(modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState())) {
+                Text(
+                    "${vehicle.brand} ${vehicle.model} · ${Validators.formatPlate(vehicle.plate)}",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Text(
+                    "Retorno previsto: ${sdf.format(assignment.plannedReturnDate)}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                OutlinedTextField(
+                    value = kmText,
+                    onValueChange = { kmText = it.filter { c -> c.isDigit() } },
+                    label = { Text("Kilometraje actual") },
+                    isError = attempted && !kmV.isValid,
+                    supportingText = if (attempted && !kmV.isValid) { { Text(kmV.errorMessage ?: "") } } else null,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                FuelLevelDropdown(
+                    selected = fuel,
+                    onSelect = { fuel = it },
+                    isError = attempted && !fuelV.isValid,
+                    errorText = fuelV.errorMessage
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                ConditionRow(checked = conditionOk, onChange = { conditionOk = it })
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = obs,
+                    onValueChange = { obs = it },
+                    label = { Text(if (conditionOk) "Observaciones (opcional)" else "¿Qué problema tiene? (obligatorio)") },
+                    isError = attempted && !obsV.isValid,
+                    supportingText = if (attempted && !obsV.isValid) { { Text(obsV.errorMessage ?: "") } } else null,
+                    minLines = 2,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = {
+                attempted = true
+                if (isValid && fuel != null) onConfirm(kmText.toLong(), fuel!!, conditionOk, obs.trim())
+            }) { Text("Aceptar") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } }
+    )
+}
+
+@Composable
+private fun RejectAssignmentDialog(
+    vehicle: Vehicle,
+    onDismiss: () -> Unit,
+    onConfirm: (motivo: String) -> Unit
+) {
+    var motivo by remember { mutableStateOf("") }
+    var attempted by remember { mutableStateOf(false) }
+    val motivoV = Validators.validateRequired(motivo, "El motivo")
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Rechazar asignación") },
+        text = {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    "${vehicle.brand} ${vehicle.model} · ${Validators.formatPlate(vehicle.plate)}",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                OutlinedTextField(
+                    value = motivo,
+                    onValueChange = { motivo = it },
+                    label = { Text("Motivo del rechazo") },
+                    placeholder = { Text("Ej: el vehículo no está en el punto de salida") },
+                    isError = attempted && !motivoV.isValid,
+                    supportingText = if (attempted && !motivoV.isValid) { { Text(motivoV.errorMessage ?: "") } } else null,
+                    minLines = 2,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = {
+                attempted = true
+                if (motivoV.isValid) onConfirm(motivo.trim())
+            }) { Text("Rechazar") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } }
+    )
+}
+
+@Composable
+private fun ReturnVehicleDialog(
+    vehicle: Vehicle,
+    assignment: Assignment,
+    onDismiss: () -> Unit,
+    onConfirm: (km: Long, fuel: FuelLevel, conditionOk: Boolean, obs: String) -> Unit
+) {
+    var kmText by remember { mutableStateOf(vehicle.mileage.toString()) }
+    var fuel by remember { mutableStateOf<FuelLevel?>(null) }
+    var conditionOk by remember { mutableStateOf(true) }
+    var obs by remember { mutableStateOf("") }
+    var attempted by remember { mutableStateOf(false) }
+
+    // El km de entrega se vuelve el más reciente del vehículo: nunca menor al inicial ni al actual.
+    val baseline = maxOf(assignment.initialMileage, vehicle.mileage)
+    val kmV = Validators.validateFinalMileage(kmText, baseline)
+    val fuelV = if (fuel == null) ValidationResult.invalid("Elegí el nivel de combustible") else ValidationResult.Valid
+    val obsV = if (!conditionOk && obs.isBlank())
+        ValidationResult.invalid("Contá qué problema tiene el vehículo") else ValidationResult.Valid
+    val isValid = kmV.isValid && fuelV.isValid && obsV.isValid
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Entregar vehículo") },
+        text = {
+            Column(modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState())) {
+                Text(
+                    "${vehicle.brand} ${vehicle.model} · ${Validators.formatPlate(vehicle.plate)}",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Text(
+                    "Km inicial de la carrera: ${assignment.initialMileage}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                OutlinedTextField(
+                    value = kmText,
+                    onValueChange = { kmText = it.filter { c -> c.isDigit() } },
+                    label = { Text("Kilometraje de entrega") },
+                    isError = attempted && !kmV.isValid,
+                    supportingText = if (attempted && !kmV.isValid) { { Text(kmV.errorMessage ?: "") } } else null,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                FuelLevelDropdown(
+                    selected = fuel,
+                    onSelect = { fuel = it },
+                    isError = attempted && !fuelV.isValid,
+                    errorText = fuelV.errorMessage
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                ConditionRow(checked = conditionOk, onChange = { conditionOk = it })
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = obs,
+                    onValueChange = { obs = it },
+                    label = { Text(if (conditionOk) "Observaciones (opcional)" else "¿Qué problema tiene? (obligatorio)") },
+                    isError = attempted && !obsV.isValid,
+                    supportingText = if (attempted && !obsV.isValid) { { Text(obsV.errorMessage ?: "") } } else null,
+                    minLines = 2,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = {
+                attempted = true
+                if (isValid && fuel != null) onConfirm(kmText.toLong(), fuel!!, conditionOk, obs.trim())
+            }) { Text("Entregar") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } }
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

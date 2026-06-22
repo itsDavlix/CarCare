@@ -339,8 +339,10 @@ private fun maintColor(s: MaintenanceStatus) = when (s) {
 }
 
 private fun assignColor(s: AssignmentStatus) = when (s) {
+    AssignmentStatus.PENDING_ACCEPTANCE -> StatusAssigned
     AssignmentStatus.ACTIVE -> StatusInUse
     AssignmentStatus.COMPLETED -> StatusAvailable
+    AssignmentStatus.REJECTED -> StatusOutOfService
 }
 
 private fun assignLabel(s: AssignmentStatus) = s.label

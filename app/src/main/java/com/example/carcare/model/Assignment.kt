@@ -16,5 +16,15 @@ data class Assignment(
     val finalMileage: Long? = null,
     val departureObservations: String = "",
     val returnObservations: String = "",
-    val status: AssignmentStatus = AssignmentStatus.ACTIVE
+    val status: AssignmentStatus = AssignmentStatus.ACTIVE,
+    // Check-out (aceptación) y check-in (entrega)
+    val fuelLevelInitial: FuelLevel? = null,
+    val conditionOkInitial: Boolean? = null,
+    val acceptanceDate: Date? = null,
+    val fuelLevelFinal: FuelLevel? = null,
+    val conditionOkFinal: Boolean? = null,
+    val rejectionReason: String? = null,
+    // Derivados del backend: atraso de devolución
+    val overdue: Boolean = false,
+    val daysOverdue: Long = 0
 ) : Identifiable

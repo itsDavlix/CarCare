@@ -40,6 +40,8 @@ val MaintenanceStatus.statusColor: Color
 
 val AssignmentStatus.statusColor: Color
     get() = when (this) {
+        AssignmentStatus.PENDING_ACCEPTANCE -> StatusAssigned
         AssignmentStatus.ACTIVE -> StatusInUse
         AssignmentStatus.COMPLETED -> StatusAvailable
+        AssignmentStatus.REJECTED -> StatusOutOfService
     }

@@ -20,5 +20,15 @@ data class AsignacionResponseDto(
     val kilometrajeFinal: Long? = null,
     val observacionesSalida: String? = null,
     val observacionesRetorno: String? = null,
-    val estado: String
+    val estado: String,
+    // Check-out / check-in
+    val nivelCombustibleInicial: String? = null,
+    val condicionOptimaInicial: Boolean? = null,
+    val fechaAceptacion: String? = null,
+    val nivelCombustibleFinal: String? = null,
+    val condicionOptimaFinal: Boolean? = null,
+    val motivoRechazo: String? = null,
+    // Derivados: atraso de devolución
+    val vencida: Boolean = false,
+    val diasAtraso: Long = 0
 )
