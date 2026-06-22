@@ -1170,7 +1170,9 @@ fun AssignmentFormDialog(
                                     modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable).fillMaxWidth()
                                 )
                                 ExposedDropdownMenu(expanded = expandedStatus, onDismissRequest = { expandedStatus = false }) {
-                                    AssignmentStatus.entries.forEach { s ->
+                                    // El admin solo transiciona manualmente entre Activa y Finalizada.
+                                    // "Por aceptar"/"Rechazada" las maneja el flujo del conductor.
+                                    listOf(AssignmentStatus.ACTIVE, AssignmentStatus.COMPLETED).forEach { s ->
                                         DropdownMenuItem(
                                             text = { Text(s.label) },
                                             onClick = { status = s; expandedStatus = false }

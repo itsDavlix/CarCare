@@ -61,6 +61,25 @@ enum class MaintenanceType(val label: String) {
  * el resto de los enums (badges, dashboard) en lugar de un if (==ACTIVE) suelto.
  */
 enum class AssignmentStatus(val label: String) {
+    PENDING_ACCEPTANCE("Por aceptar"),
     ACTIVE("Activa"),
-    COMPLETED("Finalizada")
+    COMPLETED("Finalizada"),
+    REJECTED("Rechazada")
+}
+
+/**
+ * Nivel de combustible al hacer check-out (aceptar) y check-in (entregar) la carrera.
+ * Los nombres coinciden con el enum NivelCombustible del backend para serializar directo.
+ */
+enum class FuelLevel(val label: String) {
+    VACIO("Vacío"),
+    UN_CUARTO("¼ de tanque"),
+    MEDIO("½ tanque"),
+    TRES_CUARTOS("¾ de tanque"),
+    LLENO("Lleno");
+
+    companion object {
+        fun fromName(name: String?): FuelLevel? =
+            name?.let { runCatching { valueOf(it) }.getOrNull() }
+    }
 }
