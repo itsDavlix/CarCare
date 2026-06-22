@@ -321,6 +321,7 @@ fun VehicleDetailsDialog(
     onEdit: () -> Unit
 ) {
     val sdf = remember { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()) }
+    var reportMaintenance by remember { mutableStateOf<Maintenance?>(null) }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Detalles del Vehículo") },
@@ -376,13 +377,24 @@ fun VehicleDetailsDialog(
                     }
                     Spacer(modifier = Modifier.height(16.dp))
                     DialogSectionLabel("Cambiar estado")
-                    FlowRow(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                        VehicleStatus.entries.forEach { status ->
-                            FilterChip(
-                                selected = vehicle.status == status,
-                                onClick = { onStatusChange(status) },
-                                label = { Text(status.label, style = MaterialTheme.typography.labelSmall) }
-                            )
+                    // Solo los estados que el admin puede setear a mano según el estado actual
+                    // (espeja la máquina del backend). ASSIGNED/IN_USE/PENDING_REVIEW no van a mano.
+                    val estadoTargets = manualVehicleTargets(vehicle.status)
+                    if (estadoTargets.isEmpty()) {
+                        Text(
+                            "Estado gestionado por la asignación (no editable a mano).",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    } else {
+                        FlowRow(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            estadoTargets.forEach { status ->
+                                FilterChip(
+                                    selected = false,
+                                    onClick = { onStatusChange(status) },
+                                    label = { Text(status.label, style = MaterialTheme.typography.labelSmall) }
+                                )
+                            }
                         }
                     }
                     Spacer(modifier = Modifier.height(16.dp))
@@ -392,7 +404,10 @@ fun VehicleDetailsDialog(
                     item { Text("No hay registros de mantenimiento.", style = MaterialTheme.typography.bodySmall) }
                 } else {
                     items(maintenanceHistory, key = { it.id }) { maintenance ->
-                        Card(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+                        Card(
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                            onClick = { reportMaintenance = maintenance }
+                        ) {
                             Column(modifier = Modifier.padding(8.dp)) {
                                 Text("${maintenance.type.label} - ${sdf.format(maintenance.date)}")
                                 Text("Estado: ${maintenance.status.label}", style = MaterialTheme.typography.bodySmall)
@@ -422,6 +437,51 @@ fun VehicleDetailsDialog(
         },
         confirmButton = { TextButton(onClick = onEdit) { Text("Editar") } },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cerrar") } }
+    )
+
+    // Mini-informe del mantenimiento al tocar un item del historial.
+    reportMaintenance?.let { m ->
+        MaintenanceMiniReportDialog(maintenance = m, onDismiss = { reportMaintenance = null })
+    }
+}
+
+/**
+ * Estados de vehículo que el admin puede setear MANUALMENTE según el estado actual
+ * (espeja TRANSICIONES de VehiculoService). ASSIGNED/IN_USE los maneja la asignación;
+ * PENDING_REVIEW lo genera el "Reportar" del conductor.
+ */
+private fun manualVehicleTargets(current: VehicleStatus): List<VehicleStatus> = when (current) {
+    VehicleStatus.AVAILABLE -> listOf(VehicleStatus.MAINTENANCE, VehicleStatus.OUT_OF_SERVICE, VehicleStatus.INACTIVE)
+    VehicleStatus.PENDING_REVIEW -> listOf(VehicleStatus.AVAILABLE, VehicleStatus.MAINTENANCE, VehicleStatus.OUT_OF_SERVICE)
+    VehicleStatus.MAINTENANCE -> listOf(VehicleStatus.AVAILABLE, VehicleStatus.OUT_OF_SERVICE, VehicleStatus.INACTIVE)
+    VehicleStatus.OUT_OF_SERVICE -> listOf(VehicleStatus.AVAILABLE, VehicleStatus.MAINTENANCE, VehicleStatus.INACTIVE)
+    VehicleStatus.INACTIVE -> listOf(VehicleStatus.AVAILABLE, VehicleStatus.OUT_OF_SERVICE)
+    VehicleStatus.ASSIGNED, VehicleStatus.IN_USE -> emptyList()
+}
+
+/** Mini-informe de un mantenimiento (solo lectura), abierto desde el historial del vehículo. */
+@Composable
+private fun MaintenanceMiniReportDialog(maintenance: Maintenance, onDismiss: () -> Unit) {
+    val sdf = remember { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(maintenance.type.label) },
+        text = {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                StatusBadge(status = maintenance.status)
+                Spacer(modifier = Modifier.height(12.dp))
+                KeyValueRow("Inicio", sdf.format(maintenance.date))
+                maintenance.completionDate?.let { KeyValueRow("Finalización", sdf.format(it)) }
+                KeyValueRow("Kilometraje", "${maintenance.currentMileage} km", mono = true)
+                KeyValueRow("Responsable", maintenance.responsible)
+                maintenance.nextDate?.let { KeyValueRow("Próx. fecha", sdf.format(it)) }
+                maintenance.nextMileage?.let { KeyValueRow("Próx. km", "$it km", mono = true) }
+                Spacer(modifier = Modifier.height(8.dp))
+                DialogSectionLabel("Descripción")
+                Text(maintenance.description, style = MaterialTheme.typography.bodyMedium)
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text("Cerrar") } }
     )
 }
 
@@ -618,7 +678,8 @@ fun MaintenanceFormDialog(
                                 responsible = responsible.trim(),
                                 nextDate = nextDate,
                                 nextMileage = nextMileage.toLongOrNull(),
-                                status = maintenance?.status ?: MaintenanceStatus.IN_PROGRESS
+                                // Un mantenimiento nuevo arranca PENDIENTE; el admin lo avanza luego.
+                                status = maintenance?.status ?: MaintenanceStatus.PENDING
                             )
                         )
                     }
