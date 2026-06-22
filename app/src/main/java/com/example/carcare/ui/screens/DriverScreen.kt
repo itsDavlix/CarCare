@@ -38,6 +38,7 @@ import com.example.carcare.ui.components.CarCareTopBar
 import com.example.carcare.ui.components.ProfileSettingsSection
 import com.example.carcare.ui.components.ChangeOwnPasswordDialog
 import com.example.carcare.ui.components.NotificationItem
+import com.example.carcare.ui.components.PhotoCaptureField
 import com.example.carcare.ui.components.StatusBadge
 import com.example.carcare.ui.components.SseRefreshEffect
 import com.example.carcare.ui.theme.statusColor
@@ -225,13 +226,14 @@ fun DriverScreen(
             vehicle = pendingVehicle,
             assignment = pendingAssignment,
             onDismiss = { showAcceptDialog = false },
-            onConfirm = { km, fuel, conditionOk, obs ->
+            onConfirm = { km, fuel, conditionOk, obs, photo ->
                 assignmentViewModel.acceptAssignment(
                     assignmentId = pendingAssignment.id,
                     initialMileage = km,
                     fuelLevel = fuel,
                     conditionOk = conditionOk,
                     observations = obs,
+                    photoBase64 = photo,
                     onSuccess = {
                         vehicleViewModel.reloadSilently()
                         toast("Asignación aceptada. ¡Buen viaje!")
@@ -265,7 +267,7 @@ fun DriverScreen(
             vehicle = assignedVehicle,
             assignment = activeAssignment,
             onDismiss = { showReturnDialog = false },
-            onConfirm = { km, fuel, conditionOk, obs ->
+            onConfirm = { km, fuel, conditionOk, obs, photo ->
                 assignmentViewModel.deliverAssignment(
                     assignmentId = activeAssignment.id,
                     returnDate = Date(),
@@ -273,6 +275,7 @@ fun DriverScreen(
                     observations = obs,
                     fuelLevel = fuel,
                     conditionOk = conditionOk,
+                    photoBase64 = photo,
                     onSuccess = {
                         vehicleViewModel.reloadSilently()
                         toast("Vehículo entregado. ¡Gracias!")
@@ -685,13 +688,14 @@ private fun AcceptAssignmentDialog(
     vehicle: Vehicle,
     assignment: Assignment,
     onDismiss: () -> Unit,
-    onConfirm: (km: Long, fuel: FuelLevel, conditionOk: Boolean, obs: String) -> Unit
+    onConfirm: (km: Long, fuel: FuelLevel, conditionOk: Boolean, obs: String, photo: String?) -> Unit
 ) {
     val sdf = remember { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()) }
     var kmText by remember { mutableStateOf(vehicle.mileage.toString()) }
     var fuel by remember { mutableStateOf<FuelLevel?>(null) }
     var conditionOk by remember { mutableStateOf(true) }
     var obs by remember { mutableStateOf("") }
+    var photo by remember { mutableStateOf<String?>(null) }
     var attempted by remember { mutableStateOf(false) }
 
     val kmV = Validators.validateAssignmentInitialMileage(kmText, vehicle.mileage)
@@ -743,12 +747,18 @@ private fun AcceptAssignmentDialog(
                     minLines = 2,
                     modifier = Modifier.fillMaxWidth()
                 )
+                Spacer(modifier = Modifier.height(12.dp))
+                PhotoCaptureField(
+                    label = "Tomar foto del combustible",
+                    photoBase64 = photo,
+                    onCaptured = { photo = it }
+                )
             }
         },
         confirmButton = {
             TextButton(onClick = {
                 attempted = true
-                if (isValid && fuel != null) onConfirm(kmText.toLong(), fuel!!, conditionOk, obs.trim())
+                if (isValid && fuel != null) onConfirm(kmText.toLong(), fuel!!, conditionOk, obs.trim(), photo)
             }) { Text("Aceptar") }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } }
@@ -802,12 +812,13 @@ private fun ReturnVehicleDialog(
     vehicle: Vehicle,
     assignment: Assignment,
     onDismiss: () -> Unit,
-    onConfirm: (km: Long, fuel: FuelLevel, conditionOk: Boolean, obs: String) -> Unit
+    onConfirm: (km: Long, fuel: FuelLevel, conditionOk: Boolean, obs: String, photo: String?) -> Unit
 ) {
     var kmText by remember { mutableStateOf(vehicle.mileage.toString()) }
     var fuel by remember { mutableStateOf<FuelLevel?>(null) }
     var conditionOk by remember { mutableStateOf(true) }
     var obs by remember { mutableStateOf("") }
+    var photo by remember { mutableStateOf<String?>(null) }
     var attempted by remember { mutableStateOf(false) }
 
     // El km de entrega se vuelve el más reciente del vehículo: nunca menor al inicial ni al actual.
@@ -861,12 +872,18 @@ private fun ReturnVehicleDialog(
                     minLines = 2,
                     modifier = Modifier.fillMaxWidth()
                 )
+                Spacer(modifier = Modifier.height(12.dp))
+                PhotoCaptureField(
+                    label = "Tomar foto del combustible",
+                    photoBase64 = photo,
+                    onCaptured = { photo = it }
+                )
             }
         },
         confirmButton = {
             TextButton(onClick = {
                 attempted = true
-                if (isValid && fuel != null) onConfirm(kmText.toLong(), fuel!!, conditionOk, obs.trim())
+                if (isValid && fuel != null) onConfirm(kmText.toLong(), fuel!!, conditionOk, obs.trim(), photo)
             }) { Text("Entregar") }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } }

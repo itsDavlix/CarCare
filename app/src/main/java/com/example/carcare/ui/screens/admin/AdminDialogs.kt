@@ -34,6 +34,7 @@ import com.example.carcare.model.Driver
 import com.example.carcare.model.DriverStatus
 import com.example.carcare.model.Assignment as AssignmentModel
 import com.example.carcare.model.AssignmentStatus
+import com.example.carcare.ui.components.Base64Image
 import com.example.carcare.ui.components.DatePickerField
 import com.example.carcare.ui.components.StatusBadge
 import com.example.carcare.util.ValidationResult
@@ -1348,11 +1349,18 @@ fun AssignmentDetailsDialog(
     assignment: AssignmentModel,
     vehicle: Vehicle?,
     driver: Driver?,
+    onFetchPhoto: (id: String, initial: Boolean, onResult: (String?) -> Unit) -> Unit,
     onDismiss: () -> Unit,
     onEdit: () -> Unit
 ) {
     val sdf = remember { SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()) }
     val sdfDate = remember { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()) }
+    var fotoSalida by remember { mutableStateOf<String?>(null) }
+    var fotoEntrega by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(assignment.id) {
+        if (assignment.hasPhotoInitial) onFetchPhoto(assignment.id, true) { fotoSalida = it }
+        if (assignment.hasPhotoFinal) onFetchPhoto(assignment.id, false) { fotoEntrega = it }
+    }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Detalles de la Asignación") },
@@ -1376,6 +1384,16 @@ fun AssignmentDetailsDialog(
                     if (assignment.returnObservations.isNotBlank()) {
                         KeyValueRow("Observaciones", assignment.returnObservations)
                     }
+                }
+                fotoSalida?.let {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    DialogSectionLabel("Foto combustible (salida)")
+                    Base64Image(it, Modifier.fillMaxWidth().height(180.dp))
+                }
+                fotoEntrega?.let {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    DialogSectionLabel("Foto combustible (entrega)")
+                    Base64Image(it, Modifier.fillMaxWidth().height(180.dp))
                 }
             }
         },

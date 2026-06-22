@@ -485,6 +485,7 @@ fun AdminScreen(
             assignment = assignmentToShowDetails!!,
             vehicle = vehicleViewModel.vehicles.find { it.id == assignmentToShowDetails!!.vehicleId },
             driver = driverViewModel.drivers.find { it.id == assignmentToShowDetails!!.driverId },
+            onFetchPhoto = { id, initial, cb -> assignmentViewModel.fetchPhoto(id, initial, cb) },
             onDismiss = { assignmentToShowDetails = null },
             onEdit = {
                 assignmentToEdit = assignmentToShowDetails
