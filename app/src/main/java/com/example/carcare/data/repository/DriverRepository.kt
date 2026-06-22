@@ -1,5 +1,8 @@
 package com.example.carcare.data.repository
 
+import com.example.carcare.data.local.ConductorDao
+import com.example.carcare.data.local.toDriver
+import com.example.carcare.data.local.toEntity
 import com.example.carcare.data.network.ApiClient
 import com.example.carcare.data.network.dto.CambioEstadoDto
 import com.example.carcare.data.network.dto.ConductorRequestDto
@@ -15,24 +18,34 @@ import java.util.Date
  * Conecta el modelo Driver con la API de conductores.
  * Convierte id Long<->String y fecha Date<->String en el borde de red.
  */
-class DriverRepository @javax.inject.Inject constructor() : CrudRepository<Driver> {
+class DriverRepository @javax.inject.Inject constructor(
+    private val dao: ConductorDao
+) : CrudRepository<Driver> {
 
     private val api = ApiClient.conductorApi
 
-    override suspend fun getAll(): List<Driver> = api.listar().map { it.toDomain() }
+    override suspend fun getAll(): List<Driver> = try {
+        val remote = api.listar().map { it.toDomain() }
+        dao.replaceAll(remote.map { it.toEntity() })
+        remote
+    } catch (e: Exception) {
+        val cached = dao.getAll().map { it.toDriver() }
+        if (cached.isNotEmpty()) cached else throw e
+    }
 
     override suspend fun create(driver: Driver): Driver =
-        api.crear(driver.toRequestDto()).toDomain()
+        api.crear(driver.toRequestDto()).toDomain().also { dao.upsert(it.toEntity()) }
 
     suspend fun update(driver: Driver): Driver =
-        api.actualizar(driver.id.toLong(), driver.toRequestDto()).toDomain()
+        api.actualizar(driver.id.toLong(), driver.toRequestDto()).toDomain().also { dao.upsert(it.toEntity()) }
 
     override suspend fun delete(id: String) {
         api.eliminar(id.toLong())
+        dao.deleteById(id)
     }
 
     suspend fun changeStatus(id: String, status: DriverStatus): Driver =
-        api.cambiarEstado(id.toLong(), CambioEstadoDto(status.name)).toDomain()
+        api.cambiarEstado(id.toLong(), CambioEstadoDto(status.name)).toDomain().also { dao.upsert(it.toEntity()) }
 
     /** Restablece la contraseña de acceso del conductor (acción de admin). */
     suspend fun resetPassword(id: String, newPassword: String) {
