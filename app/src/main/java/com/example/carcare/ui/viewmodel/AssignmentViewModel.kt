@@ -25,7 +25,10 @@ class AssignmentViewModel @javax.inject.Inject constructor(repository: Assignmen
 
     fun loadAssignments() = load()
 
-    /** El backend pone el vehículo en IN_USE; onSuccess debe refrescar la lista de vehículos. */
+    /**
+     * El backend crea la asignación PENDIENTE de aceptar y reserva el vehículo (ASSIGNED);
+     * onSuccess debe refrescar la lista de vehículos.
+     */
     fun addAssignment(assignment: Assignment, onSuccess: () -> Unit = {}) =
         create(assignment, onSuccess)
 

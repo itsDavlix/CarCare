@@ -327,7 +327,12 @@ fun AdminScreen(
         // Memoizado: solo se recalcula cuando cambian las listas o la asignación en edición.
         val busyDriverIds = remember(assignmentViewModel.assignments, assignmentToEdit) {
             assignmentViewModel.assignments
-                .filter { it.status == AssignmentStatus.ACTIVE && it.id != assignmentToEdit?.id }
+                // Un conductor está ocupado tanto si tiene una carrera ACTIVA como si tiene una
+                // PENDIENTE de aceptar: el backend rechaza una segunda asignación en ambos casos.
+                .filter {
+                    (it.status == AssignmentStatus.ACTIVE || it.status == AssignmentStatus.PENDING_ACCEPTANCE) &&
+                            it.id != assignmentToEdit?.id
+                }
                 .map { it.driverId }
                 .toSet()
         }
