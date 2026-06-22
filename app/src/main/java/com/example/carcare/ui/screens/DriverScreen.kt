@@ -186,6 +186,66 @@ fun DriverScreen(
         return // Detiene la ejecución del resto de la pantalla
     }
 
+    var showExpiringSoonSplash by remember { mutableStateOf(false) }
+    LaunchedEffect(driver?.id) {
+        if (driver != null && driver.isLicenseExpiringSoon) {
+            showExpiringSoonSplash = true
+        }
+    }
+
+    if (showExpiringSoonSplash && driver != null) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(com.example.carcare.ui.theme.Amber)
+                .padding(24.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Icon(
+                    imageVector = Icons.Default.Warning,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(84.dp)
+                )
+                Spacer(modifier = Modifier.height(24.dp))
+                Text(
+                    text = "LICENCIA POR VENCER",
+                    style = MaterialTheme.typography.headlineLarge,
+                    color = Color.White,
+                    fontWeight = FontWeight.ExtraBold,
+                    textAlign = TextAlign.Center
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = "Tu licencia de conducir vencerá pronto. Por favor, realizá el trámite de renovación para evitar interrupciones en tu servicio.",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = Color.White,
+                    textAlign = TextAlign.Center
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "Vence el: ${SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(driver.licenseExpiryDate)}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color.White.copy(alpha = 0.9f),
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(48.dp))
+                Button(
+                    onClick = { showExpiringSoonSplash = false },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color.White,
+                        contentColor = com.example.carcare.ui.theme.AmberDeep
+                    ),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Entendido, continuar", fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+    }
+
     var selectedTab by remember { mutableIntStateOf(0) }
     var showReportDialog by remember { mutableStateOf(false) }
     var showChangePassword by remember { mutableStateOf(false) }

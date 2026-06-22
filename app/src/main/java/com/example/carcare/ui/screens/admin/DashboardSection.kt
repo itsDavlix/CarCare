@@ -258,6 +258,24 @@ fun DashboardSection(
     }
 
     LazyColumn(modifier = Modifier.fillMaxSize()) {
+        if (alerts.isNotEmpty()) {
+            item { SectionTitle("Alertas críticas") }
+            items(alerts, key = { it.first }) { (_, critical, text) ->
+                Card(
+                    Modifier.fillMaxWidth().padding(vertical = 4.dp).animateItem(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = if (critical) StatusOutOfService.copy(alpha = 0.10f)
+                        else Amber.copy(alpha = 0.12f))
+                ) {
+                    Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.Warning, null, tint = if (critical) StatusOutOfService else AmberDeep)
+                        Spacer(Modifier.width(10.dp))
+                        Text(text, style = MaterialTheme.typography.bodyMedium)
+                    }
+                }
+            }
+        }
+
         item {
             SectionTitle("Resumen de flota")
             FleetHeroCard(total = vehicles.size, chips = fleetChips)
@@ -289,24 +307,6 @@ fun DashboardSection(
                 buildDashboardStats(vehicles, drivers, maintenances, assignments)
             }
             StatsCard(groups = statGroups)
-        }
-
-        if (alerts.isNotEmpty()) {
-            item { SectionTitle("Alertas críticas") }
-            items(alerts, key = { it.first }) { (_, critical, text) ->
-                Card(
-                    Modifier.fillMaxWidth().padding(vertical = 4.dp).animateItem(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = if (critical) StatusOutOfService.copy(alpha = 0.10f)
-                        else Amber.copy(alpha = 0.12f))
-                ) {
-                    Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.Warning, null, tint = if (critical) StatusOutOfService else AmberDeep)
-                        Spacer(Modifier.width(10.dp))
-                        Text(text, style = MaterialTheme.typography.bodyMedium)
-                    }
-                }
-            }
         }
 
         if (lastOut.isNotEmpty()) {
