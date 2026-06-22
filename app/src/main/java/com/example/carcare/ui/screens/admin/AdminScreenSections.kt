@@ -245,7 +245,23 @@ fun DriverItem(
                     style = instrumentSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                StatusBadge(status = driver.status)
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                    StatusBadge(status = driver.status)
+                    if (driver.isAdmin) {
+                        Surface(
+                            color = MaterialTheme.colorScheme.tertiaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+                            shape = MaterialTheme.shapes.small
+                        ) {
+                            Text(
+                                "Admin · no asignable",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
+                }
             }
             RowActions(onDelete = onDelete)
         }

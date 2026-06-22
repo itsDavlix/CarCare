@@ -343,7 +343,9 @@ fun AdminScreen(
         }
         val selectableDrivers = remember(driverViewModel.drivers, busyDriverIds, assignmentToEdit) {
             driverViewModel.drivers.filter {
-                (it.status == DriverStatus.ACTIVE && it.id !in busyDriverIds) || it.id == assignmentToEdit?.driverId
+                // Un conductor cuya cédula es de una cuenta ADMIN no es asignable.
+                (it.status == DriverStatus.ACTIVE && !it.isAdmin && it.id !in busyDriverIds) ||
+                        it.id == assignmentToEdit?.driverId
             }
         }
 

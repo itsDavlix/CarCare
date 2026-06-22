@@ -54,7 +54,8 @@ private fun ConductorResponseDto.toDomain(): Driver = Driver(
     licenseExpiryDate = parseApiDate(fechaVencimientoLicencia) ?: Date(),
     profilePhotoUri = fotoPerfilUri,
     licensePhotoUri = fotoLicenciaUri,
-    status = runCatching { DriverStatus.valueOf(estado) }.getOrDefault(DriverStatus.ACTIVE)
+    status = runCatching { DriverStatus.valueOf(estado) }.getOrDefault(DriverStatus.ACTIVE),
+    isAdmin = esAdmin
 )
 
 private fun Driver.toRequestDto(): ConductorRequestDto = ConductorRequestDto(
