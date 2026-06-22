@@ -11,6 +11,7 @@ import androidx.compose.material.icons.automirrored.filled.Assignment
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -96,6 +97,16 @@ fun MaintenanceListSection(
     }
 }
 
+/**
+ * Transiciones válidas de estado de mantenimiento (espeja el backend):
+ * PENDING → IN_PROGRESS/COMPLETED, IN_PROGRESS → COMPLETED, COMPLETED terminal.
+ */
+private fun maintenanceTargets(current: MaintenanceStatus): List<MaintenanceStatus> = when (current) {
+    MaintenanceStatus.PENDING -> listOf(MaintenanceStatus.IN_PROGRESS, MaintenanceStatus.COMPLETED)
+    MaintenanceStatus.IN_PROGRESS -> listOf(MaintenanceStatus.COMPLETED)
+    MaintenanceStatus.COMPLETED -> emptyList()
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MaintenanceItem(
@@ -138,10 +149,12 @@ fun MaintenanceItem(
             }
             Spacer(modifier = Modifier.height(10.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
-                MaintenanceStatus.entries.forEach { status ->
+                // Estado actual (seleccionado, no accionable) + solo las transiciones válidas.
+                val maintChips = listOf(maintenance.status) + maintenanceTargets(maintenance.status)
+                maintChips.forEach { status ->
                     FilterChip(
                         selected = maintenance.status == status,
-                        onClick = { onStatusChange(status) },
+                        onClick = { if (status != maintenance.status) onStatusChange(status) },
                         label = { Text(status.label, style = MaterialTheme.typography.labelMedium) },
                         modifier = Modifier.padding(end = 6.dp)
                     )
@@ -232,7 +245,23 @@ fun DriverItem(
                     style = instrumentSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                StatusBadge(status = driver.status)
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                    StatusBadge(status = driver.status)
+                    if (driver.isAdmin) {
+                        Surface(
+                            color = MaterialTheme.colorScheme.tertiaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+                            shape = MaterialTheme.shapes.small
+                        ) {
+                            Text(
+                                "Admin · no asignable",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
+                }
             }
             RowActions(onDelete = onDelete)
         }
@@ -292,6 +321,29 @@ fun AssignmentItem(
         interactionSource = interaction
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
+            if (assignment.overdue) {
+                Surface(
+                    color = MaterialTheme.colorScheme.errorContainer,
+                    contentColor = MaterialTheme.colorScheme.onErrorContainer,
+                    shape = MaterialTheme.shapes.small,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                    ) {
+                        Icon(Icons.Default.Warning, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = if (assignment.daysOverdue <= 1L) "Devolución vencida · 1 día de atraso"
+                            else "Devolución vencida · ${assignment.daysOverdue} días de atraso",
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(10.dp))
+            }
             Row(
                 horizontalArrangement = Arrangement.spacedBy(14.dp),
                 verticalAlignment = Alignment.CenterVertically,

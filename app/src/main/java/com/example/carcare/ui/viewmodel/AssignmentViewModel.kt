@@ -3,6 +3,7 @@ package com.example.carcare.ui.viewmodel
 import com.example.carcare.data.repository.AssignmentRepository
 import com.example.carcare.model.Assignment
 import com.example.carcare.model.Driver
+import com.example.carcare.model.FuelLevel
 import com.example.carcare.model.Vehicle
 import com.example.carcare.model.VehicleStatus
 import java.util.Date
@@ -24,12 +25,49 @@ class AssignmentViewModel @javax.inject.Inject constructor(repository: Assignmen
 
     fun loadAssignments() = load()
 
-    /** El backend pone el vehículo en IN_USE; onSuccess debe refrescar la lista de vehículos. */
+    /**
+     * El backend crea la asignación PENDIENTE de aceptar y reserva el vehículo (ASSIGNED);
+     * onSuccess debe refrescar la lista de vehículos.
+     */
     fun addAssignment(assignment: Assignment, onSuccess: () -> Unit = {}) =
         create(assignment, onSuccess)
 
     fun updateAssignment(assignment: Assignment, onSuccess: () -> Unit = {}) =
         replaceFromNetwork(onSuccess) { repository.update(assignment) }
+
+    /** Check-out: el conductor acepta su asignación. El backend pone el vehículo IN_USE. */
+    fun acceptAssignment(
+        assignmentId: String,
+        initialMileage: Long,
+        fuelLevel: FuelLevel,
+        conditionOk: Boolean,
+        observations: String,
+        onSuccess: () -> Unit = {}
+    ) = replaceFromNetwork(onSuccess) {
+        repository.accept(assignmentId, initialMileage, fuelLevel, conditionOk, observations)
+    }
+
+    /** El conductor rechaza su asignación pendiente; el backend libera el vehículo. */
+    fun rejectAssignment(
+        assignmentId: String,
+        reason: String,
+        onSuccess: () -> Unit = {}
+    ) = replaceFromNetwork(onSuccess) {
+        repository.reject(assignmentId, reason)
+    }
+
+    /** Check-in: el conductor entrega el vehículo. El backend decide el estado del vehículo. */
+    fun deliverAssignment(
+        assignmentId: String,
+        returnDate: Date,
+        finalMileage: Long,
+        observations: String,
+        fuelLevel: FuelLevel,
+        conditionOk: Boolean,
+        onSuccess: () -> Unit = {}
+    ) = replaceFromNetwork(onSuccess) {
+        repository.deliver(assignmentId, returnDate, finalMileage, observations, fuelLevel, conditionOk)
+    }
 
     /** El backend actualiza km + estado del vehículo; onSuccess debe refrescar vehículos. */
     fun completeAssignment(

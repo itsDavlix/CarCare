@@ -207,7 +207,10 @@ fun buildDashboardStats(
         val c = drivers.count { it.status == s }
         if (c > 0) Bar(s.label, c, driverColor(s)) else null
     }
-    val asignadosIds = assignments.filter { it.status == AssignmentStatus.ACTIVE }.map { it.driverId }.toSet()
+    // Un conductor cuenta como "asignado" con carrera activa o pendiente de aceptar (reservado).
+    val asignadosIds = assignments
+        .filter { it.status == AssignmentStatus.ACTIVE || it.status == AssignmentStatus.PENDING_ACCEPTANCE }
+        .map { it.driverId }.toSet()
     val asign = drivers.count { it.id in asignadosIds }
     val dDisp = listOf(
         Bar("Asignados", asign, StatusInUse),
@@ -339,8 +342,10 @@ private fun maintColor(s: MaintenanceStatus) = when (s) {
 }
 
 private fun assignColor(s: AssignmentStatus) = when (s) {
+    AssignmentStatus.PENDING_ACCEPTANCE -> StatusAssigned
     AssignmentStatus.ACTIVE -> StatusInUse
     AssignmentStatus.COMPLETED -> StatusAvailable
+    AssignmentStatus.REJECTED -> StatusOutOfService
 }
 
 private fun assignLabel(s: AssignmentStatus) = s.label

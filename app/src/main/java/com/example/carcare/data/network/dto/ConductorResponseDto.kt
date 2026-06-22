@@ -15,5 +15,6 @@ data class ConductorResponseDto(
     val fechaVencimientoLicencia: String?,
     val fotoPerfilUri: String? = null,
     val fotoLicenciaUri: String? = null,
-    val estado: String
+    val estado: String,
+    val esAdmin: Boolean = false
 )

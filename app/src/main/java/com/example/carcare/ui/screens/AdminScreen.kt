@@ -327,7 +327,12 @@ fun AdminScreen(
         // Memoizado: solo se recalcula cuando cambian las listas o la asignación en edición.
         val busyDriverIds = remember(assignmentViewModel.assignments, assignmentToEdit) {
             assignmentViewModel.assignments
-                .filter { it.status == AssignmentStatus.ACTIVE && it.id != assignmentToEdit?.id }
+                // Un conductor está ocupado tanto si tiene una carrera ACTIVA como si tiene una
+                // PENDIENTE de aceptar: el backend rechaza una segunda asignación en ambos casos.
+                .filter {
+                    (it.status == AssignmentStatus.ACTIVE || it.status == AssignmentStatus.PENDING_ACCEPTANCE) &&
+                            it.id != assignmentToEdit?.id
+                }
                 .map { it.driverId }
                 .toSet()
         }
@@ -338,7 +343,9 @@ fun AdminScreen(
         }
         val selectableDrivers = remember(driverViewModel.drivers, busyDriverIds, assignmentToEdit) {
             driverViewModel.drivers.filter {
-                (it.status == DriverStatus.ACTIVE && it.id !in busyDriverIds) || it.id == assignmentToEdit?.driverId
+                // Un conductor cuya cédula es de una cuenta ADMIN no es asignable.
+                (it.status == DriverStatus.ACTIVE && !it.isAdmin && it.id !in busyDriverIds) ||
+                        it.id == assignmentToEdit?.driverId
             }
         }
 

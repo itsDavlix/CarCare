@@ -16,7 +16,9 @@ data class Driver(
     val licenseExpiryDate: Date,
     val profilePhotoUri: String? = null,
     val licensePhotoUri: String? = null,
-    val status: DriverStatus = DriverStatus.ACTIVE
+    val status: DriverStatus = DriverStatus.ACTIVE,
+    /** La cédula pertenece a una cuenta ADMIN: no es asignable a un vehículo. */
+    val isAdmin: Boolean = false
 ) : Identifiable {
     val fullName: String get() = "$firstName $lastName"
 }
