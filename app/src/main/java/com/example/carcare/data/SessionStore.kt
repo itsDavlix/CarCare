@@ -4,7 +4,6 @@ import android.content.Context
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
-import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
@@ -23,14 +22,13 @@ private val Context.sessionDataStore by preferencesDataStore(name = "carcare_ses
  * el auto-login al reabrir la app. [AuthSession] sigue siendo la fuente de verdad
  * en memoria; este store solo la respalda en disco.
  *
- * El usuario controla el auto-login desde su perfil:
- *  - [autoLoginEnabledFlow] (default ON): si lo apaga, [load] no restaura nada.
- *  - [autoLoginDaysFlow] (default 7): a cuántos días caduca la sesión guardada.
- * Estas preferencias **sobreviven al logout** (clear solo borra las claves de sesión).
+ * Caducidad por AUSENCIA, no por tiempo de uso: la sesión guardada vale 30 min desde
+ * que se SALE de la app ([touchLastActive] marca el momento). Si el usuario vuelve dentro
+ * de esa ventana, entra sin re-loguear; pasada, [load] la descarta y debe iniciar sesión.
+ * No corta al usuario mientras usa la app (eso lo limita la vida del token JWT en el backend).
  *
- * - Las escrituras de sesión son fire-and-forget (no bloquean al loguear/cerrar).
- * - [load] descarta sesiones más viejas que el plazo elegido: un token vencido no
- *   sirve para auto-login y dispararía 401 en cada request.
+ * El usuario controla el auto-login desde su perfil con [autoLoginEnabledFlow] (default ON):
+ * si lo apaga, [load] no restaura nada. Esa preferencia **sobrevive al logout**.
  *
  * Hay que llamar [init] una vez al arrancar (MainActivity) antes de usarlo.
  */
@@ -38,11 +36,10 @@ object SessionStore {
 
     private lateinit var appContext: Context
     private val io = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    private val dayMs = 24L * 60 * 60 * 1000
 
-    /** Opciones de duración ofrecidas en el perfil (días). */
-    val DAY_OPTIONS = listOf(1, 7, 30)
-    const val DEFAULT_DAYS = 7
+    /** Ventana de auto-login: la sesión guardada caduca a los 30 min de salir de la app. */
+    private val resumeWindowMs = 30L * 60 * 1000
+
     const val DEFAULT_ENABLED = true
 
     /** Modo de tema elegido por el usuario (preferencia, sobrevive al logout). */
@@ -57,11 +54,10 @@ object SessionStore {
     private val kCedula = stringPreferencesKey("cedula")
     private val kConductorId = longPreferencesKey("conductorId")
     private val kDebe = booleanPreferencesKey("debeCambiarPassword")
-    private val kSavedAt = longPreferencesKey("savedAt")
+    private val kLastActive = longPreferencesKey("lastActiveAt")
 
     // Claves de preferencia (NO las borra clear(): son ajustes del usuario, no la sesión).
     private val kAutoLoginEnabled = booleanPreferencesKey("autoLoginEnabled")
-    private val kAutoLoginDays = intPreferencesKey("autoLoginDays")
     private val kThemeMode = stringPreferencesKey("themeMode")
 
     fun init(context: Context) {
@@ -86,7 +82,7 @@ object SessionStore {
                 p[kRole] = role
                 p[kCedula] = cedula
                 p[kDebe] = debeCambiarPassword
-                p[kSavedAt] = System.currentTimeMillis()
+                p[kLastActive] = System.currentTimeMillis()
                 if (nombre != null) p[kNombre] = nombre else p.remove(kNombre)
                 if (conductorId != null) p[kConductorId] = conductorId else p.remove(kConductorId)
             }
@@ -100,6 +96,15 @@ object SessionStore {
     }
 
     /**
+     * Marca "última actividad" = ahora. Se llama al SALIR de la app (background): a partir de
+     * ese momento corre la ventana de 30 min del auto-login. Fire-and-forget.
+     */
+    fun touchLastActive() {
+        if (!ready) return
+        io.launch { appContext.sessionDataStore.edit { it[kLastActive] = System.currentTimeMillis() } }
+    }
+
+    /**
      * Borra la sesión persistida (lo llama AuthSession.clear al cerrar sesión).
      * Solo quita las claves de sesión: las preferencias de auto-login se conservan.
      */
@@ -107,21 +112,21 @@ object SessionStore {
         if (!ready) return
         io.launch {
             appContext.sessionDataStore.edit { p ->
-                listOf(kToken, kRole, kNombre, kCedula, kConductorId, kDebe, kSavedAt)
+                listOf(kToken, kRole, kNombre, kCedula, kConductorId, kDebe, kLastActive)
                     .forEach { p.remove(it) }
             }
         }
     }
 
-    /** Lee la sesión persistida, o null si no hay, está vencida, o el usuario apagó el auto-login. */
+    /** Lee la sesión persistida, o null si no hay, caducó (>30 min ausente) o el auto-login está apagado. */
     suspend fun load(): Persisted? {
         if (!ready) return null
         val p = appContext.sessionDataStore.data.first()
         if (!(p[kAutoLoginEnabled] ?: DEFAULT_ENABLED)) return null
         val token = p[kToken] ?: return null
-        val savedAt = p[kSavedAt] ?: 0L
-        val days = (p[kAutoLoginDays] ?: DEFAULT_DAYS).coerceAtLeast(1)
-        if (System.currentTimeMillis() - savedAt > days * dayMs) {
+        val lastActive = p[kLastActive] ?: 0L
+        // Caduca si pasaron más de 30 min desde que se salió de la app.
+        if (System.currentTimeMillis() - lastActive > resumeWindowMs) {
             clear()
             return null
         }
@@ -135,22 +140,22 @@ object SessionStore {
         )
     }
 
-    // --- Preferencias de auto-login (observables + setters para el perfil) ---
+    /** ¿Caducó la sesión guardada por ausencia? (para el chequeo al volver del background). */
+    suspend fun isExpiredByAbsence(): Boolean {
+        if (!ready) return false
+        val p = appContext.sessionDataStore.data.first()
+        val lastActive = p[kLastActive] ?: return false
+        return System.currentTimeMillis() - lastActive > resumeWindowMs
+    }
+
+    // --- Preferencias de auto-login (observable + setter para el perfil) ---
 
     fun autoLoginEnabledFlow(): Flow<Boolean> =
         prefsFlow { it[kAutoLoginEnabled] ?: DEFAULT_ENABLED }
 
-    fun autoLoginDaysFlow(): Flow<Int> =
-        prefsFlow { (it[kAutoLoginDays] ?: DEFAULT_DAYS).coerceAtLeast(1) }
-
     suspend fun setAutoLoginEnabled(enabled: Boolean) {
         if (!ready) return
         appContext.sessionDataStore.edit { it[kAutoLoginEnabled] = enabled }
-    }
-
-    suspend fun setAutoLoginDays(days: Int) {
-        if (!ready) return
-        appContext.sessionDataStore.edit { it[kAutoLoginDays] = days.coerceAtLeast(1) }
     }
 
     fun themeModeFlow(): Flow<String> = prefsFlow { it[kThemeMode] ?: THEME_SYSTEM }

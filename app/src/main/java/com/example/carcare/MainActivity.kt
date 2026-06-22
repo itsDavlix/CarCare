@@ -39,6 +39,8 @@ import com.example.carcare.ui.viewmodel.DriverViewModel
 import com.example.carcare.ui.viewmodel.MaintenanceViewModel
 import com.example.carcare.ui.viewmodel.NotificacionViewModel
 import com.example.carcare.ui.viewmodel.VehicleViewModel
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
 
 @dagger.hilt.android.AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -57,6 +59,24 @@ class MainActivity : ComponentActivity() {
             }
             CarCareTheme(darkTheme = dark) {
                 CarCareNavHost()
+            }
+        }
+    }
+
+    // Al SALIR de la app (background) se marca el momento: arranca la ventana de 30 min.
+    override fun onStop() {
+        super.onStop()
+        SessionStore.touchLastActive()
+    }
+
+    // Al VOLVER: si la sesión guardada caducó por ausencia (>30 min) y seguís logueado, se
+    // cierra como un 401 (vuelve al login). En el arranque en frío aún no hay sesión en memoria,
+    // así que no dispara nada (el auto-login ya aplica la misma ventana al restaurar).
+    override fun onStart() {
+        super.onStart()
+        if (AuthSession.isLoggedIn) {
+            lifecycleScope.launch {
+                if (SessionStore.isExpiredByAbsence()) SessionEvents.signalExpired()
             }
         }
     }
@@ -86,9 +106,14 @@ fun CarCareNavHost() {
     val authViewModel: AuthViewModel = hiltViewModel()
     val notificacionViewModel: NotificacionViewModel = hiltViewModel()
 
-    // Cerrar sesión: limpia el token y vuelve al login (sin repetir la intro).
+    // Destino de auto-login: se setea al arrancar si hay sesión válida en disco. Se ANULA al
+    // cerrar sesión / expirar para que AuthScreen no vuelva a auto-loguear (bug: reabría la sesión).
+    var autoLoginDest by remember { mutableStateOf<Pair<Role, String>?>(null) }
+
+    // Cerrar sesión: limpia el token, anula el auto-login y vuelve al login (sin repetir la intro).
     val logout: () -> Unit = {
         authViewModel.onLoggedOut()
+        autoLoginDest = null
         navController.popBackStack(Routes.AUTH, inclusive = false)
     }
 
@@ -104,7 +129,6 @@ fun CarCareNavHost() {
     // pero NO navegar de una: se le pasa el destino a AuthScreen para que primero corra
     // la intro y recién entre (con la misma transición que un login real). Si no hay
     // sesión válida, autoLoginDest queda null y se ve el login normal.
-    var autoLoginDest by remember { mutableStateOf<Pair<Role, String>?>(null) }
     LaunchedEffect(Unit) {
         val s = SessionStore.load() ?: return@LaunchedEffect
         val role = if (s.role == "ADMIN") Role.ADMIN else Role.DRIVER
@@ -124,6 +148,7 @@ fun CarCareNavHost() {
     LaunchedEffect(sessionExpired) {
         if (sessionExpired) {
             authViewModel.onLoggedOut()
+            autoLoginDest = null
             navController.navigate(Routes.AUTH) {
                 popUpTo(Routes.AUTH) { inclusive = true }
             }
