@@ -86,9 +86,14 @@ fun CarCareNavHost() {
     val authViewModel: AuthViewModel = hiltViewModel()
     val notificacionViewModel: NotificacionViewModel = hiltViewModel()
 
-    // Cerrar sesión: limpia el token y vuelve al login (sin repetir la intro).
+    // Destino de auto-login: se setea al arrancar si hay sesión válida en disco. Se ANULA al
+    // cerrar sesión / expirar para que AuthScreen no vuelva a auto-loguear (bug: reabría la sesión).
+    var autoLoginDest by remember { mutableStateOf<Pair<Role, String>?>(null) }
+
+    // Cerrar sesión: limpia el token, anula el auto-login y vuelve al login (sin repetir la intro).
     val logout: () -> Unit = {
         authViewModel.onLoggedOut()
+        autoLoginDest = null
         navController.popBackStack(Routes.AUTH, inclusive = false)
     }
 
@@ -104,7 +109,6 @@ fun CarCareNavHost() {
     // pero NO navegar de una: se le pasa el destino a AuthScreen para que primero corra
     // la intro y recién entre (con la misma transición que un login real). Si no hay
     // sesión válida, autoLoginDest queda null y se ve el login normal.
-    var autoLoginDest by remember { mutableStateOf<Pair<Role, String>?>(null) }
     LaunchedEffect(Unit) {
         val s = SessionStore.load() ?: return@LaunchedEffect
         val role = if (s.role == "ADMIN") Role.ADMIN else Role.DRIVER
@@ -124,6 +128,7 @@ fun CarCareNavHost() {
     LaunchedEffect(sessionExpired) {
         if (sessionExpired) {
             authViewModel.onLoggedOut()
+            autoLoginDest = null
             navController.navigate(Routes.AUTH) {
                 popUpTo(Routes.AUTH) { inclusive = true }
             }
