@@ -39,6 +39,8 @@ import com.example.carcare.ui.viewmodel.DriverViewModel
 import com.example.carcare.ui.viewmodel.MaintenanceViewModel
 import com.example.carcare.ui.viewmodel.NotificacionViewModel
 import com.example.carcare.ui.viewmodel.VehicleViewModel
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
 
 @dagger.hilt.android.AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -57,6 +59,24 @@ class MainActivity : ComponentActivity() {
             }
             CarCareTheme(darkTheme = dark) {
                 CarCareNavHost()
+            }
+        }
+    }
+
+    // Al SALIR de la app (background) se marca el momento: arranca la ventana de 30 min.
+    override fun onStop() {
+        super.onStop()
+        SessionStore.touchLastActive()
+    }
+
+    // Al VOLVER: si la sesión guardada caducó por ausencia (>30 min) y seguís logueado, se
+    // cierra como un 401 (vuelve al login). En el arranque en frío aún no hay sesión en memoria,
+    // así que no dispara nada (el auto-login ya aplica la misma ventana al restaurar).
+    override fun onStart() {
+        super.onStart()
+        if (AuthSession.isLoggedIn) {
+            lifecycleScope.launch {
+                if (SessionStore.isExpiredByAbsence()) SessionEvents.signalExpired()
             }
         }
     }
