@@ -97,6 +97,16 @@ fun MaintenanceListSection(
     }
 }
 
+/**
+ * Transiciones válidas de estado de mantenimiento (espeja el backend):
+ * PENDING → IN_PROGRESS/COMPLETED, IN_PROGRESS → COMPLETED, COMPLETED terminal.
+ */
+private fun maintenanceTargets(current: MaintenanceStatus): List<MaintenanceStatus> = when (current) {
+    MaintenanceStatus.PENDING -> listOf(MaintenanceStatus.IN_PROGRESS, MaintenanceStatus.COMPLETED)
+    MaintenanceStatus.IN_PROGRESS -> listOf(MaintenanceStatus.COMPLETED)
+    MaintenanceStatus.COMPLETED -> emptyList()
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MaintenanceItem(
@@ -139,10 +149,12 @@ fun MaintenanceItem(
             }
             Spacer(modifier = Modifier.height(10.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
-                MaintenanceStatus.entries.forEach { status ->
+                // Estado actual (seleccionado, no accionable) + solo las transiciones válidas.
+                val maintChips = listOf(maintenance.status) + maintenanceTargets(maintenance.status)
+                maintChips.forEach { status ->
                     FilterChip(
                         selected = maintenance.status == status,
-                        onClick = { onStatusChange(status) },
+                        onClick = { if (status != maintenance.status) onStatusChange(status) },
                         label = { Text(status.label, style = MaterialTheme.typography.labelMedium) },
                         modifier = Modifier.padding(end = 6.dp)
                     )
