@@ -24,6 +24,8 @@ data class Assignment(
     val fuelLevelFinal: FuelLevel? = null,
     val conditionOkFinal: Boolean? = null,
     val rejectionReason: String? = null,
+    val hasPhotoInitial: Boolean = false,
+    val hasPhotoFinal: Boolean = false,
     // Derivados del backend: atraso de devolución
     val overdue: Boolean = false,
     val daysOverdue: Long = 0

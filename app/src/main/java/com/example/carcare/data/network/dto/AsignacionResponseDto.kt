@@ -28,6 +28,8 @@ data class AsignacionResponseDto(
     val nivelCombustibleFinal: String? = null,
     val condicionOptimaFinal: Boolean? = null,
     val motivoRechazo: String? = null,
+    val tieneFotoInicial: Boolean = false,
+    val tieneFotoFinal: Boolean = false,
     // Derivados: atraso de devolución
     val vencida: Boolean = false,
     val diasAtraso: Long = 0

@@ -11,5 +11,6 @@ data class AceptarAsignacionDto(
     val kilometrajeInicial: Long,
     val nivelCombustible: String,
     val condicionOptima: Boolean,
-    val observaciones: String? = null
+    val observaciones: String? = null,
+    val fotoCombustible: String? = null
 )

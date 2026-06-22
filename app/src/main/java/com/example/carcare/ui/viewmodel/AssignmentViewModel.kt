@@ -6,6 +6,8 @@ import com.example.carcare.model.Driver
 import com.example.carcare.model.FuelLevel
 import com.example.carcare.model.Vehicle
 import com.example.carcare.model.VehicleStatus
+import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.launch
 import java.util.Date
 
 @dagger.hilt.android.lifecycle.HiltViewModel
@@ -42,9 +44,23 @@ class AssignmentViewModel @javax.inject.Inject constructor(repository: Assignmen
         fuelLevel: FuelLevel,
         conditionOk: Boolean,
         observations: String,
+        photoBase64: String? = null,
         onSuccess: () -> Unit = {}
     ) = replaceFromNetwork(onSuccess) {
-        repository.accept(assignmentId, initialMileage, fuelLevel, conditionOk, observations)
+        repository.accept(assignmentId, initialMileage, fuelLevel, conditionOk, observations, photoBase64)
+    }
+
+    /** Baja la foto del combustible (base64) de una asignación; devuelve por callback. */
+    fun fetchPhoto(assignmentId: String, initial: Boolean, onResult: (String?) -> Unit) {
+        viewModelScope.launch {
+            val foto = try {
+                if (initial) repository.fetchInitialPhoto(assignmentId)
+                else repository.fetchFinalPhoto(assignmentId)
+            } catch (e: Exception) {
+                null
+            }
+            onResult(foto)
+        }
     }
 
     /** El conductor rechaza su asignación pendiente; el backend libera el vehículo. */
@@ -64,9 +80,10 @@ class AssignmentViewModel @javax.inject.Inject constructor(repository: Assignmen
         observations: String,
         fuelLevel: FuelLevel,
         conditionOk: Boolean,
+        photoBase64: String? = null,
         onSuccess: () -> Unit = {}
     ) = replaceFromNetwork(onSuccess) {
-        repository.deliver(assignmentId, returnDate, finalMileage, observations, fuelLevel, conditionOk)
+        repository.deliver(assignmentId, returnDate, finalMileage, observations, fuelLevel, conditionOk, photoBase64)
     }
 
     /** El backend actualiza km + estado del vehículo; onSuccess debe refrescar vehículos. */
