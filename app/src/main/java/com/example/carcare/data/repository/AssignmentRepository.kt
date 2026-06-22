@@ -1,5 +1,8 @@
 package com.example.carcare.data.repository
 
+import com.example.carcare.data.local.AsignacionDao
+import com.example.carcare.data.local.toAssignment
+import com.example.carcare.data.local.toEntity
 import com.example.carcare.data.network.ApiClient
 import com.example.carcare.data.network.dto.AceptarAsignacionDto
 import com.example.carcare.data.network.dto.AsignacionRequestDto
@@ -19,38 +22,53 @@ import java.util.Date
  * El backend coordina los efectos sobre el vehiculo (IN_USE al crear,
  * km+estado al completar, liberar al borrar). El cliente NO los replica.
  */
-class AssignmentRepository @javax.inject.Inject constructor() : CrudRepository<Assignment> {
+class AssignmentRepository @javax.inject.Inject constructor(
+    private val dao: AsignacionDao
+) : CrudRepository<Assignment> {
 
     private val api = ApiClient.asignacionApi
 
-    override suspend fun getAll(): List<Assignment> = api.listar().map { it.toDomain() }
+    override suspend fun getAll(): List<Assignment> = try {
+        val remote = api.listar().map { it.toDomain() }
+        dao.replaceAll(remote.map { it.toEntity() })
+        remote
+    } catch (e: Exception) {
+        val cached = dao.getAll().map { it.toAssignment() }
+        if (cached.isNotEmpty()) cached else throw e
+    }
 
     override suspend fun create(assignment: Assignment): Assignment =
-        api.crear(assignment.toRequestDto()).toDomain()
+        api.crear(assignment.toRequestDto()).toDomain().also { dao.upsert(it.toEntity()) }
 
     suspend fun update(assignment: Assignment): Assignment =
-        api.actualizar(assignment.id.toLong(), assignment.toRequestDto()).toDomain()
+        api.actualizar(assignment.id.toLong(), assignment.toRequestDto()).toDomain().also { dao.upsert(it.toEntity()) }
 
-    /** Check-out del conductor: acepta la asignación pendiente. */
+    /** Check-out del conductor: acepta la asignación pendiente (con foto opcional en base64). */
     suspend fun accept(
         id: String,
         initialMileage: Long,
         fuelLevel: FuelLevel,
         conditionOk: Boolean,
-        observations: String
+        observations: String,
+        photoBase64: String?
     ): Assignment {
         val dto = AceptarAsignacionDto(
             kilometrajeInicial = initialMileage,
             nivelCombustible = fuelLevel.name,
             condicionOptima = conditionOk,
-            observaciones = observations.ifBlank { null }
+            observaciones = observations.ifBlank { null },
+            fotoCombustible = photoBase64
         )
-        return api.aceptar(id.toLong(), dto).toDomain()
+        return api.aceptar(id.toLong(), dto).toDomain().also { dao.upsert(it.toEntity()) }
     }
+
+    /** Baja la foto del combustible (base64) por id; null si no hay. */
+    suspend fun fetchInitialPhoto(id: String): String? = api.fotoInicial(id.toLong()).foto
+    suspend fun fetchFinalPhoto(id: String): String? = api.fotoFinal(id.toLong()).foto
 
     /** El conductor rechaza la asignación pendiente con un motivo. */
     suspend fun reject(id: String, reason: String): Assignment =
-        api.rechazar(id.toLong(), RechazarAsignacionDto(motivo = reason)).toDomain()
+        api.rechazar(id.toLong(), RechazarAsignacionDto(motivo = reason)).toDomain().also { dao.upsert(it.toEntity()) }
 
     /** Admin: registra el retorno y elige el estado siguiente del vehículo. */
     suspend fun complete(
@@ -66,7 +84,7 @@ class AssignmentRepository @javax.inject.Inject constructor() : CrudRepository<A
             observacionesRetorno = observations.ifBlank { null },
             siguienteEstadoVehiculo = nextStatus.name
         )
-        return api.completar(id.toLong(), dto).toDomain()
+        return api.completar(id.toLong(), dto).toDomain().also { dao.upsert(it.toEntity()) }
     }
 
     /**
@@ -80,20 +98,23 @@ class AssignmentRepository @javax.inject.Inject constructor() : CrudRepository<A
         finalMileage: Long,
         observations: String,
         fuelLevel: FuelLevel,
-        conditionOk: Boolean
+        conditionOk: Boolean,
+        photoBase64: String?
     ): Assignment {
         val dto = CompletarAsignacionDto(
             fechaRetorno = formatApiDate(returnDate),
             kilometrajeFinal = finalMileage,
             observacionesRetorno = observations.ifBlank { null },
             nivelCombustibleFinal = fuelLevel.name,
-            condicionOptimaFinal = conditionOk
+            condicionOptimaFinal = conditionOk,
+            fotoCombustibleFinal = photoBase64
         )
-        return api.completar(id.toLong(), dto).toDomain()
+        return api.completar(id.toLong(), dto).toDomain().also { dao.upsert(it.toEntity()) }
     }
 
     override suspend fun delete(id: String) {
         api.eliminar(id.toLong())
+        dao.deleteById(id)
     }
 }
 
@@ -118,6 +139,8 @@ private fun AsignacionResponseDto.toDomain(): Assignment = Assignment(
     fuelLevelFinal = FuelLevel.fromName(nivelCombustibleFinal),
     conditionOkFinal = condicionOptimaFinal,
     rejectionReason = motivoRechazo,
+    hasPhotoInitial = tieneFotoInicial,
+    hasPhotoFinal = tieneFotoFinal,
     overdue = vencida,
     daysOverdue = diasAtraso
 )

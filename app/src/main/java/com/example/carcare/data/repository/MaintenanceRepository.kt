@@ -1,5 +1,8 @@
 package com.example.carcare.data.repository
 
+import com.example.carcare.data.local.MantenimientoDao
+import com.example.carcare.data.local.toEntity
+import com.example.carcare.data.local.toMaintenance
 import com.example.carcare.data.network.ApiClient
 import com.example.carcare.data.network.dto.CambioEstadoDto
 import com.example.carcare.data.network.dto.MantenimientoRequestDto
@@ -15,14 +18,23 @@ import java.util.Date
  * Conecta el modelo Maintenance con la API de mantenimientos.
  * Convierte id y vehicleId Long<->String y fechas Date<->String.
  */
-class MaintenanceRepository @javax.inject.Inject constructor() : CrudRepository<Maintenance> {
+class MaintenanceRepository @javax.inject.Inject constructor(
+    private val dao: MantenimientoDao
+) : CrudRepository<Maintenance> {
 
     private val api = ApiClient.mantenimientoApi
 
-    override suspend fun getAll(): List<Maintenance> = api.listar().map { it.toDomain() }
+    override suspend fun getAll(): List<Maintenance> = try {
+        val remote = api.listar().map { it.toDomain() }
+        dao.replaceAll(remote.map { it.toEntity() })
+        remote
+    } catch (e: Exception) {
+        val cached = dao.getAll().map { it.toMaintenance() }
+        if (cached.isNotEmpty()) cached else throw e
+    }
 
     override suspend fun create(maintenance: Maintenance): Maintenance =
-        api.crear(maintenance.toRequestDto()).toDomain()
+        api.crear(maintenance.toRequestDto()).toDomain().also { dao.upsert(it.toEntity()) }
 
     /**
      * Reporte del conductor: crea el mantenimiento y, en la MISMA operación, el backend
@@ -30,17 +42,18 @@ class MaintenanceRepository @javax.inject.Inject constructor() : CrudRepository<
      * (alta + km + estado), una de las cuales (km) era ADMIN-only → daba 403 al conductor.
      */
     suspend fun reportar(maintenance: Maintenance): Maintenance =
-        api.crear(maintenance.toRequestDto(enRevision = true)).toDomain()
+        api.crear(maintenance.toRequestDto(enRevision = true)).toDomain().also { dao.upsert(it.toEntity()) }
 
     suspend fun update(maintenance: Maintenance): Maintenance =
-        api.actualizar(maintenance.id.toLong(), maintenance.toRequestDto()).toDomain()
+        api.actualizar(maintenance.id.toLong(), maintenance.toRequestDto()).toDomain().also { dao.upsert(it.toEntity()) }
 
     override suspend fun delete(id: String) {
         api.eliminar(id.toLong())
+        dao.deleteById(id)
     }
 
     suspend fun changeStatus(id: String, status: MaintenanceStatus): Maintenance =
-        api.cambiarEstado(id.toLong(), CambioEstadoDto(status.name)).toDomain()
+        api.cambiarEstado(id.toLong(), CambioEstadoDto(status.name)).toDomain().also { dao.upsert(it.toEntity()) }
 }
 
 // ---------- Mappers DTO <-> dominio ----------

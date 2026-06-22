@@ -1,5 +1,8 @@
 package com.example.carcare.data.repository
 
+import com.example.carcare.data.local.VehiculoDao
+import com.example.carcare.data.local.toEntity
+import com.example.carcare.data.local.toVehicle
 import com.example.carcare.data.network.ApiClient
 import com.example.carcare.data.network.dto.ActualizarKilometrajeDto
 import com.example.carcare.data.network.dto.CambioEstadoDto
@@ -15,27 +18,42 @@ import com.example.carcare.model.VehicleStatus
  * Conecta el modelo de dominio Vehicle con la API.
  * Convierte id Long<->String y fechas Date<->String en el borde de red.
  */
-class VehicleRepository @javax.inject.Inject constructor() : CrudRepository<Vehicle> {
+class VehicleRepository @javax.inject.Inject constructor(
+    private val dao: VehiculoDao
+) : CrudRepository<Vehicle> {
 
     private val api = ApiClient.vehiculoApi
 
-    override suspend fun getAll(): List<Vehicle> = api.listar().map { it.toDomain() }
+    /**
+     * Read-through: pide a la API, refresca el caché Room y devuelve. Si la API falla y hay
+     * caché, devuelve lo guardado (lectura offline). Online = comportamiento idéntico al anterior.
+     */
+    override suspend fun getAll(): List<Vehicle> = try {
+        val remote = api.listar().map { it.toDomain() }
+        dao.replaceAll(remote.map { it.toEntity() })
+        remote
+    } catch (e: Exception) {
+        val cached = dao.getAll().map { it.toVehicle() }
+        if (cached.isNotEmpty()) cached else throw e
+    }
 
+    // Escrituras: la API manda; al volver OK, se espeja el resultado en Room (write-through).
     override suspend fun create(vehicle: Vehicle): Vehicle =
-        api.crear(vehicle.toRequestDto()).toDomain()
+        api.crear(vehicle.toRequestDto()).toDomain().also { dao.upsert(it.toEntity()) }
 
     suspend fun update(vehicle: Vehicle): Vehicle =
-        api.actualizar(vehicle.id.toLong(), vehicle.toRequestDto()).toDomain()
+        api.actualizar(vehicle.id.toLong(), vehicle.toRequestDto()).toDomain().also { dao.upsert(it.toEntity()) }
 
     override suspend fun delete(id: String) {
         api.eliminar(id.toLong())
+        dao.deleteById(id)
     }
 
     suspend fun changeStatus(id: String, status: VehicleStatus): Vehicle =
-        api.cambiarEstado(id.toLong(), CambioEstadoDto(status.name)).toDomain()
+        api.cambiarEstado(id.toLong(), CambioEstadoDto(status.name)).toDomain().also { dao.upsert(it.toEntity()) }
 
     suspend fun updateMileage(id: String, mileage: Long): Vehicle =
-        api.actualizarKilometraje(id.toLong(), ActualizarKilometrajeDto(mileage)).toDomain()
+        api.actualizarKilometraje(id.toLong(), ActualizarKilometrajeDto(mileage)).toDomain().also { dao.upsert(it.toEntity()) }
 }
 
 // ---------- Mappers DTO <-> dominio ----------

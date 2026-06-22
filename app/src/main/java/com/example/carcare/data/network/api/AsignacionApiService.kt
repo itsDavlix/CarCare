@@ -4,6 +4,7 @@ import com.example.carcare.data.network.dto.AceptarAsignacionDto
 import com.example.carcare.data.network.dto.AsignacionRequestDto
 import com.example.carcare.data.network.dto.AsignacionResponseDto
 import com.example.carcare.data.network.dto.CompletarAsignacionDto
+import com.example.carcare.data.network.dto.FotoResponseDto
 import com.example.carcare.data.network.dto.RechazarAsignacionDto
 import retrofit2.Response
 import retrofit2.http.*
@@ -18,6 +19,12 @@ interface AsignacionApiService {
 
     @GET("api/asignaciones/activas")
     suspend fun listarActivas(): List<AsignacionResponseDto>
+
+    @GET("api/asignaciones/{id}/foto-inicial")
+    suspend fun fotoInicial(@Path("id") id: Long): FotoResponseDto
+
+    @GET("api/asignaciones/{id}/foto-final")
+    suspend fun fotoFinal(@Path("id") id: Long): FotoResponseDto
 
     @GET("api/asignaciones/vehiculo/{vehiculoId}")
     suspend fun listarPorVehiculo(@Path("vehiculoId") vehiculoId: Long): List<AsignacionResponseDto>
