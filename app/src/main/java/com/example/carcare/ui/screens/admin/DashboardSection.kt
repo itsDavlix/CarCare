@@ -30,6 +30,8 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.layout.ContentScale
+import coil.compose.AsyncImage
 import com.example.carcare.model.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -236,6 +238,14 @@ fun DashboardSection(
             }
             if (m.nextMileage != null && v != null && v.mileage >= m.nextMileage) list.add(Triple("m-km-${m.id}", true, "Mant. vencido por KM · $label"))
         }
+        vehicles.forEach { v ->
+            val label = "${v.brand} (${Validators.formatPlate(v.plate)})"
+            if (v.isInsuranceExpired) {
+                list.add(Triple("v-ins-${v.id}", true, "Seguro vencido · $label"))
+            } else if (v.isInsuranceExpiringSoon) {
+                list.add(Triple("v-ins-${v.id}", false, "Seguro por vencer · $label"))
+            }
+        }
         drivers.filter { it.status == DriverStatus.ACTIVE }.forEach { d ->
             if (d.isLicenseExpired) list.add(Triple("d-lic-${d.id}", true, "Licencia vencida · ${d.fullName}"))
             else if (d.licenseExpiryDate.before(soon)) list.add(Triple("d-lic-${d.id}", false, "Licencia por vencer · ${d.fullName}"))
@@ -397,8 +407,23 @@ private fun ActivityRow(a: Assignment, vehicles: List<Vehicle>, drivers: List<Dr
                 )
             },
             leadingContent = {
-                if (out) Icon(Icons.AutoMirrored.Filled.Logout, null, tint = StatusOutOfService)
-                else Icon(Icons.AutoMirrored.Filled.Login, null, tint = StatusAvailable)
+                if (v?.vehiclePhotoUri != null) {
+                    Box(
+                        modifier = Modifier.size(40.dp).clip(MaterialTheme.shapes.extraSmall),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        AsyncImage(
+                            model = v.vehiclePhotoUri,
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
+                } else if (out) {
+                    Icon(Icons.AutoMirrored.Filled.Logout, null, tint = StatusOutOfService)
+                } else {
+                    Icon(Icons.AutoMirrored.Filled.Login, null, tint = StatusAvailable)
+                }
             }
         )
     }

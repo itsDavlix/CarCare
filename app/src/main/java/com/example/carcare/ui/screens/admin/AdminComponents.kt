@@ -141,7 +141,23 @@ fun VehicleItem(
                     style = instrumentMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                StatusBadge(status = vehicle.status)
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                    StatusBadge(status = vehicle.effectiveStatus)
+                    if (vehicle.isInsuranceExpired) {
+                        Surface(
+                            color = MaterialTheme.colorScheme.errorContainer,
+                            contentColor = MaterialTheme.colorScheme.onErrorContainer,
+                            shape = MaterialTheme.shapes.small
+                        ) {
+                            Text(
+                                "Seguro vencido",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
+                }
             }
             RowActions(onDelete = onDelete)
         }

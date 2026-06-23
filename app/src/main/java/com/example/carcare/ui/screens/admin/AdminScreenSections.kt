@@ -18,8 +18,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
 import com.example.carcare.model.Assignment
 import com.example.carcare.model.AssignmentStatus
 import com.example.carcare.model.Driver
@@ -130,7 +132,21 @@ fun MaintenanceItem(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                LeadingTile(icon = Icons.Default.Build, tint = maintenance.status.statusColor)
+                if (vehicle?.vehiclePhotoUri != null) {
+                    Box(
+                        modifier = Modifier.size(52.dp).clip(MaterialTheme.shapes.small),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        AsyncImage(
+                            model = vehicle.vehiclePhotoUri,
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
+                } else {
+                    LeadingTile(icon = Icons.Default.Build, tint = maintenance.status.statusColor)
+                }
                 Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(text = maintenance.type.label, style = MaterialTheme.typography.titleMedium, maxLines = 1)
                     Text(
@@ -228,15 +244,29 @@ fun DriverItem(
             horizontalArrangement = Arrangement.spacedBy(14.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Box(
-                modifier = Modifier.size(52.dp).clip(CircleShape)
-                    .background(driver.effectiveStatus.statusColor.copy(alpha = 0.14f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    Icons.Default.Person, contentDescription = null,
-                    tint = driver.effectiveStatus.statusColor, modifier = Modifier.size(26.dp)
-                )
+            if (driver.profilePhotoUri != null) {
+                Box(
+                    modifier = Modifier.size(52.dp).clip(CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    AsyncImage(
+                        model = driver.profilePhotoUri,
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
+            } else {
+                Box(
+                    modifier = Modifier.size(52.dp).clip(CircleShape)
+                        .background(driver.effectiveStatus.statusColor.copy(alpha = 0.14f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        Icons.Default.Person, contentDescription = null,
+                        tint = driver.effectiveStatus.statusColor, modifier = Modifier.size(26.dp)
+                    )
+                }
             }
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                 Text(text = driver.fullName, style = MaterialTheme.typography.titleMedium, maxLines = 1)
@@ -293,8 +323,8 @@ fun AssignmentListSection(
     if (assignments.isEmpty()) {
         EmptyState(
             icon = Icons.AutoMirrored.Filled.Assignment,
-            title = "Sin asignaciones",
-            subtitle = "Asigná un vehículo disponible a un conductor con el botón +.",
+            title = "Sin asignaciones activas",
+            subtitle = "No hay vehículos en circulación. Asigná uno con el botón +.",
             modifier = Modifier.fillMaxSize()
         )
     } else {
@@ -363,7 +393,21 @@ fun AssignmentItem(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                LeadingTile(icon = Icons.Default.DirectionsCar, tint = assignment.status.statusColor)
+                if (vehicle?.vehiclePhotoUri != null) {
+                    Box(
+                        modifier = Modifier.size(52.dp).clip(MaterialTheme.shapes.small),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        AsyncImage(
+                            model = vehicle.vehiclePhotoUri,
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
+                } else {
+                    LeadingTile(icon = Icons.Default.DirectionsCar, tint = assignment.status.statusColor)
+                }
                 Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(
                         text = vehicle?.let { "${it.brand} ${it.model} · $plateLabel" } ?: "Vehículo eliminado",
