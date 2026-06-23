@@ -204,7 +204,7 @@ fun buildDashboardStats(
 
     // ---- Conductores ----
     val dEstado = DriverStatus.entries.mapNotNull { s ->
-        val c = drivers.count { it.status == s }
+        val c = drivers.count { it.effectiveStatus == s }
         if (c > 0) Bar(s.label, c, driverColor(s)) else null
     }
     // Un conductor cuenta como "asignado" con carrera activa o pendiente de aceptar (reservado).

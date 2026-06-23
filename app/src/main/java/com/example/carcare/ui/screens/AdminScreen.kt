@@ -88,6 +88,7 @@ fun AdminScreen(
     var driverToChangePassword by remember { mutableStateOf<Driver?>(null) }
 
     var showAssignmentForm by remember { mutableStateOf(false) }
+    var showAssignmentHistory by remember { mutableStateOf(false) }
     var assignmentToEdit by remember { mutableStateOf<com.example.carcare.model.Assignment?>(null) }
     var assignmentToDelete by remember { mutableStateOf<com.example.carcare.model.Assignment?>(null) }
     var assignmentToShowDetails by remember { mutableStateOf<com.example.carcare.model.Assignment?>(null) }
@@ -257,13 +258,33 @@ fun AdminScreen(
                             )
                         }
                         4 -> {
-                            SearchBar(
-                                query = assignmentViewModel.searchQuery,
-                                onQueryChange = { assignmentViewModel.onSearchQueryChange(it) },
-                                label = "Buscar asignación..."
-                            )
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Box(modifier = Modifier.weight(1f)) {
+                                    SearchBar(
+                                        query = assignmentViewModel.searchQuery,
+                                        onQueryChange = { assignmentViewModel.onSearchQueryChange(it) },
+                                        label = "Buscar asignación..."
+                                    )
+                                }
+                                IconButton(onClick = { showAssignmentHistory = true }) {
+                                    Icon(Icons.Default.History, contentDescription = "Historial de Asignaciones")
+                                }
+                            }
+                            val activeAssignments = remember(
+                                assignmentViewModel.assignments,
+                                assignmentViewModel.searchQuery,
+                                vehicleViewModel.vehicles,
+                                driverViewModel.drivers
+                            ) {
+                                assignmentViewModel.getFilteredAssignments(vehicleViewModel.vehicles, driverViewModel.drivers)
+                                    .filter { it.status == AssignmentStatus.ACTIVE || it.status == AssignmentStatus.PENDING_ACCEPTANCE }
+                            }
                             AssignmentListSection(
-                                assignments = assignmentViewModel.getFilteredAssignments(vehicleViewModel.vehicles, driverViewModel.drivers),
+                                assignments = activeAssignments,
                                 vehicles = vehicleViewModel.vehicles,
                                 drivers = driverViewModel.drivers,
                                 onClick = { assignmentToShowDetails = it },
@@ -338,13 +359,13 @@ fun AdminScreen(
         }
         val selectableVehicles = remember(vehicleViewModel.vehicles, assignmentToEdit) {
             vehicleViewModel.vehicles.filter {
-                it.status == VehicleStatus.AVAILABLE || it.id == assignmentToEdit?.vehicleId
+                (it.status == VehicleStatus.AVAILABLE && !it.isInsuranceExpired) || it.id == assignmentToEdit?.vehicleId
             }
         }
         val selectableDrivers = remember(driverViewModel.drivers, busyDriverIds, assignmentToEdit) {
             driverViewModel.drivers.filter {
-                // Un conductor cuya cédula es de una cuenta ADMIN no es asignable.
-                (it.status == DriverStatus.ACTIVE && !it.isAdmin && it.id !in busyDriverIds) ||
+                // Un conductor cuya cédula es de una cuenta ADMIN o con licencia VENCIDA no es asignable.
+                (it.status == DriverStatus.ACTIVE && !it.isAdmin && !it.isLicenseExpired && it.id !in busyDriverIds) ||
                         it.id == assignmentToEdit?.driverId
             }
         }
@@ -485,7 +506,9 @@ fun AdminScreen(
             assignment = assignmentToShowDetails!!,
             vehicle = vehicleViewModel.vehicles.find { it.id == assignmentToShowDetails!!.vehicleId },
             driver = driverViewModel.drivers.find { it.id == assignmentToShowDetails!!.driverId },
-            onFetchPhoto = { id, initial, cb -> assignmentViewModel.fetchPhoto(id, initial, cb) },
+            onFetchPhoto = { id: String, initial: Boolean, cb: (String?) -> Unit ->
+                assignmentViewModel.fetchPhoto(id, initial, cb)
+            },
             onDismiss = { assignmentToShowDetails = null },
             onEdit = {
                 assignmentToEdit = assignmentToShowDetails
@@ -502,6 +525,20 @@ fun AdminScreen(
             onDismiss = { showGeneralHistory = false },
             onMaintenanceClick = {
                 maintenanceToShowDetails = it
+            }
+        )
+    }
+
+    if (showAssignmentHistory) {
+        GeneralAssignmentHistoryDialog(
+            assignments = assignmentViewModel.assignments.filter {
+                it.status == AssignmentStatus.COMPLETED || it.status == AssignmentStatus.REJECTED
+            },
+            vehicles = vehicleViewModel.vehicles,
+            drivers = driverViewModel.drivers,
+            onDismiss = { showAssignmentHistory = false },
+            onAssignmentClick = { assignment ->
+                assignmentToShowDetails = assignment
             }
         )
     }

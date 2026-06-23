@@ -30,6 +30,8 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.layout.ContentScale
+import coil.compose.AsyncImage
 import com.example.carcare.model.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -210,7 +212,7 @@ fun DashboardSection(
     val soon = remember { Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, 7) }.time }
 
     val statusCount = remember(vehicles) { vehicles.groupingBy { it.status }.eachCount() }
-    val activeDrivers = remember(drivers) { drivers.count { it.status == DriverStatus.ACTIVE } }
+    val activeDrivers = remember(drivers) { drivers.count { it.effectiveStatus == DriverStatus.ACTIVE } }
     val maintInProgress = remember(maintenances) { maintenances.count { it.status == MaintenanceStatus.IN_PROGRESS } }
     val activeAssignments = remember(assignments) { assignments.count { it.status == AssignmentStatus.ACTIVE } }
     val totalKm = remember(vehicles) { vehicles.sumOf { it.mileage } }
@@ -236,8 +238,16 @@ fun DashboardSection(
             }
             if (m.nextMileage != null && v != null && v.mileage >= m.nextMileage) list.add(Triple("m-km-${m.id}", true, "Mant. vencido por KM · $label"))
         }
+        vehicles.forEach { v ->
+            val label = "${v.brand} (${Validators.formatPlate(v.plate)})"
+            if (v.isInsuranceExpired) {
+                list.add(Triple("v-ins-${v.id}", true, "Seguro vencido · $label"))
+            } else if (v.isInsuranceExpiringSoon) {
+                list.add(Triple("v-ins-${v.id}", false, "Seguro por vencer · $label"))
+            }
+        }
         drivers.filter { it.status == DriverStatus.ACTIVE }.forEach { d ->
-            if (d.licenseExpiryDate.before(now)) list.add(Triple("d-lic-${d.id}", true, "Licencia vencida · ${d.fullName}"))
+            if (d.isLicenseExpired) list.add(Triple("d-lic-${d.id}", true, "Licencia vencida · ${d.fullName}"))
             else if (d.licenseExpiryDate.before(soon)) list.add(Triple("d-lic-${d.id}", false, "Licencia por vencer · ${d.fullName}"))
         }
         list
@@ -258,6 +268,24 @@ fun DashboardSection(
     }
 
     LazyColumn(modifier = Modifier.fillMaxSize()) {
+        if (alerts.isNotEmpty()) {
+            item { SectionTitle("Alertas críticas") }
+            items(alerts, key = { it.first }) { (_, critical, text) ->
+                Card(
+                    Modifier.fillMaxWidth().padding(vertical = 4.dp).animateItem(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = if (critical) StatusOutOfService.copy(alpha = 0.10f)
+                        else Amber.copy(alpha = 0.12f))
+                ) {
+                    Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.Warning, null, tint = if (critical) StatusOutOfService else AmberDeep)
+                        Spacer(Modifier.width(10.dp))
+                        Text(text, style = MaterialTheme.typography.bodyMedium)
+                    }
+                }
+            }
+        }
+
         item {
             SectionTitle("Resumen de flota")
             FleetHeroCard(total = vehicles.size, chips = fleetChips)
@@ -289,24 +317,6 @@ fun DashboardSection(
                 buildDashboardStats(vehicles, drivers, maintenances, assignments)
             }
             StatsCard(groups = statGroups)
-        }
-
-        if (alerts.isNotEmpty()) {
-            item { SectionTitle("Alertas críticas") }
-            items(alerts, key = { it.first }) { (_, critical, text) ->
-                Card(
-                    Modifier.fillMaxWidth().padding(vertical = 4.dp).animateItem(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = if (critical) StatusOutOfService.copy(alpha = 0.10f)
-                        else Amber.copy(alpha = 0.12f))
-                ) {
-                    Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.Warning, null, tint = if (critical) StatusOutOfService else AmberDeep)
-                        Spacer(Modifier.width(10.dp))
-                        Text(text, style = MaterialTheme.typography.bodyMedium)
-                    }
-                }
-            }
         }
 
         if (lastOut.isNotEmpty()) {
@@ -397,8 +407,23 @@ private fun ActivityRow(a: Assignment, vehicles: List<Vehicle>, drivers: List<Dr
                 )
             },
             leadingContent = {
-                if (out) Icon(Icons.AutoMirrored.Filled.Logout, null, tint = StatusOutOfService)
-                else Icon(Icons.AutoMirrored.Filled.Login, null, tint = StatusAvailable)
+                if (v?.vehiclePhotoUri != null) {
+                    Box(
+                        modifier = Modifier.size(40.dp).clip(MaterialTheme.shapes.extraSmall),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        AsyncImage(
+                            model = v.vehiclePhotoUri,
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
+                } else if (out) {
+                    Icon(Icons.AutoMirrored.Filled.Logout, null, tint = StatusOutOfService)
+                } else {
+                    Icon(Icons.AutoMirrored.Filled.Login, null, tint = StatusAvailable)
+                }
             }
         )
     }

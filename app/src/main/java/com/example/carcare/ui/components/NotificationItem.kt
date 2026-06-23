@@ -47,7 +47,7 @@ fun NotificationItem(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val sdf = remember { SimpleDateFormat("dd/MM HH:mm", Locale.getDefault()) }
+    val sdf = remember { SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()) }
     Row(
         modifier = modifier
             .fillMaxWidth()

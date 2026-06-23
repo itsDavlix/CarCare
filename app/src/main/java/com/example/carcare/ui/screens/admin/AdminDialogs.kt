@@ -4,11 +4,13 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -42,6 +44,7 @@ import com.example.carcare.util.Validators
 import java.text.SimpleDateFormat
 import java.util.*
 import com.example.carcare.ui.theme.statusColor
+import com.example.carcare.ui.theme.StatusAvailable
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -331,7 +334,35 @@ fun VehicleDetailsDialog(
                 item {
                     Text("${vehicle.brand} ${vehicle.model}", style = MaterialTheme.typography.headlineSmall)
                     Spacer(modifier = Modifier.height(2.dp))
-                    StatusBadge(status = vehicle.status)
+                    StatusBadge(status = vehicle.effectiveStatus)
+                    if (vehicle.isInsuranceExpired) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Surface(
+                            color = MaterialTheme.colorScheme.errorContainer,
+                            contentColor = MaterialTheme.colorScheme.onErrorContainer,
+                            shape = MaterialTheme.shapes.medium,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(12.dp)
+                            ) {
+                                Icon(Icons.Default.Warning, contentDescription = null)
+                                Spacer(modifier = Modifier.width(10.dp))
+                                Column {
+                                    Text(
+                                        "Seguro vencido",
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    Text(
+                                        "El vehículo no puede ser asignado hasta que se renueve la póliza.",
+                                        style = MaterialTheme.typography.bodySmall
+                                    )
+                                }
+                            }
+                        }
+                    }
                     Spacer(modifier = Modifier.height(12.dp))
                     KeyValueRow("Placa", Validators.formatPlate(vehicle.plate), mono = true)
                     KeyValueRow("Año", "${vehicle.year}", mono = true)
@@ -952,19 +983,19 @@ fun DriverDetailsDialog(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(
                         modifier = Modifier.size(64.dp).clip(CircleShape)
-                            .background(driver.status.statusColor.copy(alpha = 0.14f)),
+                            .background(driver.effectiveStatus.statusColor.copy(alpha = 0.14f)),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             Icons.Default.Person, contentDescription = null,
-                            tint = driver.status.statusColor, modifier = Modifier.size(32.dp)
+                            tint = driver.effectiveStatus.statusColor, modifier = Modifier.size(32.dp)
                         )
                     }
                     Spacer(modifier = Modifier.width(16.dp))
                     Column {
                         Text(text = driver.fullName, style = MaterialTheme.typography.headlineSmall)
                         Spacer(modifier = Modifier.height(2.dp))
-                        StatusBadge(status = driver.status)
+                        StatusBadge(status = driver.effectiveStatus)
                     }
                 }
                 Spacer(modifier = Modifier.height(16.dp))
@@ -1401,3 +1432,52 @@ fun AssignmentDetailsDialog(
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cerrar") } }
     )
 }
+
+@Composable
+fun GeneralAssignmentHistoryDialog(
+    assignments: List<AssignmentModel>,
+    vehicles: List<Vehicle>,
+    drivers: List<Driver>,
+    onDismiss: () -> Unit,
+    onAssignmentClick: (AssignmentModel) -> Unit
+) {
+    val sdf = remember { SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Historial de Asignaciones") },
+        text = {
+            if (assignments.isEmpty()) {
+                Text("No hay registros de asignaciones finalizadas.")
+            } else {
+                val sortedAssignments = remember(assignments) {
+                    assignments.sortedByDescending { it.returnDate ?: it.departureDate }
+                }
+                LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 400.dp)) {
+                    items(sortedAssignments, key = { it.id }) { assignment ->
+                        val vehicle = vehicles.find { it.id == assignment.vehicleId }
+                        val driver = drivers.find { it.id == assignment.driverId }
+                        Card(
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                            onClick = { onAssignmentClick(assignment) }
+                        ) {
+                            ListItem(
+                                headlineContent = {
+                                    Text(vehicle?.let { "${it.brand} ${it.model} (${Validators.formatPlate(it.plate)})" } ?: "Vehículo eliminado")
+                                },
+                                supportingContent = {
+                                    Text("Conductor: ${driver?.fullName ?: "—"}\nFin: ${assignment.returnDate?.let { sdf.format(it) } ?: "Rechazada"}")
+                                },
+                                trailingContent = {
+                                    StatusBadge(status = assignment.status)
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text("Cerrar") } }
+    )
+}
+
+
