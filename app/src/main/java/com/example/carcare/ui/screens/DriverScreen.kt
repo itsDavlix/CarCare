@@ -49,28 +49,36 @@ fun DriverScreen(
     authViewModel: AuthViewModel,
     notificacionViewModel: NotificacionViewModel
 ) {
-    val driver = driverViewModel.drivers.find {
-        Validators.normalizeIdCard(it.idCardNumber) == Validators.normalizeIdCard(driverIdCard)
-    }
-
-    val activeAssignment = driver?.let { d ->
-        assignmentViewModel.assignments.find {
-            it.driverId == d.id && it.status == AssignmentStatus.ACTIVE
+    // Memoizados: se recalculan solo si cambian las listas o la cédula, no en cada
+    // recomposición (p. ej. al llegar un evento SSE de otra entidad).
+    val driver = remember(driverViewModel.drivers, driverIdCard) {
+        driverViewModel.drivers.find {
+            Validators.normalizeIdCard(it.idCardNumber) == Validators.normalizeIdCard(driverIdCard)
         }
     }
 
-    val pendingAssignment = driver?.let { d ->
-        assignmentViewModel.assignments.find {
-            it.driverId == d.id && it.status == AssignmentStatus.PENDING_ACCEPTANCE
+    val activeAssignment = remember(assignmentViewModel.assignments, driver?.id) {
+        driver?.let { d ->
+            assignmentViewModel.assignments.find {
+                it.driverId == d.id && it.status == AssignmentStatus.ACTIVE
+            }
         }
     }
 
-    val assignedVehicle = activeAssignment?.let { a ->
-        vehicleViewModel.vehicles.find { it.id == a.vehicleId }
+    val pendingAssignment = remember(assignmentViewModel.assignments, driver?.id) {
+        driver?.let { d ->
+            assignmentViewModel.assignments.find {
+                it.driverId == d.id && it.status == AssignmentStatus.PENDING_ACCEPTANCE
+            }
+        }
     }
 
-    val pendingVehicle = pendingAssignment?.let { a ->
-        vehicleViewModel.vehicles.find { it.id == a.vehicleId }
+    val assignedVehicle = remember(vehicleViewModel.vehicles, activeAssignment?.vehicleId) {
+        activeAssignment?.let { a -> vehicleViewModel.vehicles.find { it.id == a.vehicleId } }
+    }
+
+    val pendingVehicle = remember(vehicleViewModel.vehicles, pendingAssignment?.vehicleId) {
+        pendingAssignment?.let { a -> vehicleViewModel.vehicles.find { it.id == a.vehicleId } }
     }
 
     SseRefreshEffect { entidad ->
