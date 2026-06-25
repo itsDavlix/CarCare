@@ -64,6 +64,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -453,6 +454,16 @@ fun AuthScreen(
                             supportingText = if (viewModel.attempted && !cedulaV.isValid) {
                                 { Text(cedulaV.errorMessage ?: "") }
                             } else null,
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedTextColor = Ink,
+                                unfocusedTextColor = Ink,
+                                focusedLabelColor = Petrol700,
+                                unfocusedLabelColor = Muted,
+                                focusedPlaceholderColor = Muted,
+                                unfocusedPlaceholderColor = Muted,
+                                focusedContainerColor = Color.Transparent,
+                                unfocusedContainerColor = Color.Transparent,
+                            ),
                             keyboardOptions = KeyboardOptions(
                                 keyboardType = KeyboardType.Text,
                                 capitalization = KeyboardCapitalization.Characters,
@@ -500,6 +511,16 @@ fun AuthScreen(
                             supportingText = if (viewModel.attempted && !passwordV.isValid) {
                                 { Text(passwordV.errorMessage ?: "") }
                             } else null,
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedTextColor = Ink,
+                                unfocusedTextColor = Ink,
+                                focusedLabelColor = Petrol700,
+                                unfocusedLabelColor = Muted,
+                                focusedPlaceholderColor = Muted,
+                                unfocusedPlaceholderColor = Muted,
+                                focusedContainerColor = Color.Transparent,
+                                unfocusedContainerColor = Color.Transparent,
+                            ),
                             keyboardOptions = KeyboardOptions(
                                 keyboardType = KeyboardType.Password,
                                 imeAction = ImeAction.Done
