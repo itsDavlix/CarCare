@@ -415,6 +415,9 @@ fun AdminScreen(
                 vehicleViewModel.changeStatus(vehicleToShowDetails!!.id, newStatus)
                 vehicleToShowDetails = vehicleToShowDetails!!.copy(status = newStatus)
             },
+            onAssignmentClick = { assignment ->
+                assignmentToShowDetails = assignment
+            },
             onEdit = {
                 vehicleToEdit = vehicleToShowDetails
                 vehicleToShowDetails = null

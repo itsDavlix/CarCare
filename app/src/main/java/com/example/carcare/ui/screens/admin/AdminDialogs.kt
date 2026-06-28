@@ -26,9 +26,11 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.example.carcare.model.Vehicle
 import com.example.carcare.model.VehicleStatus
 import com.example.carcare.model.FuelType
+import com.example.carcare.model.FuelLevel
 import com.example.carcare.model.Maintenance
 import com.example.carcare.model.MaintenanceType
 import com.example.carcare.model.MaintenanceStatus
@@ -45,6 +47,7 @@ import java.text.SimpleDateFormat
 import java.util.*
 import com.example.carcare.ui.theme.statusColor
 import com.example.carcare.ui.theme.StatusAvailable
+import com.example.carcare.ui.theme.instrumentSmall
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -98,7 +101,7 @@ fun VehicleFormDialog(
     val plateV = Validators.validatePlate(plate, plateRegistry, vehicle?.id)
     val fuelV = Validators.validateFuelType(fuelType.label)
     val mileageV = Validators.validateMileage(mileage)
-    val chassisV = Validators.validateUniqueOptionalField(chassisNumber, "El número de chasis", chassisRegistry, vehicle?.id)
+    val chassisV = Validators.validateChassisNumber(chassisNumber, engineNumber, chassisRegistry, vehicle?.id)
     val engineV = Validators.validateUniqueOptionalField(engineNumber, "El número de motor", engineRegistry, vehicle?.id)
     val policyV = Validators.validateRequired(insurancePolicy, "La póliza de seguro")
 
@@ -322,6 +325,7 @@ fun VehicleDetailsDialog(
     assignmentHistory: List<AssignmentModel>,
     onDismiss: () -> Unit,
     onStatusChange: (VehicleStatus) -> Unit,
+    onAssignmentClick: (AssignmentModel) -> Unit,
     onEdit: () -> Unit
 ) {
     val sdf = remember { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()) }
@@ -455,13 +459,17 @@ fun VehicleDetailsDialog(
                     item { Text("No hay registros de asignación.", style = MaterialTheme.typography.bodySmall) }
                 } else {
                     items(assignmentHistory, key = { it.id }) { assignment ->
-                        Card(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+                        Card(
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                            onClick = { onAssignmentClick(assignment) }
+                        ) {
                             Column(modifier = Modifier.padding(8.dp)) {
                                 Text("Salida: ${sdf.format(assignment.departureDate)}")
                                 assignment.returnDate?.let {
                                     Text("Retorno: ${sdf.format(it)}", style = MaterialTheme.typography.bodySmall)
                                 }
-                                Text("Estado: ${assignment.status.label}", style = MaterialTheme.typography.bodySmall)                            }
+                                Text("Estado: ${assignment.status.label}", style = MaterialTheme.typography.bodySmall)
+                            }
                         }
                     }
                 }
@@ -1388,10 +1396,14 @@ fun AssignmentDetailsDialog(
     val sdfDate = remember { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()) }
     var fotoSalida by remember { mutableStateOf<String?>(null) }
     var fotoEntrega by remember { mutableStateOf<String?>(null) }
+
     LaunchedEffect(assignment.id) {
+        fotoSalida = null
+        fotoEntrega = null
         if (assignment.hasPhotoInitial) onFetchPhoto(assignment.id, true) { fotoSalida = it }
         if (assignment.hasPhotoFinal) onFetchPhoto(assignment.id, false) { fotoEntrega = it }
     }
+
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Detalles de la Asignación") },
@@ -1404,33 +1416,144 @@ fun AssignmentDetailsDialog(
                     vehicle?.let { "${it.brand} ${it.model} (${Validators.formatPlate(it.plate)})" } ?: "Vehículo eliminado"
                 )
                 KeyValueRow("Conductor", driver?.fullName ?: "—")
-                KeyValueRow("Salida", sdf.format(assignment.departureDate))
-                KeyValueRow("Retorno planeado", sdfDate.format(assignment.plannedReturnDate))
-                KeyValueRow("Km inicial", "${assignment.initialMileage}", mono = true)
+
                 if (assignment.status == AssignmentStatus.COMPLETED) {
-                    Spacer(modifier = Modifier.height(12.dp))
-                    DialogSectionLabel("Retorno")
-                    KeyValueRow("Entregado", assignment.returnDate?.let { sdf.format(it) } ?: "N/A")
-                    KeyValueRow("Km final", assignment.finalMileage?.toString() ?: "N/A", mono = true)
-                    if (assignment.returnObservations.isNotBlank()) {
-                        KeyValueRow("Observaciones", assignment.returnObservations)
+                    Spacer(modifier = Modifier.height(16.dp))
+                    ComparisonSection(assignment)
+
+                    Spacer(modifier = Modifier.height(16.dp))
+                    DialogSectionLabel("Fotos del viaje (Evidencia)")
+                    PhotoComparison(fotoSalida, fotoEntrega)
+
+                    if (assignment.departureObservations.isNotBlank() || assignment.returnObservations.isNotBlank()) {
+                        Spacer(modifier = Modifier.height(16.dp))
+                        DialogSectionLabel("Observaciones")
+                        if (assignment.departureObservations.isNotBlank()) {
+                            Text("Aceptación: ${assignment.departureObservations}", style = MaterialTheme.typography.bodySmall)
+                        }
+                        if (assignment.returnObservations.isNotBlank()) {
+                            Text("Entrega: ${assignment.returnObservations}", style = MaterialTheme.typography.bodySmall)
+                        }
                     }
-                }
-                fotoSalida?.let {
-                    Spacer(modifier = Modifier.height(12.dp))
-                    DialogSectionLabel("Foto combustible (salida)")
-                    Base64Image(it, Modifier.fillMaxWidth().height(180.dp))
-                }
-                fotoEntrega?.let {
-                    Spacer(modifier = Modifier.height(12.dp))
-                    DialogSectionLabel("Foto combustible (entrega)")
-                    Base64Image(it, Modifier.fillMaxWidth().height(180.dp))
+                } else {
+                    KeyValueRow("Salida", sdf.format(assignment.departureDate))
+                    KeyValueRow("Retorno planeado", sdfDate.format(assignment.plannedReturnDate))
+                    KeyValueRow("Km inicial", "${assignment.initialMileage} km", mono = true)
+                    
+                    if (assignment.status == AssignmentStatus.REJECTED && assignment.rejectionReason != null) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        DialogSectionLabel("Motivo del rechazo")
+                        Text(assignment.rejectionReason, color = MaterialTheme.colorScheme.error)
+                    }
+
+                    if (assignment.departureObservations.isNotBlank()) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        DialogSectionLabel("Observaciones de salida")
+                        Text(assignment.departureObservations, style = MaterialTheme.typography.bodySmall)
+                    }
+
+                    fotoSalida?.let {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        DialogSectionLabel("Foto combustible (salida)")
+                        Base64Image(it, Modifier.fillMaxWidth().height(200.dp).clip(RoundedCornerShape(8.dp)))
+                    }
                 }
             }
         },
         confirmButton = { TextButton(onClick = onEdit) { Text("Editar") } },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cerrar") } }
     )
+}
+
+@Composable
+private fun ComparisonSection(assignment: AssignmentModel) {
+    val diff = if (assignment.finalMileage != null) assignment.finalMileage - assignment.initialMileage else null
+    val sdf = remember { SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()) }
+
+    DialogSectionLabel("Comparativa de viaje")
+    Card(
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(Modifier.padding(12.dp)) {
+            ComparisonRow(
+                label = "Fecha/Hora",
+                initial = assignment.acceptanceDate?.let { sdf.format(it) } ?: sdf.format(assignment.departureDate),
+                final = assignment.returnDate?.let { sdf.format(it) } ?: "—"
+            )
+            HorizontalDivider(Modifier.padding(vertical = 6.dp), thickness = 0.5.dp)
+            ComparisonRow(
+                label = "Kilometraje",
+                initial = "${assignment.initialMileage} km",
+                final = if (assignment.finalMileage != null) "${assignment.finalMileage} km" else "—",
+                mono = true
+            )
+            if (diff != null) {
+                Text(
+                    text = "Recorrido: $diff km",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(top = 2.dp, bottom = 4.dp)
+                )
+            }
+            HorizontalDivider(Modifier.padding(vertical = 6.dp), thickness = 0.5.dp)
+            ComparisonRow(
+                label = "Combustible",
+                initial = assignment.fuelLevelInitial?.label ?: "—",
+                final = assignment.fuelLevelFinal?.label ?: "—"
+            )
+            HorizontalDivider(Modifier.padding(vertical = 6.dp), thickness = 0.5.dp)
+            ComparisonRow(
+                label = "Estado del vehículo",
+                initial = if (assignment.conditionOkInitial == true) "Óptimo" else "Reportado",
+                final = if (assignment.conditionOkFinal == true) "Óptimo" else if (assignment.conditionOkFinal == false) "Reportado" else "—"
+            )
+        }
+    }
+}
+
+@Composable
+private fun ComparisonRow(label: String, initial: String, final: String, mono: Boolean = false) {
+    Column(Modifier.padding(vertical = 2.dp)) {
+        Text(label, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            Column(Modifier.weight(1f)) {
+                Text("ACEPTACIÓN", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 9.sp)
+                Text(initial, style = if (mono) instrumentSmall else MaterialTheme.typography.bodySmall)
+            }
+            Column(Modifier.weight(1f)) {
+                Text("ENTREGA", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 9.sp)
+                Text(final, style = if (mono) instrumentSmall else MaterialTheme.typography.bodySmall)
+            }
+        }
+    }
+}
+
+@Composable
+private fun PhotoComparison(fotoSalida: String?, fotoEntrega: String?) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(Modifier.weight(1f)) {
+            Text("ACEPTACIÓN", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(bottom = 4.dp), fontSize = 9.sp)
+            if (fotoSalida != null) {
+                Base64Image(fotoSalida, Modifier.fillMaxWidth().height(160.dp).clip(RoundedCornerShape(10.dp)))
+            } else {
+                Box(Modifier.fillMaxWidth().height(160.dp).clip(RoundedCornerShape(10.dp)).background(MaterialTheme.colorScheme.surfaceVariant), contentAlignment = Alignment.Center) {
+                    Text("Sin foto", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+        }
+        Column(Modifier.weight(1f)) {
+            Text("ENTREGA", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(bottom = 4.dp), fontSize = 9.sp)
+            if (fotoEntrega != null) {
+                Base64Image(fotoEntrega, Modifier.fillMaxWidth().height(160.dp).clip(RoundedCornerShape(10.dp)))
+            } else {
+                Box(Modifier.fillMaxWidth().height(160.dp).clip(RoundedCornerShape(10.dp)).background(MaterialTheme.colorScheme.surfaceVariant), contentAlignment = Alignment.Center) {
+                    Text("Sin foto", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+        }
+    }
 }
 
 @Composable

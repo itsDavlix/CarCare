@@ -426,11 +426,11 @@ fun AssignmentItem(
             Spacer(modifier = Modifier.height(10.dp))
             DetailLine("Salida", sdf.format(assignment.departureDate))
             DetailLine("Retorno planeado", sdfDate.format(assignment.plannedReturnDate))
-            DetailLine("Km inicial", "${assignment.initialMileage}", mono = true)
+            DetailLine("Km inicial", "${assignment.initialMileage} km", mono = true)
             if (assignment.status == AssignmentStatus.COMPLETED) {
                 HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
                 DetailLine("Entregado", assignment.returnDate?.let { sdf.format(it) } ?: "N/A")
-                DetailLine("Km final", "${assignment.finalMileage}", mono = true)
+                DetailLine("Km final", assignment.finalMileage?.let { "$it km" } ?: "N/A", mono = true)
                 if (assignment.returnObservations.isNotBlank()) {
                     DetailLine("Obs.", assignment.returnObservations)
                 }

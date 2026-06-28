@@ -115,7 +115,7 @@ object Validators {
         if (mileageStr.isBlank()) return ValidationResult.invalid("El kilometraje es obligatorio")
         val km = mileageStr.toLongOrNull() ?: return ValidationResult.invalid("Kilometraje inválido")
         if (km < 0) return ValidationResult.invalid("El kilometraje no puede ser negativo")
-        if (km > 2_000_000) return ValidationResult.invalid("Kilometraje fuera de rango")
+        if (km > 1_000_000) return ValidationResult.invalid("Kilometraje fuera de rango real (máx 1M km)")
         return ValidationResult.Valid
     }
 
@@ -145,6 +145,15 @@ object Validators {
         }
         
         if (duplicate) return ValidationResult.invalid("$fieldName ya está registrado en el sistema")
+        return ValidationResult.Valid
+    }
+
+    fun validateChassisNumber(value: String, engineNumber: String, existing: List<Pair<String, String>>, currentId: String?): ValidationResult {
+        val v = validateUniqueOptionalField(value, "El número de chasis", existing, currentId)
+        if (!v.isValid) return v
+        if (value.isNotBlank() && engineNumber.isNotBlank() && value.trim().uppercase() == engineNumber.trim().uppercase()) {
+            return ValidationResult.invalid("El chasis y el motor no pueden ser iguales")
+        }
         return ValidationResult.Valid
     }
 
@@ -180,10 +189,24 @@ object Validators {
     }
 
     private fun hasValidEmbeddedDate(normalized: String): Boolean {
+        if (normalized.length < 9) return false
         val day = normalized.substring(3, 5).toIntOrNull() ?: return false
         val month = normalized.substring(5, 7).toIntOrNull() ?: return false
         if (month !in 1..12) return false
         return day in 1..maxDayOfMonth(month)
+    }
+
+    private fun validateCheckLetter(normalized: String): Boolean {
+        if (normalized.length != 14) return false
+        val digitsPart = normalized.substring(0, 13)
+        val givenLetter = normalized.last()
+        val digits = digitsPart.toLongOrNull() ?: return false
+        
+        val alphabet = "ABCDEFGHJKLMNPQRSTUVWXY"
+        val expectedIndex = (digits % 23).toInt()
+        val expectedLetter = alphabet[expectedIndex]
+        
+        return givenLetter == expectedLetter
     }
 
     private fun validateNicaraguaId(value: String, requiredMessage: String): ValidationResult {
@@ -194,7 +217,10 @@ object Validators {
             return ValidationResult.invalid("Formato inválido. Ej: 001-150798-1000X")
         }
         if (!hasValidEmbeddedDate(normalized)) {
-            return ValidationResult.invalid("La fecha embebida (DDMMAA) no es una fecha válida")
+            return ValidationResult.invalid("La fecha embebida (DDMMAA) no es válida")
+        }
+        if (!validateCheckLetter(normalized)) {
+            return ValidationResult.invalid("La letra de control es incorrecta")
         }
         return ValidationResult.Valid
     }
@@ -227,9 +253,17 @@ object Validators {
         val trimmed = phone.trim()
         if (trimmed.isBlank()) return ValidationResult.invalid("El teléfono es obligatorio")
         val digits = normalizePhone(trimmed)
-        if (digits.length !in 8..15) {
-            return ValidationResult.invalid("Teléfono debe tener entre 8 y 15 dígitos")
+        
+        // Nicaragua: 8 dígitos. Aceptar también con prefijo 505 (11 dígitos)
+        if (digits.length != 8 && digits.length != 11) {
+            return ValidationResult.invalid("El teléfono debe tener 8 dígitos (ej: 88881234)")
         }
+        
+        if (digits.length == 8 && !digits.startsWith("2") && !digits.startsWith("5") && 
+            !digits.startsWith("7") && !digits.startsWith("8")) {
+            return ValidationResult.invalid("Prefijo de teléfono no válido en Nicaragua")
+        }
+
         val duplicate = existingPhones.any { (id, p) ->
             normalizePhone(p) == digits && id != currentId
         }
@@ -273,6 +307,13 @@ object Validators {
 
     fun validateMaintenanceDates(startDate: Date?, completionDate: Date?): ValidationResult {
         if (startDate == null) return ValidationResult.invalid("Fecha de inicio obligatoria")
+        
+        // No permitir mantenimientos planeados a más de 1 año futuro
+        val oneYearFuture = Calendar.getInstance().apply { add(Calendar.YEAR, 1) }.time
+        if (startDate.after(oneYearFuture)) {
+            return ValidationResult.invalid("No podés programar a más de 1 año")
+        }
+
         if (completionDate != null && completionDate.before(startDate)) {
             return ValidationResult.invalid("Finalización no puede ser anterior al inicio")
         }
@@ -288,8 +329,11 @@ object Validators {
         val km = mileageStr.toLongOrNull() ?: return basic
         if (km < vehicleCurrentMileage) {
             return ValidationResult.invalid(
-                "Debe ser ≥ kilometraje actual del vehículo ($vehicleCurrentMileage km)"
+                "Debe ser ≥ kilometraje actual ($vehicleCurrentMileage km)"
             )
+        }
+        if (km > vehicleCurrentMileage + 50_000) {
+            return ValidationResult.invalid("Aumento excesivo (>50k km). Verificá el dato.")
         }
         return ValidationResult.Valid
     }
@@ -371,8 +415,11 @@ object Validators {
         val km = mileageStr.toLongOrNull() ?: return basic
         if (km < vehicleMileage) {
             return ValidationResult.invalid(
-                "Debe ser ≥ kilometraje del vehículo ($vehicleMileage km)"
+                "Debe ser ≥ kilometraje registrado ($vehicleMileage km)"
             )
+        }
+        if (km > vehicleMileage + 1000) {
+            return ValidationResult.invalid("Diferencia muy alta (>1000 km) con el registro.")
         }
         return ValidationResult.Valid
     }
@@ -380,7 +427,7 @@ object Validators {
     fun validateFinalMileage(
         finalStr: String,
         initialMileage: Long,
-        maxDelta: Long = 10_000
+        maxDelta: Long = 5_000
     ): ValidationResult {
         if (finalStr.isBlank()) return ValidationResult.invalid("Kilometraje final obligatorio")
         val km = finalStr.toLongOrNull() ?: return ValidationResult.invalid("Kilometraje inválido")
@@ -388,7 +435,7 @@ object Validators {
             return ValidationResult.invalid("Final ($km) no puede ser menor al inicial ($initialMileage)")
         }
         if (km - initialMileage > maxDelta) {
-            return ValidationResult.invalid("Aumento poco realista: más de $maxDelta km en una sola asignación")
+            return ValidationResult.invalid("Recorrido excesivo (>5000 km). Verificá el dato.")
         }
         return ValidationResult.Valid
     }

@@ -160,8 +160,15 @@ abstract class BaseListViewModel<T : Identifiable, R : CrudRepository<T>>(
     }
 
     /** Búsqueda case-insensitive reutilizable; true cuando la query está vacía. */
-    protected fun matchesQuery(vararg fields: String?): Boolean =
-        searchQuery.isBlank() || fields.any { it?.contains(searchQuery, ignoreCase = true) == true }
+    protected fun matchesQuery(vararg fields: String?): Boolean {
+        if (searchQuery.isBlank()) return true
+        val normalizedQuery = searchQuery.trim().replace(Regex("[\\s-]"), "").uppercase()
+        return fields.any { field ->
+            val f = field ?: return@any false
+            f.contains(searchQuery, ignoreCase = true) || 
+            f.replace(Regex("[\\s-]"), "").uppercase().contains(normalizedQuery)
+        }
+    }
 
     private fun replaceById(item: T) {
         items = items.map { if (it.id == item.id) item else it }
