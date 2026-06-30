@@ -355,7 +355,7 @@ fun AssignmentItem(
     onClick: () -> Unit,
     onDelete: () -> Unit
 ) {
-    val sdf = remember { SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()) }
+    val sdf = remember { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()) }
     val sdfDate = remember { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()) }
     val plateLabel = vehicle?.plate?.let { Validators.formatPlate(it) } ?: "N/A"
     val interaction = remember { MutableInteractionSource() }
