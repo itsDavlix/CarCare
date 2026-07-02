@@ -1392,7 +1392,7 @@ fun AssignmentDetailsDialog(
     onDismiss: () -> Unit,
     onEdit: () -> Unit
 ) {
-    val sdf = remember { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()) }
+    val sdf = remember { SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()) }
     val sdfDate = remember { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()) }
     var fotoSalida by remember { mutableStateOf<String?>(null) }
     var fotoEntrega by remember { mutableStateOf<String?>(null) }
@@ -1468,7 +1468,7 @@ fun AssignmentDetailsDialog(
 @Composable
 private fun ComparisonSection(assignment: AssignmentModel) {
     val diff = if (assignment.finalMileage != null) assignment.finalMileage - assignment.initialMileage else null
-    val sdf = remember { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()) }
+    val sdf = remember { SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()) }
 
     DialogSectionLabel("Comparativa de viaje")
     Card(
@@ -1564,7 +1564,7 @@ fun GeneralAssignmentHistoryDialog(
     onDismiss: () -> Unit,
     onAssignmentClick: (AssignmentModel) -> Unit
 ) {
-    val sdf = remember { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()) }
+    val sdf = remember { SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()) }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Historial de Asignaciones") },

@@ -227,7 +227,7 @@ fun DashboardSection(
 
     // Cada alerta lleva una key estable derivada de los ids reales (m.id / d.id):
     // el texto solo NO sirve de key porque dos homónimos lo duplicarían (crash de LazyColumn).
-    val alerts = remember(maintenances, vehicles, drivers, assignments, now, soon) {
+    val alerts = remember(maintenances, vehicles, drivers, now, soon) {
         val list = mutableListOf<Triple<String, Boolean, String>>() // (key, esCrítico, texto)
         maintenances.filter { it.status == MaintenanceStatus.IN_PROGRESS }.forEach { m ->
             val v = vehicles.find { it.id == m.vehicleId }
@@ -249,16 +249,6 @@ fun DashboardSection(
         drivers.filter { it.status == DriverStatus.ACTIVE }.forEach { d ->
             if (d.isLicenseExpired) list.add(Triple("d-lic-${d.id}", true, "Licencia vencida · ${d.fullName}"))
             else if (d.licenseExpiryDate.before(soon)) list.add(Triple("d-lic-${d.id}", false, "Licencia por vencer · ${d.fullName}"))
-        }
-        assignments.filter { (it.status == AssignmentStatus.ACTIVE || it.status == AssignmentStatus.PENDING_ACCEPTANCE) && it.overdue }.forEach { a ->
-            val v = vehicles.find { it.id == a.vehicleId }
-            val label = v?.let { "${it.brand} (${Validators.formatPlate(it.plate)})" } ?: "Vehículo"
-            val atraso = if (a.daysOverdue <= 1L) "1 día" else "${a.daysOverdue} días"
-            val msg = if (a.status == AssignmentStatus.PENDING_ACCEPTANCE)
-                "Asignación no aceptada y retrasada ($atraso) · $label"
-            else
-                "Entrega retrasada ($atraso) · $label"
-            list.add(Triple("a-overdue-${a.id}", true, msg))
         }
         list
     }
@@ -407,7 +397,7 @@ private fun NotificationPanel(
 private fun ActivityRow(a: Assignment, vehicles: List<Vehicle>, drivers: List<Driver>, out: Boolean) {
     val v = vehicles.find { it.id == a.vehicleId }
     val d = drivers.find { it.id == a.driverId }
-    val sdf = remember { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()) }
+    val sdf = remember { SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()) }
     Card(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
         ListItem(
             headlineContent = { Text(v?.let { "${it.brand} ${it.model} (${Validators.formatPlate(it.plate)})" } ?: "Vehículo eliminado") },            supportingContent = {
